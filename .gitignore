@@ -32,3 +32,4 @@ Cargo.lock
 # Application specific  
 performance_monitor.log
 ~/.cc_telegram/
+config.toml

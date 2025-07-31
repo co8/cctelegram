@@ -26,6 +26,6 @@ progress_updates = false
 
 [security]
 # Rate limiting settings
-rate_limit_requests = 30  # Max requests per window
-rate_limit_window = 60    # Window in seconds
-audit_log = true          # Enable audit logging
+rate_limit_requests = 30 # Max requests per window
+rate_limit_window = 60   # Window in seconds
+audit_log = true         # Enable audit logging
