@@ -1,0 +1,79 @@
+[package]
+name = "cc-telegram-bridge"
+version = "0.1.0"
+edition = "2021"
+authors = ["Enrique <@enriqueco8>"]
+description = "A Rust-based bridge between Claude Code/VSCode and Telegram for remote monitoring and interaction"
+license = "MIT"
+repository = "https://github.com/enriqueco8/cc-telegram"
+keywords = ["telegram", "claude-code", "development", "monitoring"]
+categories = ["development-tools", "command-line-utilities"]
+
+[lib]
+name = "cc_telegram_bridge"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cc-telegram-bridge"
+path = "src/main.rs"
+
+[dependencies]
+# Tokio for async runtime
+tokio = { version = "1.45.1", features = ["full"] }
+
+# Telegram bot framework
+teloxide = { version = "0.12", features = ["macros"] }
+
+# File system watching
+notify = "6.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Configuration management
+config = "0.14"
+toml = "0.8"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Cross-platform paths and utilities
+dirs = "5.0"
+
+# Async utilities
+futures = "0.3"
+
+# Security
+ring = "0.17"
+base64 = "0.22"
+
+# File system utilities
+walkdir = "2.4"
+
+# Performance monitoring
+sysinfo = "0.30"
+prometheus = "0.13"
+
+# HTTP server for metrics
+warp = "0.3"
+
+# Atomic metrics
+arc-swap = "1.7"
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"

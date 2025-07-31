@@ -1,0 +1,17 @@
+{
+  "type": "task_completion",
+  "source": "claude_code",
+  "timestamp": "2024-07-31T20:30:00Z",
+  "task_id": "task_example_123",
+  "title": "Code Analysis Complete",
+  "description": "Finished analyzing the codebase for potential improvements",
+  "data": {
+    "status": "completed",
+    "results": "Found 5 optimization opportunities and 2 potential bugs. All tests passing.",
+    "metadata": {
+      "duration": "2m34s",
+      "files_affected": 15,
+      "error_count": 0
+    }
+  }
+}

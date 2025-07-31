@@ -1,0 +1,148 @@
+use anyhow::Result;
+use tracing::{info, warn, error};
+use tokio::signal;
+use std::sync::Arc;
+use std::time::Instant;
+
+mod config;
+mod events;
+mod telegram;
+mod storage;
+mod utils;
+
+use config::Config;
+use events::{EventWatcher, EventProcessor};
+use telegram::TelegramBot;
+use storage::FileStore;
+use utils::{PerformanceMonitor, HealthServer, TimedOperation};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Initialize logging
+    utils::setup_logging()?;
+
+    info!("Starting CC Telegram Bridge v{}", env!("CARGO_PKG_VERSION"));
+
+    // Load configuration
+    let config = Config::load()?;
+    info!("Configuration loaded successfully");
+
+    // Initialize performance monitoring
+    let performance_monitor = Arc::new(PerformanceMonitor::new(config.performance.clone())?);
+    info!("Performance monitoring initialized");
+
+    // Start background monitoring task
+    let monitor_clone = performance_monitor.clone();
+    tokio::spawn(async move {
+        if let Err(e) = monitor_clone.start_monitoring_task().await {
+            error!("Performance monitoring task failed: {}", e);
+        }
+    });
+
+    // Start health check server if enabled
+    if config.monitoring.enable_metrics_server {
+        let health_server = HealthServer::new(performance_monitor.clone(), config.monitoring.health_check_port);
+        tokio::spawn(async move {
+            if let Err(e) = health_server.start().await {
+                error!("Health server failed: {}", e);
+            }
+        });
+        info!("Health check server started on port {}", config.monitoring.health_check_port);
+    }
+
+    // Initialize storage
+    let file_store = FileStore::new(&Config::get_config_dir());
+    file_store.ensure_directories().await?;
+
+    // Initialize event processor
+    let event_processor = EventProcessor::new(&config.paths.events_dir);
+
+    // Initialize Telegram bot
+    let telegram_bot = Arc::new(TelegramBot::new(
+        config.telegram.bot_token.clone(),
+        config.telegram.allowed_users.clone(),
+    ));
+
+    // Initialize file watcher
+    let mut event_watcher = EventWatcher::new(&config.paths.events_dir)?;
+    info!("File watcher initialized for: {}", config.paths.events_dir.display());
+
+    // Start main event loop
+    info!("Starting main event processing loop");
+    
+    let bot_clone = telegram_bot.clone();
+    let monitor_clone = performance_monitor.clone();
+    let main_loop = tokio::spawn(async move {
+        loop {
+            if let Some(file_event) = event_watcher.next_event().await {
+                // Record file watcher event
+                monitor_clone.record_file_watcher_event();
+                
+                if event_watcher.is_relevant_event(&file_event) {
+                    info!("Processing file event: {:?}", file_event);
+                    
+                    for path in &file_event.paths {
+                        if path.is_file() {
+                            // Measure event processing time
+                            let start_time = Instant::now();
+                            
+                            match event_processor.process_event_file(path).await {
+                                Ok(event) => {
+                                    // Record successful event processing
+                                    monitor_clone.record_event_processed(start_time.elapsed());
+                                    info!("Processed event: {} - {}", event.task_id, event.title);
+                                    
+                                    // Send notification to all allowed users
+                                    for &user_id in &config.telegram.allowed_users {
+                                        let telegram_start = Instant::now();
+                                        
+                                        match bot_clone.send_event_notification(user_id, &event).await {
+                                            Ok(_) => {
+                                                // Record successful Telegram message
+                                                monitor_clone.record_telegram_message(telegram_start.elapsed());
+                                            }
+                                            Err(e) => {
+                                                // Record error
+                                                monitor_clone.record_error("telegram_notification");
+                                                error!("Failed to send notification to user {}: {}", user_id, e);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Clean up processed file
+                                    if let Err(e) = event_processor.cleanup_processed_file(path).await {
+                                        monitor_clone.record_error("file_cleanup");
+                                        warn!("Failed to cleanup file {}: {}", path.display(), e);
+                                    }
+                                }
+                                Err(e) => {
+                                    // Record error and processing time
+                                    monitor_clone.record_error("event_processing");
+                                    monitor_clone.record_event_processed(start_time.elapsed());
+                                    error!("Failed to process event file {}: {}", path.display(), e);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Wait for shutdown signal
+    info!("CC Telegram Bridge is running. Press Ctrl+C to stop.");
+    
+    tokio::select! {
+        _ = signal::ctrl_c() => {
+            info!("Received shutdown signal");
+        }
+        result = main_loop => {
+            if let Err(e) = result {
+                error!("Main loop error: {}", e);
+            }
+        }
+    }
+
+    info!("CC Telegram Bridge stopped");
+    Ok(())
+}
