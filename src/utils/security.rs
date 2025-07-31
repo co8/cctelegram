@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_security_manager() {
-        let mut manager = SecurityManager::new(vec![123, 456], 10, 60);
+        let manager = SecurityManager::new(vec![123, 456], 10, 60);
         
         assert!(manager.is_user_authorized(123));
         assert!(manager.is_user_authorized(456));

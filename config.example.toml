@@ -29,3 +29,17 @@ progress_updates = false
 rate_limit_requests = 30 # Max requests per window
 rate_limit_window = 60   # Window in seconds
 audit_log = true         # Enable audit logging
+
+[performance]
+memory_threshold_mb = 100
+cpu_threshold_percent = 80.0
+event_processing_threshold_ms = 1000
+telegram_response_threshold_ms = 5000
+metrics_collection_interval_seconds = 30
+enable_detailed_logging = false
+
+[monitoring]
+health_check_port = 8080
+enable_metrics_server = true
+metrics_endpoint = "/metrics"
+health_endpoint = "/health"
