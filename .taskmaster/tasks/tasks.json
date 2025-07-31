@@ -1,0 +1,160 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "projectName": "Claude Code Telegram Bridge",
+    "description": "Remote monitoring and interaction with Claude Code and VSCode workflows via Telegram",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "lastModified": "2024-01-15T10:00:00Z"
+  },
+  "tags": {
+    "master": {
+      "description": "Main development branch tasks",
+      "tasks": [
+        {
+          "id": "1",
+          "title": "Project Setup and Foundation",
+          "description": "Initialize Rust project structure, configure dependencies, and set up development environment",
+          "status": "pending",
+          "priority": "high",
+          "estimatedHours": 8,
+          "tags": ["foundation", "setup"],
+          "dependencies": [],
+          "testStrategy": "Unit tests for configuration loading, integration tests for basic app startup",
+          "details": "Create Cargo.toml with required dependencies (tokio, serde, notify, teloxide, config, tracing). Set up project directory structure with modules for events, telegram, storage, and utils. Configure development environment with proper logging and error handling."
+        },
+        {
+          "id": "2", 
+          "title": "File System Monitoring System",
+          "description": "Implement file system watcher to monitor Claude Code event files",
+          "status": "pending",
+          "priority": "high",
+          "estimatedHours": 12,
+          "tags": ["core", "filesystem"],
+          "dependencies": ["1"],
+          "testStrategy": "Unit tests for file watcher, integration tests with mock file events, performance testing for file processing speed",
+          "details": "Create file watcher using notify crate to monitor ~/.cc_telegram/events/ directory. Implement event parsing and validation. Handle file creation, modification, and deletion events. Ensure <100ms response time to file system changes."
+        },
+        {
+          "id": "3",
+          "title": "Event Processing Engine", 
+          "description": "Build JSON event parser and processor for Claude Code integration",
+          "status": "pending",
+          "priority": "high",
+          "estimatedHours": 10,
+          "tags": ["core", "events"],
+          "dependencies": ["2"],
+          "testStrategy": "Unit tests for JSON parsing, validation tests for event schemas, error handling tests for malformed data",
+          "details": "Design event schema for task_completion, approval_request, and progress_update events. Implement JSON parsing with serde. Add event validation and error handling. Create event queue for processing order."
+        },
+        {
+          "id": "4",
+          "title": "Telegram Bot Integration",
+          "description": "Implement Telegram bot client with message formatting and interactive buttons", 
+          "status": "pending",
+          "priority": "high",
+          "estimatedHours": 14,
+          "tags": ["telegram", "integration"],
+          "dependencies": ["3"],
+          "testStrategy": "Unit tests for message formatting, integration tests with Telegram test environment, rate limiting tests",
+          "details": "Set up teloxide client with bot token configuration. Create message templates for different event types. Implement interactive keyboard buttons for approvals. Add rate limiting and error handling for Telegram API calls."
+        },
+        {
+          "id": "5",
+          "title": "Response Handling System",
+          "description": "Process user responses from Telegram and communicate back to Claude Code",
+          "status": "pending", 
+          "priority": "high",
+          "estimatedHours": 8,
+          "tags": ["response", "integration"],
+          "dependencies": ["4"],
+          "testStrategy": "Unit tests for response processing, integration tests for end-to-end approval workflow, timeout handling tests",
+          "details": "Implement callback query handling for button responses. Create response file writer for ~/.cc_telegram/responses/. Add response validation and timeout handling. Ensure <2 second response processing time."
+        },
+        {
+          "id": "6",
+          "title": "Configuration Management",
+          "description": "Implement secure configuration system with authentication and settings",
+          "status": "pending",
+          "priority": "medium", 
+          "estimatedHours": 6,
+          "tags": ["config", "security"],
+          "dependencies": ["1"],
+          "testStrategy": "Unit tests for configuration loading, security tests for token handling, validation tests for user settings",
+          "details": "Create TOML configuration system with user whitelist, bot token management, and notification preferences. Implement secure token storage using environment variables or keychain. Add configuration validation and error reporting."
+        },
+        {
+          "id": "7",
+          "title": "Claude Code Integration Hooks",
+          "description": "Develop minimal hook system for Claude Code event emission",
+          "status": "pending",
+          "priority": "medium",
+          "estimatedHours": 10,
+          "tags": ["integration", "hooks"],
+          "dependencies": ["3"],
+          "testStrategy": "Integration tests with mock Claude Code events, compatibility tests across Claude Code versions",
+          "details": "Design hook system for Claude Code to emit events at task completion, approval requests, and progress updates. Create event file writing utilities. Ensure minimal impact on Claude Code performance and workflow."
+        },
+        {
+          "id": "8",
+          "title": "VSCode Extension Development",
+          "description": "Create VSCode extension for workspace monitoring and event emission",
+          "status": "pending",
+          "priority": "medium",
+          "estimatedHours": 12,
+          "tags": ["vscode", "extension"],
+          "dependencies": ["3"],
+          "testStrategy": "Extension integration tests, workspace event monitoring tests, performance impact assessment",
+          "details": "Develop TypeScript VSCode extension to monitor file changes, editor events, and terminal activity. Implement communication with bridge app through file-based events. Create extension commands and settings UI."
+        },
+        {
+          "id": "9",
+          "title": "Security and Authentication",
+          "description": "Implement comprehensive security measures and user authentication",
+          "status": "pending",
+          "priority": "high",
+          "estimatedHours": 8,
+          "tags": ["security", "auth"],
+          "dependencies": ["6"],
+          "testStrategy": "Security penetration testing, authentication bypass tests, rate limiting validation, audit log verification",
+          "details": "Implement Telegram user ID authentication, rate limiting, input validation and sanitization. Add audit logging for all approvals and actions. Secure file system permissions and temporary file handling."
+        },
+        {
+          "id": "10",
+          "title": "Testing and Quality Assurance",
+          "description": "Comprehensive testing suite with unit, integration, and end-to-end tests",
+          "status": "pending",
+          "priority": "medium",
+          "estimatedHours": 16,
+          "tags": ["testing", "qa"],
+          "dependencies": ["5", "7", "8", "9"],
+          "testStrategy": "Unit tests for all modules, integration tests for complete workflows, end-to-end tests with real Telegram bot, performance benchmarking",
+          "details": "Create comprehensive test suite covering all modules and integration points. Set up CI/CD pipeline with automated testing. Implement performance benchmarks and reliability tests. Add error simulation and recovery testing."
+        },
+        {
+          "id": "11",
+          "title": "Documentation and User Guides", 
+          "description": "Create comprehensive documentation, installation guides, and user manuals",
+          "status": "pending",
+          "priority": "medium",
+          "estimatedHours": 10,
+          "tags": ["docs", "guides"],
+          "dependencies": ["10"],
+          "testStrategy": "Documentation accuracy verification, installation guide testing across platforms, user acceptance testing",
+          "details": "Write technical documentation, API specifications, installation guides, and user manuals. Create example configurations and troubleshooting guides. Develop architecture diagrams and system flow documentation."
+        },
+        {
+          "id": "12",
+          "title": "Deployment and Distribution",
+          "description": "Package application for distribution and create installation mechanisms",
+          "status": "pending",
+          "priority": "medium",
+          "estimatedHours": 8,
+          "tags": ["deployment", "distribution"],
+          "dependencies": ["11"],
+          "testStrategy": "Cross-platform installation testing, package distribution verification, service management testing",
+          "details": "Create release binaries for multiple platforms. Develop Homebrew formula, cargo install support, and Docker container. Implement service management scripts for macOS (launchd) and Linux (systemd). Set up automated release pipeline."
+        }
+      ]
+    }
+  }
+}
