@@ -12,6 +12,7 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 ## 🎯 Step 1: Create Your Telegram Bot
 
 ### 1.1 Create the Bot
+
 1. Open Telegram and search for [@BotFather](https://t.me/botfather)
 2. Start a chat and send `/newbot`
 3. Choose a name: `My CC Bridge Bot`
@@ -23,6 +24,7 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 ```
 
 ### 1.2 Get Your User ID
+
 1. Search for [@userinfobot](https://t.me/userinfobot)
 2. Start a chat and send any message
 3. **Save your user ID** - it's the number shown
@@ -34,9 +36,10 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 ## 🛠️ Step 2: Setup the Application
 
 ### 2.1 Clone and Build
+
 ```bash
 # Clone the repository
-git clone https://github.com/enriqueco8/cc-telegram.git
+git clone https://github.com/co8/cc-telegram.git
 cd cc-telegram
 
 # Build the optimized version (takes ~2 minutes)
@@ -44,6 +47,7 @@ cargo build --release
 ```
 
 ### 2.2 Quick Configuration
+
 ```bash
 # Set your bot credentials (replace with your actual values)
 export TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
@@ -57,12 +61,14 @@ echo "User ID: $TELEGRAM_ALLOWED_USERS"
 ## 🚦 Step 3: First Run
 
 ### 3.1 Start the Bridge
+
 ```bash
 # Start the application
 ./target/release/cc-telegram-bridge
 ```
 
 You should see:
+
 ```
 2024-07-31T20:30:00.000Z  INFO Starting CC Telegram Bridge v0.1.0
 2024-07-31T20:30:00.001Z  INFO Configuration loaded successfully
@@ -73,7 +79,9 @@ You should see:
 ```
 
 ### 3.2 Test the Connection
+
 Open a new terminal and test:
+
 ```bash
 # Check if it's healthy
 curl http://localhost:8080/health
@@ -84,6 +92,7 @@ curl http://localhost:8080/health
 ## 🧪 Step 4: Test With Sample Event
 
 ### 4.1 Send a Test Event
+
 ```bash
 # Create a test event file
 mkdir -p ~/.cc_telegram/events
@@ -108,9 +117,11 @@ EOF
 ```
 
 ### 4.2 Watch for the Notification
+
 Within seconds, you should receive a Telegram message from your bot! 🎉
 
 The message will include:
+
 - ✅ Task completion notification
 - 📋 Event details and results
 - 🔧 Interactive buttons (if applicable)
@@ -118,12 +129,14 @@ The message will include:
 ## 📊 Step 5: Monitoring Dashboard
 
 ### 5.1 Check Performance
+
 ```bash
 # Run the monitoring script
 ./performance_monitor.sh monitor
 ```
 
 You'll see:
+
 ```
 === CC Telegram Bridge Performance Monitor ===
 ✓ Application is running
@@ -142,6 +155,7 @@ Error Rate:       0.0%
 ```
 
 ### 5.2 View Detailed Metrics
+
 ```bash
 # Get detailed performance report
 curl http://localhost:8080/report | jq
@@ -153,6 +167,7 @@ curl http://localhost:8080/metrics
 ## 🎛️ Step 6: Customize Configuration
 
 ### 6.1 Edit Configuration File
+
 The app created `~/.cc_telegram/config.toml` on first run:
 
 ```bash
@@ -161,10 +176,11 @@ nano ~/.cc_telegram/config.toml
 ```
 
 ### 6.2 Key Settings to Adjust
+
 ```toml
 [notifications]
 task_completion = true      # ✅ Enable task notifications
-approval_requests = true    # ✅ Enable approval prompts  
+approval_requests = true    # ✅ Enable approval prompts
 progress_updates = false    # 🔧 Enable for detailed updates
 
 [performance]
@@ -180,22 +196,25 @@ enable_metrics_server = true      # ✅ Keep enabled for monitoring
 ## 🚀 Step 7: Production Deployment
 
 ### 7.1 Deployment Readiness Check
+
 ```bash
 # Verify everything is ready for production
 ./performance_monitor.sh deployment-check
 ```
 
 Should show:
+
 ```
 === Deployment Health Check ===
 ✓ Release binary exists
-✓ Configuration available  
+✓ Configuration available
 ✓ Directory permissions OK
 ✓ Required tools available
 ✓ Ready for deployment
 ```
 
 ### 7.2 Create Systemd Service (Linux)
+
 ```bash
 # Create service file
 sudo tee /etc/systemd/system/cc-telegram-bridge.service << EOF
@@ -224,6 +243,7 @@ sudo systemctl start cc-telegram-bridge
 ```
 
 ### 7.3 Background Mode (macOS/Manual)
+
 ```bash
 # Run in background with logging
 nohup ./target/release/cc-telegram-bridge > cc-bridge.log 2>&1 &
@@ -235,6 +255,7 @@ ps aux | grep cc-telegram-bridge
 ## 🔍 Step 8: Monitoring & Maintenance
 
 ### 8.1 Continuous Monitoring
+
 ```bash
 # Monitor every 30 seconds
 ./performance_monitor.sh continuous 30
@@ -244,6 +265,7 @@ watch -n 10 './performance_monitor.sh monitor'
 ```
 
 ### 8.2 Log Monitoring
+
 ```bash
 # View application logs
 tail -f ~/.cc_telegram/logs/application.log
@@ -253,6 +275,7 @@ sudo journalctl -u cc-telegram-bridge -f
 ```
 
 ### 8.3 Performance Optimization
+
 ```bash
 # Get optimization suggestions
 ./performance_monitor.sh optimize
@@ -261,17 +284,20 @@ sudo journalctl -u cc-telegram-bridge -f
 ## ⚡ Common Next Steps
 
 ### Integrate with Your IDE
+
 - **Claude Code**: Place event files in `~/.cc_telegram/events/`
 - **VSCode**: Use file system watchers to generate events
 - **Custom Integration**: Use the JSON event format to send notifications
 
 ### Advanced Configuration
+
 - **Rate Limiting**: Adjust security settings for your usage
 - **Multiple Users**: Add more Telegram user IDs
 - **Custom Paths**: Set custom directories for events and responses
 - **Monitoring Integration**: Connect Prometheus/Grafana for dashboards
 
 ### Automation Scripts
+
 ```bash
 # Auto-restart if crashed
 while true; do
@@ -284,6 +310,7 @@ done
 ## 🆘 Troubleshooting
 
 ### Bot Not Responding
+
 ```bash
 # Check bot token
 echo "Token: ${TELEGRAM_BOT_TOKEN:0:10}..."
@@ -293,6 +320,7 @@ curl -X GET "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe"
 ```
 
 ### Events Not Processing
+
 ```bash
 # Check events directory
 ls -la ~/.cc_telegram/events/
@@ -305,6 +333,7 @@ cat ~/.cc_telegram/events/test_event.json | jq
 ```
 
 ### Performance Issues
+
 ```bash
 # Check system resources
 ./performance_monitor.sh monitor
@@ -314,6 +343,7 @@ RUST_LOG=debug ./target/release/cc-telegram-bridge
 ```
 
 ### Port Already in Use
+
 ```bash
 # Find what's using port 8080
 lsof -i :8080
@@ -325,13 +355,15 @@ sed -i 's/health_check_port = 8080/health_check_port = 8081/' ~/.cc_telegram/con
 ## 🎉 Success! You're Done!
 
 Your CC Telegram Bridge is now:
+
 - ✅ **Running** and processing events
-- 📱 **Connected** to your Telegram account  
+- 📱 **Connected** to your Telegram account
 - 📊 **Monitored** with health checks and metrics
 - 🔒 **Secured** with authentication and rate limiting
 - 🚀 **Ready** for production workloads
 
 ### What's Next?
+
 - Integrate with your development workflow
 - Set up automated monitoring alerts
 - Explore advanced configuration options
@@ -339,9 +371,10 @@ Your CC Telegram Bridge is now:
 
 ---
 
-**Need Help?** 
+**Need Help?**
+
 - 📖 Read the full [README.md](README.md)
-- 🐛 Report issues on [GitHub](https://github.com/enriqueco8/cc-telegram/issues)  
+- 🐛 Report issues on [GitHub](https://github.com/co8/cc-telegram/issues)
 - 💬 Join discussions in the project repository
 
 **Built with ❤️ and ☕** - Happy coding! 🚀

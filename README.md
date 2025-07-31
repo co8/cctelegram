@@ -1,26 +1,27 @@
 # CC Telegram Bridge
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/enriqueco8/cc-telegram)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram)
 
 A high-performance, secure Rust-based bridge between Claude Code/VSCode and Telegram for remote development monitoring and interaction.
 
 ## 🚀 Features
 
 ### Core Functionality
+
 - **Real-time Event Monitoring**: Watch file system events and process Claude Code/VSCode interactions
 - **Telegram Bot Integration**: Receive notifications and interact with your development environment via Telegram
 - **Interactive Messaging**: Approve actions, respond to prompts, and get status updates through inline keyboards
 - **Secure Authentication**: User-based access control with rate limiting and input sanitization
 
 ### Performance & Monitoring
+
 - **Prometheus Metrics**: Built-in metrics collection for monitoring and alerting
 - **Health Check Endpoints**: HTTP endpoints for external monitoring systems
 - **Performance Optimization**: Real-time CPU, memory, and processing time tracking
 - **Automated Alerting**: Configurable thresholds with intelligent recommendations
 
 ### Enterprise Features
+
 - **Production Ready**: Comprehensive logging, error handling, and graceful shutdown
 - **Configuration Management**: TOML-based config with environment variable overrides
 - **Security Hardening**: Input validation, rate limiting, and audit logging
@@ -33,6 +34,7 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 - **Your Telegram User ID** - Get from [@userinfobot](https://t.me/userinfobot)
 
 ### System Dependencies
+
 ```bash
 # macOS
 brew install curl jq bc
@@ -47,8 +49,9 @@ sudo yum install curl jq bc
 ## ⚡ Quick Start
 
 ### 1. Clone and Build
+
 ```bash
-git clone https://github.com/enriqueco8/cc-telegram.git
+git clone https://github.com/co8/cc-telegram.git
 cd cc-telegram
 
 # Build optimized release binary
@@ -56,6 +59,7 @@ cargo build --release
 ```
 
 ### 2. Configure Environment
+
 ```bash
 # Required: Set your Telegram bot token and user ID
 export TELEGRAM_BOT_TOKEN="your_bot_token_here"
@@ -67,6 +71,7 @@ export CC_TELEGRAM_RESPONSES_DIR="/path/to/responses"
 ```
 
 ### 3. Run Application
+
 ```bash
 # Start the bridge
 ./target/release/cc-telegram-bridge
@@ -76,6 +81,7 @@ cargo run
 ```
 
 ### 4. Test Configuration
+
 ```bash
 # Check deployment readiness
 ./performance_monitor.sh deployment-check
@@ -105,6 +111,7 @@ cc-telegram/
 ## ⚙️ Configuration
 
 ### Environment Variables
+
 ```bash
 # Required
 TELEGRAM_BOT_TOKEN="your_bot_token"
@@ -116,6 +123,7 @@ CC_TELEGRAM_RESPONSES_DIR="/custom/responses/path"
 ```
 
 ### Configuration File
+
 The application creates `~/.cc_telegram/config.toml` on first run:
 
 ```toml
@@ -155,6 +163,7 @@ health_endpoint = "/health"
 ## 🔧 Usage
 
 ### Starting the Bridge
+
 ```bash
 # Production mode
 ./target/release/cc-telegram-bridge
@@ -164,6 +173,7 @@ RUST_LOG=info cargo run
 ```
 
 ### Event Processing
+
 Place JSON event files in the events directory (`~/.cc_telegram/events/`):
 
 ```json
@@ -187,6 +197,7 @@ Place JSON event files in the events directory (`~/.cc_telegram/events/`):
 ```
 
 ### Telegram Interactions
+
 - Receive real-time notifications for events
 - Approve/deny actions using inline keyboards
 - Get detailed reports via bot commands
@@ -195,6 +206,7 @@ Place JSON event files in the events directory (`~/.cc_telegram/events/`):
 ## 📊 Monitoring & Performance
 
 ### Health Check Endpoints
+
 ```bash
 # Health status
 curl http://localhost:8080/health
@@ -207,6 +219,7 @@ curl http://localhost:8080/report
 ```
 
 ### Performance Monitoring Script
+
 ```bash
 # One-time performance check
 ./performance_monitor.sh monitor
@@ -222,6 +235,7 @@ curl http://localhost:8080/report
 ```
 
 ### Metrics Available
+
 - **Event Processing**: Total events, processing time, error rates
 - **Telegram API**: Message counts, response times, API errors
 - **System Resources**: CPU usage, memory consumption, uptime
@@ -230,12 +244,14 @@ curl http://localhost:8080/report
 ## 🔒 Security
 
 ### Authentication
+
 - User-based access control via Telegram user IDs
 - Rate limiting to prevent abuse
 - Input sanitization and validation
 - Audit logging for security events
 
 ### Best Practices
+
 - Use environment variables for sensitive configuration
 - Regularly rotate bot tokens
 - Monitor access logs for suspicious activity
@@ -258,6 +274,7 @@ cargo test --verbose
 ```
 
 ### Test Coverage
+
 - **Unit Tests**: 15 tests covering core functionality
 - **Integration Tests**: 6 tests for end-to-end workflows
 - **Performance Tests**: 3 tests for monitoring components
@@ -268,6 +285,7 @@ cargo test --verbose
 ### Common Issues
 
 **Bot not responding:**
+
 ```bash
 # Check bot token
 echo $TELEGRAM_BOT_TOKEN
@@ -277,6 +295,7 @@ echo $TELEGRAM_BOT_TOKEN
 ```
 
 **Events not processing:**
+
 ```bash
 # Check events directory
 ls -la ~/.cc_telegram/events/
@@ -289,6 +308,7 @@ tail -f ~/.cc_telegram/logs/application.log
 ```
 
 **Performance issues:**
+
 ```bash
 # Check system resources
 ./performance_monitor.sh monitor
@@ -298,6 +318,7 @@ curl http://localhost:8080/report | jq
 ```
 
 ### Debug Mode
+
 ```bash
 # Enable detailed logging
 RUST_LOG=debug cargo run
@@ -309,18 +330,22 @@ RUST_LOG=debug cargo run
 ## 📚 API Reference
 
 ### Event Types
+
 - `task_completion` - Task or operation completed
 - `approval_request` - User approval needed
 - `progress_update` - Status update notification
 - `error_notification` - Error or warning occurred
 
 ### Telegram Commands
+
 The bot responds to events automatically, but also supports:
+
 - Interactive inline keyboards for approvals
 - Status queries and health checks
 - Error reporting and diagnostics
 
 ### HTTP Endpoints
+
 - `GET /health` - Application health status
 - `GET /metrics` - Prometheus metrics
 - `GET /report` - Detailed performance report
@@ -336,6 +361,7 @@ The bot responds to events automatically, but also supports:
 5. Open a Pull Request
 
 ### Development Setup
+
 ```bash
 # Install development dependencies
 rustup component add clippy rustfmt
@@ -363,9 +389,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/enriqueco8/cc-telegram/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/enriqueco8/cc-telegram/discussions)
-- **Documentation**: [Wiki](https://github.com/enriqueco8/cc-telegram/wiki)
+- **Issues**: [GitHub Issues](https://github.com/co8/cc-telegram/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/co8/cc-telegram/discussions)
+- **Documentation**: [Wiki](https://github.com/co8/cc-telegram/wiki)
 
 ---
 

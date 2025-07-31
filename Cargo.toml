@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Enrique <@enriqueco8>"]
 description = "A Rust-based bridge between Claude Code/VSCode and Telegram for remote monitoring and interaction"
 license = "MIT"
-repository = "https://github.com/enriqueco8/cc-telegram"
+repository = "https://github.com/co8/cc-telegram"
 keywords = ["telegram", "claude-code", "development", "monitoring"]
 categories = ["development-tools", "command-line-utilities"]
 
