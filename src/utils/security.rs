@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use anyhow::Result;
-use tracing::{info, warn, error};
+use tracing::{info, warn};
 use ring::digest;
 use base64::{Engine as _, engine::general_purpose};
 

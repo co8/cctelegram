@@ -2,7 +2,7 @@ use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use std::collections::HashSet;
 use anyhow::Result;
-use tracing::{info, error, warn};
+use tracing::{info, warn};
 use crate::events::types::{Event, EventType};
 use super::messages::MessageFormatter;
 

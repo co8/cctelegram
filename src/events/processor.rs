@@ -2,7 +2,7 @@ use super::types::{Event, EventType};
 use anyhow::{Result, Context};
 use std::path::Path;
 use tokio::fs;
-use tracing::{info, error, warn};
+use tracing::{info, warn};
 
 pub struct EventProcessor {
     events_dir: std::path::PathBuf,

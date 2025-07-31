@@ -2,7 +2,7 @@ use notify::{Watcher, RecursiveMode, Result as NotifyResult, Event as NotifyEven
 use tokio::sync::mpsc;
 use std::path::Path;
 use anyhow::Result;
-use tracing::{info, error, debug};
+use tracing::{info, error};
 
 pub struct EventWatcher {
     _watcher: notify::RecommendedWatcher,

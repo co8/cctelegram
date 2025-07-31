@@ -2,7 +2,7 @@ use crate::events::types::ResponseEvent;
 use chrono::Utc;
 use std::collections::HashMap;
 use anyhow::Result;
-use tracing::{info, error};
+use tracing::info;
 
 pub struct CallbackHandler {
     responses_dir: std::path::PathBuf,

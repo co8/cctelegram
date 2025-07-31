@@ -1,4 +1,4 @@
-use crate::events::types::{Event, EventType};
+use crate::events::types::Event;
 use chrono::{DateTime, Utc};
 
 pub struct MessageFormatter;

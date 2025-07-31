@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use anyhow::Result;
 use tokio::fs;
-use tracing::{info, error};
+use tracing::info;
 
 pub struct FileStore {
     base_dir: PathBuf,

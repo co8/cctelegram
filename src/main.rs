@@ -14,7 +14,7 @@ use config::Config;
 use events::{EventWatcher, EventProcessor};
 use telegram::TelegramBot;
 use storage::FileStore;
-use utils::{PerformanceMonitor, HealthServer, TimedOperation};
+use utils::{PerformanceMonitor, HealthServer};
 
 #[tokio::main]
 async fn main() -> Result<()> {
