@@ -4,11 +4,13 @@ use tracing::{info, warn};
 use ring::digest;
 use base64::{Engine as _, engine::general_purpose};
 
+#[allow(dead_code)]
 pub struct SecurityManager {
     allowed_users: std::collections::HashSet<i64>,
     rate_limiter: RateLimiter,
 }
 
+#[allow(dead_code)]
 impl SecurityManager {
     pub fn new(allowed_users: Vec<i64>, rate_limit_requests: u32, rate_limit_window_secs: u64) -> Self {
         Self {
@@ -67,12 +69,14 @@ impl SecurityManager {
     }
 }
 
+#[allow(dead_code)]
 pub struct RateLimiter {
     requests: HashMap<i64, Vec<Instant>>,
     max_requests: u32,
     window_duration: Duration,
 }
 
+#[allow(dead_code)]
 impl RateLimiter {
     pub fn new(max_requests: u32, window_duration: Duration) -> Self {
         Self {

@@ -122,6 +122,7 @@ impl TelegramBot {
         keyboard
     }
 
+    #[allow(dead_code)]
     pub async fn start_dispatcher(&self) -> Result<()> {
         info!("Starting Telegram bot dispatcher");
         
@@ -134,6 +135,7 @@ impl TelegramBot {
         Ok(())
     }
 
+    #[allow(dead_code)]
     async fn handle_message(bot: Bot, msg: Message) -> ResponseResult<()> {
         if let Some(text) = msg.text() {
             info!("Received message from {}: {}", msg.from().map_or(0, |u| u.id.0), text);

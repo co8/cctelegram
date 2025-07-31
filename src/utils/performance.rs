@@ -407,6 +407,7 @@ impl PerformanceMonitor {
 }
 
 /// Helper trait for timing operations
+#[allow(dead_code)]
 pub trait TimedOperation {
     fn timed<F, R>(self, operation: F) -> R
     where

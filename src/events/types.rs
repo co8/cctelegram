@@ -175,6 +175,7 @@ pub struct ResponseEvent {
 }
 
 // Event builder implementations
+#[allow(dead_code)]
 impl Event {
     /// Create a new event with basic information
     pub fn new(
@@ -593,6 +594,7 @@ impl Default for EventData {
 }
 
 // Event validation and utility implementations
+#[allow(dead_code)]
 impl Event {
     /// Validate the event structure and data consistency
     pub fn validate(&self) -> Result<(), String> {
@@ -763,6 +765,7 @@ impl Event {
     }
 }
 
+#[allow(dead_code)]
 impl EventType {
     /// Get all available event types
     pub fn all() -> Vec<EventType> {

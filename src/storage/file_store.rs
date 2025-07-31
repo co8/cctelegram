@@ -31,18 +31,22 @@ impl FileStore {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn events_dir(&self) -> PathBuf {
         self.base_dir.join("events")
     }
 
+    #[allow(dead_code)]
     pub fn responses_dir(&self) -> PathBuf {
         self.base_dir.join("responses")
     }
 
+    #[allow(dead_code)]
     pub fn logs_dir(&self) -> PathBuf {
         self.base_dir.join("logs")
     }
 
+    #[allow(dead_code)]
     pub async fn store_json<T: serde::Serialize>(&self, subdir: &str, filename: &str, data: &T) -> Result<PathBuf> {
         let dir = self.base_dir.join(subdir);
         fs::create_dir_all(&dir).await?;
@@ -56,6 +60,7 @@ impl FileStore {
         Ok(file_path)
     }
 
+    #[allow(dead_code)]
     pub async fn load_json<T: serde::de::DeserializeOwned>(&self, subdir: &str, filename: &str) -> Result<T> {
         let file_path = self.base_dir.join(subdir).join(filename);
         
@@ -66,6 +71,7 @@ impl FileStore {
         Ok(data)
     }
 
+    #[allow(dead_code)]
     pub async fn list_files(&self, subdir: &str, extension: Option<&str>) -> Result<Vec<PathBuf>> {
         let dir = self.base_dir.join(subdir);
         
@@ -94,6 +100,7 @@ impl FileStore {
         Ok(files)
     }
 
+    #[allow(dead_code)]
     pub async fn delete_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {
         let path = file_path.as_ref();
         fs::remove_file(path).await?;

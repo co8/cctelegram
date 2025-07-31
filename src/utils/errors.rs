@@ -1,6 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[allow(dead_code)]
 pub enum BridgeError {
     #[error("Configuration error: {0}")]
     Config(String),

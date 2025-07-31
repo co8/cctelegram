@@ -5,6 +5,7 @@ use tokio::fs;
 use tracing::{info, warn};
 
 pub struct EventProcessor {
+    #[allow(dead_code)]
     events_dir: std::path::PathBuf,
 }
 

@@ -4,10 +4,12 @@ use std::collections::HashMap;
 use anyhow::Result;
 use tracing::info;
 
+#[allow(dead_code)]
 pub struct CallbackHandler {
     responses_dir: std::path::PathBuf,
 }
 
+#[allow(dead_code)]
 impl CallbackHandler {
     pub fn new(responses_dir: std::path::PathBuf) -> Self {
         Self { responses_dir }

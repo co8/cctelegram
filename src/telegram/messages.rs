@@ -194,6 +194,7 @@ impl MessageFormatter {
         "In progress...".to_string()
     }
 
+    #[allow(dead_code)]
     pub fn format_error_message(&self, error: &str) -> String {
         format!(
             "❌ **Error**\n\n\
@@ -204,6 +205,7 @@ impl MessageFormatter {
         )
     }
 
+    #[allow(dead_code)]
     pub fn format_unauthorized_message(&self) -> String {
         "🚫 **Unauthorized**\n\n\
         You are not authorized to use this bot.\n\

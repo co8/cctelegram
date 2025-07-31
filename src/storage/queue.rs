@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use anyhow::Result;
 use tracing::{info, warn};
 
+#[allow(dead_code)]
 pub struct EventQueue {
     sender: mpsc::UnboundedSender<Event>,
     receiver: mpsc::UnboundedReceiver<Event>,
@@ -11,6 +12,7 @@ pub struct EventQueue {
     max_queue_size: usize,
 }
 
+#[allow(dead_code)]
 impl EventQueue {
     pub fn new(max_queue_size: usize) -> Self {
         let (sender, receiver) = mpsc::unbounded_channel();
