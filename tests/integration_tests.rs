@@ -1,6 +1,5 @@
 use anyhow::Result;
 use tempfile::TempDir;
-use std::path::PathBuf;
 use tokio::fs;
 use serde_json;
 
