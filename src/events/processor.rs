@@ -66,16 +66,87 @@ impl EventProcessor {
             EventType::ProgressUpdate => {
                 // Progress updates are more flexible
             }
+            // All other event types have basic validation requirements
+            _ => {
+                // Basic validation - all events need task_id and title (checked above)
+                // Specific validation can be added here for individual event types as needed
+            }
         }
 
         Ok(())
     }
 
     fn event_type_to_string(&self, event_type: &EventType) -> &'static str {
+        use EventType::*;
         match event_type {
-            EventType::TaskCompletion => "task_completion",
-            EventType::ApprovalRequest => "approval_request",
-            EventType::ProgressUpdate => "progress_update",
+            // Original three event types
+            TaskCompletion => "task_completion",
+            ApprovalRequest => "approval_request",
+            ProgressUpdate => "progress_update",
+            
+            // Task Management Events
+            TaskStarted => "task_started",
+            TaskFailed => "task_failed",
+            TaskProgress => "task_progress",
+            TaskCancelled => "task_cancelled",
+            
+            // Code Operation Events
+            CodeGeneration => "code_generation",
+            CodeAnalysis => "code_analysis",
+            CodeRefactoring => "code_refactoring",
+            CodeReview => "code_review",
+            CodeTesting => "code_testing",
+            CodeDeployment => "code_deployment",
+            
+            // File System Events
+            FileCreated => "file_created",
+            FileModified => "file_modified",
+            FileDeleted => "file_deleted",
+            DirectoryCreated => "directory_created",
+            DirectoryDeleted => "directory_deleted",
+            
+            // Build & Development Events
+            BuildStarted => "build_started",
+            BuildCompleted => "build_completed",
+            BuildFailed => "build_failed",
+            TestSuiteRun => "test_suite_run",
+            TestPassed => "test_passed",
+            TestFailed => "test_failed",
+            LintCheck => "lint_check",
+            TypeCheck => "type_check",
+            
+            // Git & Version Control Events
+            GitCommit => "git_commit",
+            GitPush => "git_push",
+            GitMerge => "git_merge",
+            GitBranch => "git_branch",
+            GitTag => "git_tag",
+            PullRequestCreated => "pull_request_created",
+            PullRequestMerged => "pull_request_merged",
+            
+            // System & Monitoring Events
+            SystemHealth => "system_health",
+            PerformanceAlert => "performance_alert",
+            SecurityAlert => "security_alert",
+            ErrorOccurred => "error_occurred",
+            ResourceUsage => "resource_usage",
+            
+            // User Interaction Events
+            UserResponse => "user_response",
+            CommandExecuted => "command_executed",
+            
+            // Notification Events
+            StatusChange => "status_change",
+            AlertNotification => "alert_notification",
+            InfoNotification => "info_notification",
+            
+            // Integration Events
+            ApiCall => "api_call",
+            WebhookReceived => "webhook_received",
+            ServiceIntegration => "service_integration",
+            
+            // Custom Events
+            CustomEvent => "custom_event",
         }
     }
 

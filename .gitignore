@@ -26,6 +26,7 @@ node_modules/
 
 # Rust specific
 target/
+target/debug/
 **/*.rs.bk
 Cargo.lock
 

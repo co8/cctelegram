@@ -76,6 +76,99 @@ impl MessageFormatter {
         )
     }
 
+    pub fn format_generic_message(&self, event: &Event) -> String {
+        let (emoji, event_name) = self.get_event_display_info(&event.event_type);
+        
+        format!(
+            "{} **{}**\n\n\
+            📋 **Title:** {}\n\
+            🔧 **Source:** {}\n\
+            ⏰ **Time:** {}\n\n\
+            📝 **Description:**\n{}",
+            emoji,
+            event_name,
+            event.title,
+            event.source,
+            self.format_timestamp(&event.timestamp),
+            event.description
+        )
+    }
+
+    fn get_event_display_info(&self, event_type: &crate::events::types::EventType) -> (&'static str, &'static str) {
+        use crate::events::types::EventType::*;
+        
+        match event_type {
+            // Task Management Events
+            TaskStarted => ("🚀", "Task Started"),
+            TaskFailed => ("❌", "Task Failed"),
+            TaskProgress => ("📊", "Task Progress"),
+            TaskCancelled => ("🚫", "Task Cancelled"),
+            
+            // Code Operation Events
+            CodeGeneration => ("🔨", "Code Generated"),
+            CodeAnalysis => ("🔍", "Code Analysis"),
+            CodeRefactoring => ("🔧", "Code Refactored"),
+            CodeReview => ("👁️", "Code Review"),
+            CodeTesting => ("🧪", "Code Testing"),
+            CodeDeployment => ("🚀", "Code Deployment"),
+            
+            // File System Events
+            FileCreated => ("📄", "File Created"),
+            FileModified => ("📝", "File Modified"),
+            FileDeleted => ("🗑️", "File Deleted"),
+            DirectoryCreated => ("📁", "Directory Created"),
+            DirectoryDeleted => ("🗑️", "Directory Deleted"),
+            
+            // Build & Development Events
+            BuildStarted => ("🔨", "Build Started"),
+            BuildCompleted => ("✅", "Build Completed"),
+            BuildFailed => ("❌", "Build Failed"),
+            TestSuiteRun => ("🧪", "Test Suite Run"),
+            TestPassed => ("✅", "Test Passed"),
+            TestFailed => ("❌", "Test Failed"),
+            LintCheck => ("📏", "Lint Check"),
+            TypeCheck => ("🔍", "Type Check"),
+            
+            // Git & Version Control Events
+            GitCommit => ("📝", "Git Commit"),
+            GitPush => ("⬆️", "Git Push"),
+            GitMerge => ("🔀", "Git Merge"),
+            GitBranch => ("🌿", "Git Branch"),
+            GitTag => ("🏷️", "Git Tag"),
+            PullRequestCreated => ("📋", "Pull Request Created"),
+            PullRequestMerged => ("✅", "Pull Request Merged"),
+            
+            // System & Monitoring Events
+            SystemHealth => ("💚", "System Health"),
+            PerformanceAlert => ("⚡", "Performance Alert"),
+            SecurityAlert => ("🔒", "Security Alert"),
+            ErrorOccurred => ("❌", "Error Occurred"),
+            ResourceUsage => ("📊", "Resource Usage"),
+            
+            // User Interaction Events
+            UserResponse => ("💬", "User Response"),
+            CommandExecuted => ("⚡", "Command Executed"),
+            
+            // Notification Events
+            StatusChange => ("🔄", "Status Change"),
+            AlertNotification => ("🚨", "Alert"),
+            InfoNotification => ("ℹ️", "Information"),
+            
+            // Integration Events
+            ApiCall => ("🌐", "API Call"),
+            WebhookReceived => ("📡", "Webhook Received"),
+            ServiceIntegration => ("🔗", "Service Integration"),
+            
+            // Custom Events
+            CustomEvent => ("🎯", "Custom Event"),
+            
+            // Original events handled elsewhere
+            TaskCompletion => ("✅", "Task Completion"),
+            ApprovalRequest => ("🔐", "Approval Request"),
+            ProgressUpdate => ("🔄", "Progress Update"),
+        }
+    }
+
     fn format_timestamp(&self, timestamp: &DateTime<Utc>) -> String {
         timestamp.format("%Y-%m-%d %H:%M:%S UTC").to_string()
     }

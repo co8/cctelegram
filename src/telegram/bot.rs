@@ -41,6 +41,10 @@ impl TelegramBot {
             EventType::ProgressUpdate => {
                 self.send_progress_update(user_id, event).await
             }
+            // Handle all other event types with generic notifications
+            _ => {
+                self.send_generic_notification(user_id, event).await
+            }
         }
     }
 
@@ -81,6 +85,18 @@ impl TelegramBot {
             .map_err(|e| anyhow::anyhow!("Failed to send progress message: {}", e))?;
 
         info!("Sent progress update to user {}", user_id);
+        Ok(())
+    }
+
+    async fn send_generic_notification(&self, user_id: i64, event: &Event) -> Result<()> {
+        let message = self.formatter.format_generic_message(event);
+
+        self.bot
+            .send_message(UserId(user_id as u64), message)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send generic notification: {}", e))?;
+
+        info!("Sent generic notification for {:?} to user {}", event.event_type, user_id);
         Ok(())
     }
 
