@@ -23,3 +23,12 @@ node_modules/
 
 # OS specific
 .DS_Store
+
+# Rust specific
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Application specific  
+performance_monitor.log
+~/.cc_telegram/
