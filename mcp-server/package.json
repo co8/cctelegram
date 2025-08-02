@@ -10,7 +10,12 @@
     "dev": "tsx src/index.ts",
     "test": "jest"
   },
-  "keywords": ["mcp", "telegram", "claude-code", "bridge"],
+  "keywords": [
+    "mcp",
+    "telegram",
+    "claude-code",
+    "bridge"
+  ],
   "author": "Enrique",
   "license": "MIT",
   "dependencies": {
@@ -22,6 +27,8 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",

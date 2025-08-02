@@ -13,18 +13,10 @@ import { CCTelegramEvent, EventType } from './types.js';
 
 const client = new CCTelegramBridgeClient();
 
-const server = new Server(
-  {
-    name: 'cctelegram-mcp-server',
-    version: '1.0.0',
-  },
-  {
-    capabilities: {
-      tools: {},
-      resources: {},
-    },
-  }
-);
+const server = new Server({
+  name: 'cctelegram-mcp-server',
+  version: '1.0.0',
+});
 
 // List available tools
 server.setRequestHandler(ListToolsRequestSchema, async () => {

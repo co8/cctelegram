@@ -241,7 +241,7 @@ export class CCTelegramBridgeClient {
           const filePath = path.join(this.responsesDir, file);
           const response = await fs.readJSON(filePath);
           responses.push(response);
-        } catch (error) {
+        } catch (error: any) {
           console.warn(`Failed to read response file ${file}:`, error);
         }
       }
