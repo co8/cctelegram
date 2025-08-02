@@ -25,8 +25,8 @@ node_modules/
 .DS_Store
 
 # Rust specific
-/target/
-/target/.rustc_*
+target/
+target/.rustc_*
 **/*.rs.bk
 Cargo.lock
 
@@ -34,3 +34,4 @@ Cargo.lock
 performance_monitor.log
 ~/.cc_telegram/
 config.toml
+target/.rustc_info.json

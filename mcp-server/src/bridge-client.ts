@@ -17,8 +17,10 @@ export class CCTelegramBridgeClient {
 
   constructor() {
     const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
-    this.eventsDir = process.env.CC_TELEGRAM_EVENTS_DIR || path.join(homeDir, '.cc_telegram', 'events');
-    this.responsesDir = process.env.CC_TELEGRAM_RESPONSES_DIR || path.join(homeDir, '.cc_telegram', 'responses');
+    // Force absolute path resolution to prevent ~ expansion issues
+    const ccTelegramDir = path.resolve(homeDir, '.cc_telegram');
+    this.eventsDir = process.env.CC_TELEGRAM_EVENTS_DIR || path.join(ccTelegramDir, 'events');
+    this.responsesDir = process.env.CC_TELEGRAM_RESPONSES_DIR || path.join(ccTelegramDir, 'responses');
     
     const healthPort = process.env.CC_TELEGRAM_HEALTH_PORT || '8080';
     this.healthEndpoint = `http://localhost:${healthPort}/health`;
@@ -194,6 +196,8 @@ export class CCTelegramBridgeClient {
       title,
       description,
       data: {
+        approval_prompt: description,
+        options: options,
         requires_response: true,
         response_options: options,
         timeout_minutes: 30
