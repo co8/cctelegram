@@ -81,17 +81,11 @@ impl MessageFormatter {
         };
 
         format!(
-            "{} *Task Completed*\n\n\
-            📋 *Title:* {}\n\
-            🔧 *Source:* {}\n\
-            📊 *Status:* {}\n\
-            ⏰ *Time:* {}\n\n\
-            📝 *Results:*\n{}\n\n\
-            💡 _Tap 'Details' for more information_",
+            "{} Task Completed {}\n\
+            ⏰ Time: {}\n\
+            📝 {}",
             status_emoji,
             Self::escape_markdown_v2(&event.title),
-            Self::escape_markdown_v2(&event.source),
-            Self::escape_markdown_v2(status),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             Self::process_markdown_content(results)
         )
@@ -99,23 +93,14 @@ impl MessageFormatter {
 
     pub fn format_approval_message(&self, event: &Event) -> String {
         let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
-        let options = event.data.options.as_ref()
-            .map(|opts| opts.join(", "))
-            .unwrap_or_else(|| "approve, deny".to_string());
 
         format!(
-            "🔐 *Approval Required*\n\n\
-            📋 *Title:* {}\n\
-            🔧 *Source:* {}\n\
-            ⏰ *Time:* {}\n\n\
-            ❓ *Request:*\n{}\n\n\
-            🎯 *Available Actions:* {}\n\n\
-            ⚡ _Please respond quickly \\- the process is waiting_",
+            "🔐 Approval Required {}\n\
+            ⏰ Time: {}\n\
+            📝 {}",
             Self::escape_markdown_v2(&event.title),
-            Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::process_markdown_content(prompt),
-            Self::escape_markdown_v2(&options)
+            Self::process_markdown_content(prompt)
         )
     }
 
@@ -123,14 +108,11 @@ impl MessageFormatter {
         let progress_info = self.extract_progress_info(event);
         
         format!(
-            "🔄 *Progress Update*\n\n\
-            📋 *Title:* {}\n\
-            🔧 *Source:* {}\n\
-            ⏰ *Time:* {}\n\n\
-            📊 *Progress:* {}\n\n\
-            📝 *Description:*\n{}",
+            "🔄 Progress Update {}\n\
+            ⏰ Time: {}\n\
+            📊 Progress: {}\n\
+            📝 {}",
             Self::escape_markdown_v2(&event.title),
-            Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             Self::escape_markdown_v2(&progress_info),
             Self::process_markdown_content(&event.description)
@@ -141,15 +123,12 @@ impl MessageFormatter {
         let (emoji, event_name) = self.get_event_display_info(&event.event_type);
         
         format!(
-            "{} *{}*\n\n\
-            📋 *Title:* {}\n\
-            🔧 *Source:* {}\n\
-            ⏰ *Time:* {}\n\n\
-            📝 *Description:*\n{}",
+            "{} {} {}\n\
+            ⏰ Time: {}\n\
+            📝 {}",
             emoji,
             Self::escape_markdown_v2(event_name),
             Self::escape_markdown_v2(&event.title),
-            Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             Self::process_markdown_content(&event.description)
         )
