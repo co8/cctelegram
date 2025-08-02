@@ -124,12 +124,61 @@ async fn test_file_store_operations() -> Result<()> {
 #[tokio::test]
 async fn test_telegram_bot_user_validation() {
     let allowed_users = vec![123456, 789012];
-    let bot = TelegramBot::new("dummy_token".to_string(), allowed_users);
+    let responses_dir = std::env::temp_dir().join("test_responses");
+    let bot = TelegramBot::new("dummy_token".to_string(), allowed_users, responses_dir);
     
     // Test user authorization
     assert!(bot.is_user_allowed(123456));
     assert!(bot.is_user_allowed(789012));
     assert!(!bot.is_user_allowed(999999));
+}
+
+#[tokio::test]
+async fn test_message_formatting_markdown() {
+    use cc_telegram_bridge::MessageFormatter;
+    
+    let formatter = MessageFormatter::new();
+    
+    // Create a test event with special characters that need escaping
+    let event = Event {
+        event_type: EventType::TaskCompletion,
+        source: "claude-code".to_string(),
+        timestamp: chrono::Utc::now(),
+        task_id: "test_123".to_string(),
+        title: "Test Task with (special) characters!".to_string(),
+        description: "This is a test description with [brackets] and other-special chars.".to_string(),
+        data: EventData {
+            status: Some("completed".to_string()),
+            results: Some("Found 5 optimization opportunities & 2 potential bugs.".to_string()),
+            ..Default::default()
+        },
+    };
+    
+    // Format the completion message
+    let message = formatter.format_completion_message(&event);
+    
+    println!("Formatted message:\n{}", message);
+    
+    // Verify that markdown is properly formatted
+    assert!(message.contains("*Task Completed*"));  // Should use single asterisks for bold
+    assert!(message.contains("*Title:*"));
+    assert!(message.contains("*Source:*"));
+    assert!(message.contains("*Status:*"));
+    assert!(message.contains("*Results:*"));
+    assert!(message.contains("_Tap 'Details' for more information_"));  // Should use underscores for italic
+    
+    // Check for basic escaping - the exact characters that should be escaped
+    // Based on the actual output, verify the escaping is working
+    assert!(message.contains("\\(special\\)"));  // Parentheses in title should be escaped
+    assert!(message.contains("characters\\!"));  // Exclamation marks in title should be escaped
+    assert!(message.contains("claude\\-code"));  // Hyphens in source should be escaped
+    assert!(message.contains("opportunities & 2"));  // Results content includes ampersand
+    assert!(message.contains("bugs\\."));  // Period should be escaped
+    
+    // Verify MarkdownV2 formatting
+    assert!(!message.contains("**"));  // Should not contain double asterisks (old format)
+    assert!(message.contains("*Task Completed*"));  // Should use single asterisks
+    assert!(message.contains("_Tap 'Details' for more information_"));  // Should use underscores for italic
 }
 
 #[tokio::test]
