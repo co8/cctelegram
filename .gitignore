@@ -26,6 +26,7 @@ node_modules/
 
 # Rust specific
 /target/
+/target/.rustc_*
 **/*.rs.bk
 Cargo.lock
 
