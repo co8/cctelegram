@@ -22,7 +22,7 @@ path = "src/main.rs"
 tokio = { version = "1.45.1", features = ["full"] }
 
 # Telegram bot framework
-teloxide = { version = "0.12", features = ["macros"] }
+teloxide = { version = "0.13", features = ["macros"] }
 
 # File system watching
 notify = "6.1"

@@ -1,5 +1,5 @@
 use teloxide::prelude::*;
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReactionType};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -182,9 +182,9 @@ impl TelegramBot {
 
     async fn handle_message(&self, bot: Bot, msg: Message) -> ResponseResult<()> {
         // Get user information
-        let user_id = msg.from().map_or(0, |u| u.id.0 as i64);
-        let username = msg.from().and_then(|u| u.username.clone());
-        let first_name = msg.from().map(|u| u.first_name.clone());
+        let user_id = msg.from.as_ref().map_or(0, |u| u.id.0 as i64);
+        let username = msg.from.as_ref().and_then(|u| u.username.clone());
+        let first_name = msg.from.as_ref().map(|u| u.first_name.clone());
 
         // Check if user is authorized
         if !self.is_user_allowed(user_id) {
@@ -202,37 +202,47 @@ impl TelegramBot {
             info!("Received authorized message from user {} ({}): {}", 
                 user_id, username.as_deref().unwrap_or("no_username"), text);
             
-            // Save the incoming message to response file
-            if let Err(e) = self.save_incoming_message(user_id, username.as_deref(), first_name.as_deref(), text, "text").await {
-                error!("Failed to save incoming message: {}", e);
-            }
-            
-            // Handle specific commands
-            match text {
-                "/start" => {
-                    bot.send_message(
-                        msg.chat.id, 
-                        "🚀 CC Telegram Bridge is running!\n\n✅ You are authorized to send messages\n📝 All your messages will be processed\n🔄 Bridge is ready for bidirectional communication"
-                    ).await?;
+            // Save the incoming message to response file and handle acknowledgment
+            match self.save_incoming_message(user_id, username.as_deref(), first_name.as_deref(), text, "text").await {
+                Ok(()) => {
+                    // Handle specific commands that need full responses
+                    match text {
+                        "/start" => {
+                            bot.send_message(
+                                msg.chat.id, 
+                                "🚀 CC Telegram Bridge is running!\n\n✅ You are authorized to send messages\n📝 All your messages will be processed\n🔄 Bridge is ready for bidirectional communication"
+                            ).await?;
+                        }
+                        "/status" => {
+                            bot.send_message(
+                                msg.chat.id,
+                                "📊 Bridge Status:\n✅ Running\n✅ Receiving messages\n✅ Processing events\n🔗 Connected to Telegram"
+                            ).await?;
+                        }
+                        "/help" => {
+                            bot.send_message(
+                                msg.chat.id,
+                                "📋 Available Commands:\n\n/start - Welcome message\n/status - Check bridge status\n/help - Show this help\n\n💬 Send any message and it will be acknowledged with ⚡"
+                            ).await?;
+                        }
+                        _ => {
+                            // For regular messages, add lightning emoji reaction to acknowledge receipt
+                            if let Err(e) = bot.set_message_reaction(msg.chat.id, msg.id)
+                                .reaction(vec![ReactionType::Emoji { emoji: "⚡".to_string() }])
+                                .await {
+                                warn!("Could not add emoji reaction, falling back to minimal message: {}", e);
+                                // Fallback: send a minimal acknowledgment message if reaction fails
+                                bot.send_message(msg.chat.id, "⚡").await?;
+                            }
+                        }
+                    }
                 }
-                "/status" => {
+                Err(e) => {
+                    error!("Failed to save incoming message: {}", e);
+                    // Send error message when there's a problem
                     bot.send_message(
                         msg.chat.id,
-                        "📊 Bridge Status:\n✅ Running\n✅ Receiving messages\n✅ Processing events\n🔗 Connected to Telegram"
-                    ).await?;
-                }
-                "/help" => {
-                    bot.send_message(
-                        msg.chat.id,
-                        "📋 Available Commands:\n\n/start - Welcome message\n/status - Check bridge status\n/help - Show this help\n\n💬 Send any message and it will be saved to response files for processing."
-                    ).await?;
-                }
-                _ => {
-                    // Generic response for other messages
-                    bot.send_message(
-                        msg.chat.id,
-                        format!("✅ Message received and saved!\n\n📝 Your message: \"{}\"\n🕐 Timestamp: {}\n💾 Saved to responses directory", 
-                                text, Utc::now().format("%Y-%m-%d %H:%M:%S UTC"))
+                        format!("❌ Error processing your message: {}\n\nPlease try again or contact support.", e)
                     ).await?;
                 }
             }
@@ -240,14 +250,28 @@ impl TelegramBot {
             // Handle non-text messages
             info!("Received non-text message from user {}", user_id);
             
-            if let Err(e) = self.save_incoming_message(user_id, username.as_deref(), first_name.as_deref(), "[non-text message]", "other").await {
-                error!("Failed to save non-text message: {}", e);
+            match self.save_incoming_message(user_id, username.as_deref(), first_name.as_deref(), "[non-text message]", "other").await {
+                Ok(()) => {
+                    // For non-text messages, try to add emoji reaction too
+                    if let Err(e) = bot.set_message_reaction(msg.chat.id, msg.id)
+                        .reaction(vec![ReactionType::Emoji { emoji: "⚡".to_string() }])
+                        .await {
+                        warn!("Could not add emoji reaction to non-text message, sending info: {}", e);
+                        // For non-text messages, inform about limited support when reaction fails
+                        bot.send_message(
+                            msg.chat.id,
+                            "⚡ Non-text message logged"
+                        ).await?;
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to save non-text message: {}", e);
+                    bot.send_message(
+                        msg.chat.id,
+                        format!("❌ Error processing your non-text message: {}", e)
+                    ).await?;
+                }
             }
-            
-            bot.send_message(
-                msg.chat.id,
-                "📎 Non-text message received and logged. Currently only text messages are fully supported."
-            ).await?;
         }
         
         Ok(())
@@ -317,7 +341,7 @@ impl TelegramBot {
                 username, 
                 first_name, 
                 &callback_data, 
-                q.message.as_ref().map(|m| m.id.0)
+                q.message.as_ref().map(|m| m.id().0)
             ).await {
                 error!("Failed to save callback response: {}", e);
             }
@@ -346,7 +370,7 @@ impl TelegramBot {
 
             // Send detailed response message
             if let Some(message) = q.message {
-                bot.send_message(message.chat.id, response_message)
+                bot.send_message(message.chat().id, response_message)
                     .await?;
             }
         }
