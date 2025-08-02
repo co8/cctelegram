@@ -238,7 +238,7 @@ impl TelegramBot {
                         "/help" => {
                             bot.send_message(
                                 msg.chat.id,
-                                "📋 Available Commands:\n\n/start - Welcome message\n/status - Check bridge status\n/help - Show this help\n\n💬 Send any message and it will be acknowledged with ⚡"
+                                "🤖 CCTelegram Bridge\n\n📋 Available Commands:\n/start - Welcome message\n/status - Check bridge status\n/help - Show this help\n\n✅ What CCTelegram Can Do:\n• Receive notifications from Claude Code\n• Handle approval requests with buttons\n• Acknowledge your messages with ⚡\n\n❌ What CCTelegram Cannot Do:\n• Execute shell commands (/ls, /pwd, etc.)\n• Act as a remote terminal\n• Run system operations\n\n💡 This is a notification bridge, not a command interface"
                             ).await?;
                         }
                         _ => {
@@ -374,9 +374,9 @@ impl TelegramBot {
                 format!("📄 *TASK DETAILS*\n\nTask ID: `{}`\n\n📋 *Deployment Information:*\n• Environment: Production\n• Risk Level: Medium\n• Estimated Downtime: < 5 minutes\n• Rollback Available: Yes \\(2 min\\)\n\n🔧 *Changes Summary:*\n✅ OAuth2 authentication implemented\n✅ User session management added\n✅ Security tests passing \\(100% coverage\\)\n✅ Performance benchmarks met\n✅ Documentation updated\n\n📁 *Files Affected:*\n• `src/auth/oauth\\.rs`\n• `src/auth/session\\.rs`\n• `tests/auth_tests\\.rs`\n• `docs/authentication\\.md`", Self::escape_markdown_v2(task_id))
             } else if callback_data.starts_with("ack_") {
                 let task_id = callback_data.strip_prefix("ack_").unwrap_or("unknown");
-                format!("👍 *ACKNOWLEDGED*\n\nTask: `{}`\nStatus: Notification acknowledged\nTimestamp: {}", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()))
+                format!("👍 *ACKNOWLEDGED*\n\nTask: `{}`\nStatus: Notification acknowledged\nTimestamp: {}", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
             } else {
-                format!("🤖 *Response Received*\n\nCallback: `{}`\nProcessed at: {}", Self::escape_markdown_v2(&callback_data), Self::escape_markdown_v2(&Utc::now().format("%Y-%m-%d %H:%M:%S UTC").to_string()))
+                format!("🤖 *Response Received*\n\nCallback: `{}`\nProcessed at: {}", Self::escape_markdown_v2(&callback_data), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
             };
 
             // Answer the callback query and send response
