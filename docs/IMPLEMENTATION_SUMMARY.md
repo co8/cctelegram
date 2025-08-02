@@ -58,12 +58,17 @@ Transformed the CC Telegram Bridge from a basic 3-event notification system into
 1. **Telegram Bot Integration**
    - Updated to handle all 44+ event types
    - Generic notification system with fallback support
+   - Professional message formatting with bold headers and clean timestamps
    - Specialized message formatting with appropriate emojis
 
 2. **Message Formatter**
-   - Emoji mapping for all event types
-   - Category-based formatting rules
+   - Professional message design with consistent three-line format
+   - Bold headers using markdown `*text*` formatting for better readability
+   - Clean timestamp format (`2/Aug/25 23:42`) replacing verbose timestamps
+   - Emoji mapping for all event types with visual hierarchy
+   - Category-based formatting rules for optimal user experience
    - Action button support for interactive notifications
+   - Removal of "Time:" prefix for cleaner presentation
 
 3. **Event Processor** 
    - Pattern matching for all event types
@@ -237,8 +242,8 @@ The implementation maintains backward compatibility with the original 3-event sy
 - `src/events/processor.rs` - **UPDATED** (pattern matching, validation)
 
 #### Telegram Integration  
-- `src/telegram/bot.rs` - **UPDATED** (generic notification support)
-- `src/telegram/messages.rs` - **EXPANDED** (formatting for all event types)
+- `src/telegram/bot.rs` - **UPDATED** (generic notification support, callback response formatting)
+- `src/telegram/messages.rs` - **MAJOR UPGRADE** (professional message design, bold headers, clean timestamps)
 
 #### Configuration
 - `~/.cc_telegram/config.toml` - **UPDATED** (performance and monitoring sections)

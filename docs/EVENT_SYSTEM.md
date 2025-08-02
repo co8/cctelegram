@@ -340,9 +340,57 @@ let name = EventType::CodeGeneration.display_name(); // "Code Generated"
 
 ## Telegram Integration
 
-### Message Formatting
+### Professional Message Design
 
-The system provides specialized message formatting for each event type with appropriate emojis and actions:
+The system features modern, professional message formatting with:
+
+- **Bold Headers**: First line is bold using markdown `*text*` formatting
+- **Clean Timestamps**: Concise format like `2/Aug/25 23:42` instead of verbose timestamps
+- **Consistent Layout**: Structured three-line format for all message types
+- **Visual Hierarchy**: Clear emoji-based categorization and visual separators
+
+#### Message Format Structure
+```
+*{emoji} {Event Name} {Title}*
+⏰ {timestamp}
+📝 {description/details}
+```
+
+#### Example Message Formats
+
+**Task Completion:**
+```
+*✅ Task Completed Deploy Authentication*
+⏰ 2/Aug/25 23:42
+📝 Authentication module deployed successfully with 100% test coverage
+```
+
+**Approval Request:**
+```
+*🔐 System Update Request*
+⏰ 2/Aug/25 23:45
+📝 Approval Required System Update Request
+
+Please approve the system maintenance window scheduled for tonight.
+```
+
+**Progress Update:**
+```
+*📊 Progress Update Data Migration Progress*
+⏰ 2/Aug/25 23:50
+📝 Migration is 75% complete. Processing user data...
+```
+
+**Information Notification:**
+```
+*ℹ️ Information Final Format Demo*
+⏰ 2/Aug/25 23:55
+📝 This demonstrates the new concise message format with bold headers and clean timestamps.
+```
+
+### Event Type Icons
+
+The system provides specialized emojis for each event type:
 
 - **Task Events**: ✅ 🚀 ❌ 📊 🚫
 - **Code Events**: 🔨 🔍 🔧 👁️ 🧪

@@ -14,6 +14,7 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 
 ### 🤖 Intelligent Telegram Integration
 - **Real-time Notifications**: Instant notifications for all development events with rich formatting and emojis
+- **Professional Message Design**: Bold headers, clean timestamps (2/Aug/25 23:42), and consistent layout
 - **Interactive Messaging**: Approve actions, respond to prompts, and get status updates through inline keyboards
 - **Smart Message Formatting**: Context-aware message formatting with appropriate emojis for each event type
 - **Fallback Support**: Generic notification system handles unknown event types gracefully

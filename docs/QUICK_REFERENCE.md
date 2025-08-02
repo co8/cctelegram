@@ -247,6 +247,66 @@ match event.validate() {
 }
 ```
 
+## Telegram Message Formatting
+
+### Professional Message Design
+
+All messages use a modern, professional format with:
+- **Bold headers** using markdown `*text*` formatting
+- **Clean timestamps** in `2/Aug/25 23:42` format
+- **Consistent layout** with structured three-line format
+
+### Message Structure
+```
+*{emoji} {Event Name} {Title}*
+⏰ {timestamp}
+📝 {description/details}
+```
+
+### Format Examples
+
+**Task Completion:**
+```
+*✅ Task Completed Deploy Authentication*
+⏰ 2/Aug/25 23:42
+📝 Authentication module deployed successfully
+```
+
+**Approval Request:**
+```
+*🔐 System Update Request*
+⏰ 2/Aug/25 23:45
+📝 Approval Required System Update Request
+
+Please approve the maintenance window.
+```
+
+**Progress Update:**
+```
+*📊 Progress Update Data Migration*
+⏰ 2/Aug/25 23:50
+📝 Migration is 75% complete. Processing user data...
+```
+
+**Build Completion:**
+```
+*✅ Build Completed Release Build Complete*
+⏰ 2/Aug/25 23:55
+📝 Production build finished successfully
+```
+
+**Performance Alert:**
+```
+*⚡ Performance Alert Memory Usage Alert*
+⏰ 2/Aug/25 23:58
+📝 Memory usage exceeded 80MB threshold
+```
+
+### Timestamp Format
+- **Format**: `%d/%b/%y %H:%M`
+- **Example**: `2/Aug/25 23:42`
+- **Timezone**: UTC (automatically converted)
+
 ## Configuration
 
 ### Performance Thresholds
