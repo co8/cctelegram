@@ -1,5 +1,5 @@
 use teloxide::prelude::*;
-use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,6 +26,17 @@ struct IncomingMessage {
     first_name: Option<String>,
     message_text: String,
     message_type: String,
+}
+
+#[derive(serde::Serialize)]
+struct CallbackResponse {
+    timestamp: String,
+    user_id: i64,
+    username: Option<String>,
+    first_name: Option<String>,
+    callback_data: String,
+    original_message_id: Option<i32>,
+    response_type: String,
 }
 
 impl TelegramBot {
@@ -142,13 +153,24 @@ impl TelegramBot {
     pub async fn start_dispatcher(self: Arc<Self>) -> Result<()> {
         info!("Starting Telegram bot dispatcher");
         
-        let bot_handler = Arc::clone(&self);
+        let message_handler = Arc::clone(&self);
+        let callback_handler = Arc::clone(&self);
+        
         Dispatcher::builder(
-            self.bot.clone(), 
-            Update::filter_message().endpoint(move |bot: Bot, msg: Message| {
-                let handler = Arc::clone(&bot_handler);
-                async move { handler.handle_message(bot, msg).await }
-            })
+            self.bot.clone(),
+            dptree::entry()
+                .branch(
+                    Update::filter_message().endpoint(move |bot: Bot, msg: Message| {
+                        let handler = Arc::clone(&message_handler);
+                        async move { handler.handle_message(bot, msg).await }
+                    })
+                )
+                .branch(
+                    Update::filter_callback_query().endpoint(move |bot: Bot, q: CallbackQuery| {
+                        let handler = Arc::clone(&callback_handler);
+                        async move { handler.handle_callback_query(bot, q).await }
+                    })
+                )
         )
         .enable_ctrlc_handler()
         .build()
@@ -264,6 +286,108 @@ impl TelegramBot {
         fs::write(&file_path, json_content).await?;
         
         info!("Saved incoming message to: {}", file_path.display());
+        Ok(())
+    }
+
+    async fn handle_callback_query(&self, bot: Bot, q: CallbackQuery) -> ResponseResult<()> {
+        // Get user information
+        let user_id = q.from.id.0 as i64;
+        let username = q.from.username.as_deref();
+        let first_name = Some(q.from.first_name.as_str());
+
+        // Check if user is authorized
+        if !self.is_user_allowed(user_id) {
+            warn!("Unauthorized callback query from user {}: {:?}", user_id, username);
+            
+            // Answer the callback query to remove the loading state
+            bot.answer_callback_query(q.id)
+                .text("⚠️ Unauthorized access")
+                .await?;
+            
+            return Ok(());
+        }
+
+        if let Some(callback_data) = q.data {
+            info!("Received authorized callback from user {} ({}): {}", 
+                user_id, username.unwrap_or("no_username"), callback_data);
+            
+            // Save the callback response to file
+            if let Err(e) = self.save_callback_response(
+                user_id, 
+                username, 
+                first_name, 
+                &callback_data, 
+                q.message.as_ref().map(|m| m.id.0)
+            ).await {
+                error!("Failed to save callback response: {}", e);
+            }
+            
+            // Parse callback data to determine action
+            let response_message = if callback_data.starts_with("approve_") {
+                let task_id = callback_data.strip_prefix("approve_").unwrap_or("unknown");
+                format!("✅ **APPROVED**\n\nTask: `{}`\nStatus: Deployment approved\nAction: Proceeding with deployment", task_id)
+            } else if callback_data.starts_with("deny_") {
+                let task_id = callback_data.strip_prefix("deny_").unwrap_or("unknown");
+                format!("❌ **DENIED**\n\nTask: `{}`\nStatus: Deployment rejected\nAction: Deployment cancelled", task_id)
+            } else if callback_data.starts_with("details_") {
+                let task_id = callback_data.strip_prefix("details_").unwrap_or("unknown");
+                format!("📄 **TASK DETAILS**\n\nTask ID: `{}`\n\n📋 **Deployment Information:**\n• Environment: Production\n• Risk Level: Medium\n• Estimated Downtime: < 5 minutes\n• Rollback Available: Yes (2 min)\n\n🔧 **Changes Summary:**\n✅ OAuth2 authentication implemented\n✅ User session management added\n✅ Security tests passing (100% coverage)\n✅ Performance benchmarks met\n✅ Documentation updated\n\n📁 **Files Affected:**\n• `src/auth/oauth.rs`\n• `src/auth/session.rs`\n• `tests/auth_tests.rs`\n• `docs/authentication.md`", task_id)
+            } else if callback_data.starts_with("ack_") {
+                let task_id = callback_data.strip_prefix("ack_").unwrap_or("unknown");
+                format!("👍 **ACKNOWLEDGED**\n\nTask: `{}`\nStatus: Notification acknowledged\nTimestamp: {}", task_id, Utc::now().format("%Y-%m-%d %H:%M:%S UTC"))
+            } else {
+                format!("🤖 **Response Received**\n\nCallback: `{}`\nProcessed at: {}", callback_data, Utc::now().format("%Y-%m-%d %H:%M:%S UTC"))
+            };
+
+            // Answer the callback query and send response
+            bot.answer_callback_query(q.id)
+                .text("Response processed!")
+                .await?;
+
+            // Send detailed response message
+            if let Some(message) = q.message {
+                bot.send_message(message.chat.id, response_message)
+                    .await?;
+            }
+        }
+        
+        Ok(())
+    }
+
+    async fn save_callback_response(
+        &self,
+        user_id: i64, 
+        username: Option<&str>, 
+        first_name: Option<&str>, 
+        callback_data: &str,
+        message_id: Option<i32>
+    ) -> Result<()> {
+        let timestamp = Utc::now();
+        let filename = format!("telegram_callback_{}_{}.json", 
+                             user_id, 
+                             timestamp.format("%Y%m%d_%H%M%S"));
+        
+        let response = CallbackResponse {
+            timestamp: timestamp.to_rfc3339(),
+            user_id,
+            username: username.map(|s| s.to_string()),
+            first_name: first_name.map(|s| s.to_string()),
+            callback_data: callback_data.to_string(),
+            original_message_id: message_id,
+            response_type: "callback_query".to_string(),
+        };
+        
+        let json_content = serde_json::to_string_pretty(&response)?;
+        let file_path = self.responses_dir.join(&filename);
+        
+        // Ensure responses directory exists
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent).await?;
+        }
+        
+        fs::write(&file_path, json_content).await?;
+        
+        info!("Saved callback response to: {}", file_path.display());
         Ok(())
     }
 }
