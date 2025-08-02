@@ -341,13 +341,13 @@ export class CCTelegramBridgeClient {
   private loadEnvironmentVariables(): { [key: string]: string | undefined } {
     const env = { ...process.env };
     
-    // Check if required variables are already in environment
-    if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ALLOWED_USERS) {
-      console.error('[DEBUG] Environment variables already present in process.env');
-      return env;
-    }
-
-    console.error('[DEBUG] Environment variables not found in process.env, checking .env files...');
+    console.error('[DEBUG] Current process.env variables:');
+    console.error(`[DEBUG] TELEGRAM_BOT_TOKEN: ${env.TELEGRAM_BOT_TOKEN ? '***present***' : 'missing'}`);
+    console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS: ${env.TELEGRAM_ALLOWED_USERS ? '***present***' : 'missing'}`);
+    
+    // Always try to load from .env files to ensure we have the latest values
+    // (MCP server may not inherit shell environment variables)
+    console.error('[DEBUG] Checking .env files for environment variables...');
     
     // List of .env file paths to check (in order of priority)
     const envFilePaths = [
@@ -370,6 +370,9 @@ export class CCTelegramBridgeClient {
             // Merge with existing env, giving priority to .env file values
             Object.assign(env, result.parsed);
             console.error(`[DEBUG] Loaded ${Object.keys(result.parsed).length} variables from ${envPath}`);
+            console.error(`[DEBUG] After loading .env file:`);
+            console.error(`[DEBUG] TELEGRAM_BOT_TOKEN: ${env.TELEGRAM_BOT_TOKEN ? '***present***' : 'missing'}`);
+            console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS: ${env.TELEGRAM_ALLOWED_USERS ? '***present***' : 'missing'}`);
             
             // Check if we now have the required variables
             if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ALLOWED_USERS) {
