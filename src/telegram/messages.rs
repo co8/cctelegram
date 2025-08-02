@@ -81,7 +81,7 @@ impl MessageFormatter {
         };
 
         format!(
-            "{} Task Completed {}\n\
+            "*{} Task Completed {}*\n\
             ⏰ {}\n\
             📝 {}",
             status_emoji,
@@ -95,11 +95,14 @@ impl MessageFormatter {
         let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
 
         format!(
-            "🔐 Approval Required {}\n\
+            "*🔐 {}*\n\
             ⏰ {}\n\
-            📝 {}",
+            📝 Approval Required {}\n\
+            \n\
+            {}",
             Self::escape_markdown_v2(&event.title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::escape_markdown_v2(&event.title),
             Self::process_markdown_content(prompt)
         )
     }
@@ -108,7 +111,7 @@ impl MessageFormatter {
         let progress_info = self.extract_progress_info(event);
         
         format!(
-            "🔄 Progress Update {}\n\
+            "*🔄 Progress Update {}*\n\
             ⏰ {}\n\
             📊 Progress: {}\n\
             📝 {}",
@@ -123,7 +126,7 @@ impl MessageFormatter {
         let (emoji, event_name) = self.get_event_display_info(&event.event_type);
         
         format!(
-            "{} {} {}\n\
+            "*{} {} {}*\n\
             ⏰ {}\n\
             📝 {}",
             emoji,

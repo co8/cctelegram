@@ -365,18 +365,18 @@ impl TelegramBot {
             // Parse callback data to determine action
             let response_message = if callback_data.starts_with("approve_") {
                 let task_id = callback_data.strip_prefix("approve_").unwrap_or("unknown");
-                format!("✅ Approved `{}`\n⏰ {}\n📝 Deployment approved", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
+                format!("*✅ Approved `{}`*\n⏰ {}\n📝 Deployment approved", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
             } else if callback_data.starts_with("deny_") {
                 let task_id = callback_data.strip_prefix("deny_").unwrap_or("unknown");
-                format!("❌ Denied `{}`\n⏰ {}\n📝 Deployment cancelled", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
+                format!("*❌ Denied `{}`*\n⏰ {}\n📝 Deployment cancelled", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
             } else if callback_data.starts_with("details_") {
                 let task_id = callback_data.strip_prefix("details_").unwrap_or("unknown");
                 format!("📄 *TASK DETAILS*\n\nTask ID: `{}`\n\n📋 *Deployment Information:*\n• Environment: Production\n• Risk Level: Medium\n• Estimated Downtime: < 5 minutes\n• Rollback Available: Yes \\(2 min\\)\n\n🔧 *Changes Summary:*\n✅ OAuth2 authentication implemented\n✅ User session management added\n✅ Security tests passing \\(100% coverage\\)\n✅ Performance benchmarks met\n✅ Documentation updated\n\n📁 *Files Affected:*\n• `src/auth/oauth\\.rs`\n• `src/auth/session\\.rs`\n• `tests/auth_tests\\.rs`\n• `docs/authentication\\.md`", Self::escape_markdown_v2(task_id))
             } else if callback_data.starts_with("ack_") {
                 let task_id = callback_data.strip_prefix("ack_").unwrap_or("unknown");
-                format!("👍 Acknowledged `{}`\n⏰ {}\n📝 Notification acknowledged", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
+                format!("*👍 Acknowledged `{}`*\n⏰ {}\n📝 Notification acknowledged", Self::escape_markdown_v2(task_id), Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()))
             } else {
-                format!("🤖 Response Received\n⏰ {}\n📝 {}", Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()), Self::escape_markdown_v2(&callback_data))
+                format!("*🤖 Response Received*\n⏰ {}\n📝 {}", Self::escape_markdown_v2(&Utc::now().format("%d/%b/%y %H:%M").to_string()), Self::escape_markdown_v2(&callback_data))
             };
 
             // Answer the callback query and send response
