@@ -17,8 +17,8 @@ pub struct Config {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TelegramConfig {
-    pub TELEGRAM_BOT_TOKEN: String,
-    pub TELEGRAM_ALLOWED_USERS: Vec<i64>,
+    pub telegram_bot_token: String,
+    pub telegram_allowed_users: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -56,8 +56,8 @@ impl Default for Config {
         
         Self {
             telegram: TelegramConfig {
-                TELEGRAM_BOT_TOKEN: String::new(),
-                TELEGRAM_ALLOWED_USERS: Vec::new(),
+                telegram_bot_token: String::new(),
+                telegram_allowed_users: Vec::new(),
             },
             paths: PathsConfig {
                 events_dir: cc_telegram_dir.join("events"),
@@ -132,7 +132,7 @@ impl Config {
         // Load Telegram bot token from environment
         if let Ok(token) = std::env::var("TELEGRAM_BOT_TOKEN") {
             if !token.is_empty() {
-                self.telegram.TELEGRAM_BOT_TOKEN = token;
+                self.telegram.telegram_bot_token = token;
                 info!("Loaded Telegram bot token from environment");
             }
         }
@@ -147,8 +147,8 @@ impl Config {
                 
                 match users {
                     Ok(user_list) => {
-                        self.telegram.TELEGRAM_ALLOWED_USERS = user_list;
-                        info!("Loaded {} allowed users from environment", self.telegram.TELEGRAM_ALLOWED_USERS.len());
+                        self.telegram.telegram_allowed_users = user_list;
+                        info!("Loaded {} allowed users from environment", self.telegram.telegram_allowed_users.len());
                     }
                     Err(e) => {
                         warn!("Failed to parse TELEGRAM_ALLOWED_USERS: {}", e);
@@ -170,11 +170,11 @@ impl Config {
     }
 
     fn validate(&self) -> Result<()> {
-        if self.telegram.TELEGRAM_BOT_TOKEN.is_empty() {
+        if self.telegram.telegram_bot_token.is_empty() {
             anyhow::bail!("Telegram bot token is required. Set TELEGRAM_BOT_TOKEN environment variable or configure in config.toml");
         }
 
-        if self.telegram.TELEGRAM_ALLOWED_USERS.is_empty() {
+        if self.telegram.telegram_allowed_users.is_empty() {
             anyhow::bail!("At least one allowed user is required. Set TELEGRAM_ALLOWED_USERS environment variable or configure in config.toml");
         }
 

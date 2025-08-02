@@ -59,8 +59,8 @@ async fn main() -> Result<()> {
 
     // Initialize Telegram bot
     let telegram_bot = Arc::new(TelegramBot::new(
-        config.telegram.TELEGRAM_BOT_TOKEN.clone(),
-        config.telegram.TELEGRAM_ALLOWED_USERS.clone(),
+        config.telegram.telegram_bot_token.clone(),
+        config.telegram.telegram_allowed_users.clone(),
     ));
 
     // Initialize file watcher
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
                                     info!("Processed event: {} - {}", event.task_id, event.title);
                                     
                                     // Send notification to all allowed users
-                                    for &user_id in &config.telegram.TELEGRAM_ALLOWED_USERS {
+                                    for &user_id in &config.telegram.telegram_allowed_users {
                                         let telegram_start = Instant::now();
                                         
                                         match bot_clone.send_event_notification(user_id, &event).await {
