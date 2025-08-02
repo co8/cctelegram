@@ -17,7 +17,9 @@ pub struct Config {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TelegramConfig {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub telegram_bot_token: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub telegram_allowed_users: Vec<i64>,
 }
 
@@ -118,8 +120,24 @@ impl Config {
     }
 
     pub fn save(&self, path: &PathBuf) -> Result<()> {
-        let content = toml::to_string_pretty(self)
+        let mut content = String::new();
+        content.push_str("# CC Telegram Bridge Configuration\n");
+        content.push_str("# \n");
+        content.push_str("# IMPORTANT: Sensitive configuration (bot token, user IDs) should be set\n");
+        content.push_str("# in environment variables for security:\n");
+        content.push_str("# \n");
+        content.push_str("# Required environment variables:\n");
+        content.push_str("#   TELEGRAM_BOT_TOKEN=\"your_bot_token_here\"\n");
+        content.push_str("#   TELEGRAM_ALLOWED_USERS=\"123456,789012\"\n");
+        content.push_str("# \n");
+        content.push_str("# Optional environment variables:\n");
+        content.push_str("#   CC_TELEGRAM_EVENTS_DIR=\"/custom/events/path\"\n");
+        content.push_str("#   CC_TELEGRAM_RESPONSES_DIR=\"/custom/responses/path\"\n");
+        content.push_str("\n");
+        
+        let config_content = toml::to_string_pretty(self)
             .context("Failed to serialize configuration")?;
+        content.push_str(&config_content);
             
         fs::write(path, content)
             .with_context(|| format!("Failed to write config file: {}", path.display()))?;
@@ -171,11 +189,11 @@ impl Config {
 
     fn validate(&self) -> Result<()> {
         if self.telegram.telegram_bot_token.is_empty() {
-            anyhow::bail!("Telegram bot token is required. Set TELEGRAM_BOT_TOKEN environment variable or configure in config.toml");
+            anyhow::bail!("\nTelegram bot token is required.\n\nPlease set the TELEGRAM_BOT_TOKEN environment variable:\n  export TELEGRAM_BOT_TOKEN=\"your_bot_token_here\"\n\nGet your bot token from @BotFather on Telegram.");
         }
 
         if self.telegram.telegram_allowed_users.is_empty() {
-            anyhow::bail!("At least one allowed user is required. Set TELEGRAM_ALLOWED_USERS environment variable or configure in config.toml");
+            anyhow::bail!("\nAt least one allowed user is required.\n\nPlease set the TELEGRAM_ALLOWED_USERS environment variable:\n  export TELEGRAM_ALLOWED_USERS=\"123456,789012\"\n\nFind your user ID by messaging @userinfobot on Telegram.");
         }
 
         if !self.paths.events_dir.is_absolute() {
