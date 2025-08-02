@@ -208,8 +208,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc-telegram-bridge"
-version = "0.1.0"
+name = "cctelegram-bridge"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "arc-swap",

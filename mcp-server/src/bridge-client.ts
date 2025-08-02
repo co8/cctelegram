@@ -2,7 +2,11 @@ import fs from 'fs-extra';
 import path from 'path';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
+import { spawn, exec } from 'child_process';
+import { promisify } from 'util';
 import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './types.js';
+
+const execAsync = promisify(exec);
 
 export class CCTelegramBridgeClient {
   private eventsDir: string;
@@ -304,6 +308,238 @@ export class CCTelegramBridgeClient {
     } catch (error) {
       console.warn('Failed to clear old responses:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Check if the bridge process is running
+   */
+  async isBridgeRunning(): Promise<boolean> {
+    try {
+      // First try health endpoint
+      const healthResponse = await axios.get(this.healthEndpoint, { timeout: 2000 });
+      return healthResponse.status === 200;
+    } catch (error) {
+      // If health endpoint fails, check for process
+      try {
+        const { stdout } = await execAsync('pgrep -f cctelegram-bridge');
+        return stdout.trim().length > 0;
+      } catch (procError) {
+        return false;
+      }
+    }
+  }
+
+  /**
+   * Find the bridge executable path
+   */
+  private async findBridgeExecutable(): Promise<string> {
+    const possiblePaths = [
+      // Built executable in project
+      path.join(process.cwd(), 'target', 'release', 'cctelegram-bridge'),
+      path.join(process.cwd(), 'target', 'debug', 'cctelegram-bridge'),
+      // If running from MCP server directory
+      path.join(process.cwd(), '..', 'target', 'release', 'cctelegram-bridge'),
+      path.join(process.cwd(), '..', 'target', 'debug', 'cctelegram-bridge'),
+      // System-wide installation
+      'cctelegram-bridge'
+    ];
+
+    for (const bridgePath of possiblePaths) {
+      try {
+        if (bridgePath === 'cctelegram-bridge') {
+          // Check if it's in PATH
+          await execAsync('which cctelegram-bridge');
+          return bridgePath;
+        } else {
+          // Check if file exists
+          const exists = await fs.pathExists(bridgePath);
+          if (exists) {
+            return bridgePath;
+          }
+        }
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+
+    throw new Error('CCTelegram Bridge executable not found. Please build the project first.');
+  }
+
+  /**
+   * Start the bridge process
+   */
+  async startBridge(): Promise<{ success: boolean; message: string; pid?: number }> {
+    try {
+      const isRunning = await this.isBridgeRunning();
+      if (isRunning) {
+        return {
+          success: true,
+          message: 'Bridge is already running'
+        };
+      }
+
+      const bridgePath = await this.findBridgeExecutable();
+      
+      console.error(`[DEBUG] Starting bridge at: ${bridgePath}`);
+      
+      // Start the bridge process in background
+      const bridge = spawn(bridgePath, [], {
+        detached: true,
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          // Ensure environment variables are passed
+          TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
+          TELEGRAM_ALLOWED_USERS: process.env.TELEGRAM_ALLOWED_USERS,
+          CC_TELEGRAM_EVENTS_DIR: this.eventsDir,
+          CC_TELEGRAM_RESPONSES_DIR: this.responsesDir
+        }
+      });
+
+      bridge.unref();
+      
+      // Wait a moment and check if it started successfully
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const nowRunning = await this.isBridgeRunning();
+      if (nowRunning) {
+        return {
+          success: true,
+          message: 'Bridge started successfully',
+          pid: bridge.pid
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Bridge failed to start. Check that TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS environment variables are set.'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to start bridge: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Stop the bridge process
+   */
+  async stopBridge(): Promise<{ success: boolean; message: string }> {
+    try {
+      const { stdout } = await execAsync('pgrep -f cctelegram-bridge');
+      const pids = stdout.trim().split('\n').filter(pid => pid.length > 0);
+      
+      if (pids.length === 0) {
+        return {
+          success: true,
+          message: 'Bridge is not running'
+        };
+      }
+
+      // Kill all bridge processes
+      for (const pid of pids) {
+        try {
+          await execAsync(`kill ${pid}`);
+        } catch (error) {
+          // Process might have already stopped
+        }
+      }
+
+      // Wait a moment and verify
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const stillRunning = await this.isBridgeRunning();
+      if (!stillRunning) {
+        return {
+          success: true,
+          message: `Stopped ${pids.length} bridge process(es)`
+        };
+      } else {
+        // Force kill if graceful stop failed
+        for (const pid of pids) {
+          try {
+            await execAsync(`kill -9 ${pid}`);
+          } catch (error) {
+            // Process might have already stopped
+          }
+        }
+        
+        return {
+          success: true,
+          message: 'Bridge processes forcefully terminated'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to stop bridge: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Restart the bridge process
+   */
+  async restartBridge(): Promise<{ success: boolean; message: string; pid?: number }> {
+    try {
+      console.error('[DEBUG] Restarting bridge...');
+      
+      // Stop the bridge first
+      const stopResult = await this.stopBridge();
+      if (!stopResult.success) {
+        return {
+          success: false,
+          message: `Failed to stop bridge during restart: ${stopResult.message}`
+        };
+      }
+
+      // Wait a moment for cleanup
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Start the bridge
+      const startResult = await this.startBridge();
+      return {
+        success: startResult.success,
+        message: `Restart ${startResult.success ? 'successful' : 'failed'}: ${startResult.message}`,
+        pid: startResult.pid
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to restart bridge: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
+  }
+
+  /**
+   * Ensure bridge is running, start if needed
+   */
+  async ensureBridgeRunning(): Promise<{ success: boolean; message: string; action: 'already_running' | 'started' | 'failed' }> {
+    try {
+      const isRunning = await this.isBridgeRunning();
+      
+      if (isRunning) {
+        return {
+          success: true,
+          message: 'Bridge is already running',
+          action: 'already_running'
+        };
+      }
+
+      const startResult = await this.startBridge();
+      return {
+        success: startResult.success,
+        message: startResult.message,
+        action: startResult.success ? 'started' : 'failed'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `Failed to ensure bridge is running: ${error instanceof Error ? error.message : String(error)}`,
+        action: 'failed'
+      };
     }
   }
 

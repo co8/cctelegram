@@ -209,6 +209,46 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: 'start_bridge',
+        description: 'Start the CCTelegram Bridge process if not running',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'stop_bridge',
+        description: 'Stop the CCTelegram Bridge process',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'restart_bridge',
+        description: 'Restart the CCTelegram Bridge process',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'ensure_bridge_running',
+        description: 'Ensure the bridge is running, start it if needed',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'check_bridge_process',
+        description: 'Check if the bridge process is running',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
       }
     ]
   };
@@ -469,6 +509,84 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             text: JSON.stringify({
               deleted_count: deletedCount,
               message: `Cleared ${deletedCount} old response files`
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'start_bridge': {
+      const result = await client.startBridge();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: result.success,
+              message: result.message,
+              pid: result.pid
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'stop_bridge': {
+      const result = await client.stopBridge();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: result.success,
+              message: result.message
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'restart_bridge': {
+      const result = await client.restartBridge();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: result.success,
+              message: result.message,
+              pid: result.pid
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'ensure_bridge_running': {
+      const result = await client.ensureBridgeRunning();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: result.success,
+              message: result.message,
+              action: result.action
+            }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'check_bridge_process': {
+      const isRunning = await client.isBridgeRunning();
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              running: isRunning,
+              message: isRunning ? 'Bridge process is running' : 'Bridge process is not running'
             }, null, 2)
           }
         ]
