@@ -20,6 +20,55 @@ impl MessageFormatter {
             .collect()
     }
 
+    /// Convert markdown content while preserving intended formatting and escaping special chars
+    fn process_markdown_content(text: &str) -> String {
+        let mut result = String::new();
+        let mut chars = text.chars().peekable();
+        
+        while let Some(ch) = chars.next() {
+            match ch {
+                '*' => {
+                    // Check if this is bold markdown (**text**)
+                    if chars.peek() == Some(&'*') {
+                        chars.next(); // consume the second *
+                        result.push('*'); // Single * for MarkdownV2 bold
+                        
+                        // Find the closing **
+                        let mut bold_content = String::new();
+                        let mut found_closing = false;
+                        
+                        while let Some(inner_ch) = chars.next() {
+                            if inner_ch == '*' && chars.peek() == Some(&'*') {
+                                chars.next(); // consume the second closing *
+                                found_closing = true;
+                                break;
+                            } else {
+                                bold_content.push(inner_ch);
+                            }
+                        }
+                        
+                        // Add the bold content (escaped) and closing *
+                        result.push_str(&Self::escape_markdown_v2(&bold_content));
+                        if found_closing {
+                            result.push('*');
+                        }
+                    } else {
+                        // Single *, escape it
+                        result.push_str("\\*");
+                    }
+                }
+                '_' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' => {
+                    result.push_str(&format!("\\{}", ch));
+                }
+                _ => {
+                    result.push(ch);
+                }
+            }
+        }
+        
+        result
+    }
+
     pub fn format_completion_message(&self, event: &Event) -> String {
         let status = event.data.status.as_deref().unwrap_or("unknown");
         let results = event.data.results.as_deref().unwrap_or("No details provided");
@@ -44,7 +93,7 @@ impl MessageFormatter {
             Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(status),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::escape_markdown_v2(results)
+            Self::process_markdown_content(results)
         )
     }
 
@@ -65,7 +114,7 @@ impl MessageFormatter {
             Self::escape_markdown_v2(&event.title),
             Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::escape_markdown_v2(prompt),
+            Self::process_markdown_content(prompt),
             Self::escape_markdown_v2(&options)
         )
     }
@@ -84,7 +133,7 @@ impl MessageFormatter {
             Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             Self::escape_markdown_v2(&progress_info),
-            Self::escape_markdown_v2(&event.description)
+            Self::process_markdown_content(&event.description)
         )
     }
 
@@ -102,7 +151,7 @@ impl MessageFormatter {
             Self::escape_markdown_v2(&event.title),
             Self::escape_markdown_v2(&event.source),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::escape_markdown_v2(&event.description)
+            Self::process_markdown_content(&event.description)
         )
     }
 
