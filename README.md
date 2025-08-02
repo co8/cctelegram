@@ -36,6 +36,22 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 - **Deployment Tools**: Performance monitoring scripts, health checks, and deployment validation
 - **Scalable Architecture**: Modular design supporting high-throughput event processing
 
+### 🎛️ Automated Bridge Management (New in v0.2.0)
+- **Process Management**: Start, stop, and restart the bridge automatically via MCP server
+- **Health Monitoring**: Automatic health checks and process status verification  
+- **Smart Discovery**: Automatically finds bridge executable in multiple locations
+- **Environment Handling**: Seamless environment variable management and validation
+- **Background Operation**: Detached process spawning for hands-free operation
+
+**Available MCP Tools:**
+- `start_bridge` - Start the bridge if not running
+- `stop_bridge` - Stop the bridge process gracefully
+- `restart_bridge` - Restart the bridge process  
+- `ensure_bridge_running` - Ensure bridge is running, start if needed
+- `check_bridge_process` - Check if bridge process is running
+
+**Benefits:** No more manual terminal management! The MCP server can automatically start and manage the bridge process, eliminating the need to run it in a separate terminal window.
+
 ## 📋 Prerequisites
 
 - **Rust 1.70+** - [Install Rust](https://rustup.rs/)
@@ -82,7 +98,7 @@ export TELEGRAM_ALLOWED_USERS="123456789"
 
 ```bash
 # Start the bridge
-./target/release/cc-telegram-bridge
+./target/release/cctelegram-bridge
 
 # In another terminal, send a test event
 mkdir -p ~/.cc_telegram/events

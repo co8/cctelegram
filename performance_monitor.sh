@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_NAME="cc-telegram-bridge"
+APP_NAME="cctelegram-bridge"
 HEALTH_PORT="${HEALTH_PORT:-8080}"
 METRICS_ENDPOINT="http://localhost:${HEALTH_PORT}/metrics"
 HEALTH_ENDPOINT="http://localhost:${HEALTH_PORT}/health"

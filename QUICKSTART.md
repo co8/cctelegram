@@ -64,7 +64,7 @@ echo "User ID: $TELEGRAM_ALLOWED_USERS"
 
 ```bash
 # Start the application
-./target/release/cc-telegram-bridge
+./target/release/cctelegram-bridge
 ```
 
 You should see:
@@ -217,7 +217,7 @@ Should show:
 
 ```bash
 # Create service file
-sudo tee /etc/systemd/system/cc-telegram-bridge.service << EOF
+sudo tee /etc/systemd/system/cctelegram-bridge.service << EOF
 [Unit]
 Description=CC Telegram Bridge
 After=network.target
@@ -228,7 +228,7 @@ User=$USER
 WorkingDirectory=$(pwd)
 Environment=TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 Environment=TELEGRAM_ALLOWED_USERS=$TELEGRAM_ALLOWED_USERS
-ExecStart=$(pwd)/target/release/cc-telegram-bridge
+ExecStart=$(pwd)/target/release/cctelegram-bridge
 Restart=always
 RestartSec=10
 
@@ -238,18 +238,18 @@ EOF
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable cc-telegram-bridge
-sudo systemctl start cc-telegram-bridge
+sudo systemctl enable cctelegram-bridge
+sudo systemctl start cctelegram-bridge
 ```
 
 ### 7.3 Background Mode (macOS/Manual)
 
 ```bash
 # Run in background with logging
-nohup ./target/release/cc-telegram-bridge > cc-bridge.log 2>&1 &
+nohup ./target/release/cctelegram-bridge > cc-bridge.log 2>&1 &
 
 # Check it's running
-ps aux | grep cc-telegram-bridge
+ps aux | grep cctelegram-bridge
 ```
 
 ## 🔍 Step 8: Monitoring & Maintenance
@@ -271,7 +271,7 @@ watch -n 10 './performance_monitor.sh monitor'
 tail -f ~/.cc_telegram/logs/application.log
 
 # Or system logs (if using systemd)
-sudo journalctl -u cc-telegram-bridge -f
+sudo journalctl -u cctelegram-bridge -f
 ```
 
 ### 8.3 Performance Optimization
@@ -301,7 +301,7 @@ sudo journalctl -u cc-telegram-bridge -f
 ```bash
 # Auto-restart if crashed
 while true; do
-  ./target/release/cc-telegram-bridge
+  ./target/release/cctelegram-bridge
   echo "Bridge crashed, restarting in 5 seconds..."
   sleep 5
 done
@@ -339,7 +339,7 @@ cat ~/.cc_telegram/events/test_event.json | jq
 ./performance_monitor.sh monitor
 
 # Enable debug logging
-RUST_LOG=debug ./target/release/cc-telegram-bridge
+RUST_LOG=debug ./target/release/cctelegram-bridge
 ```
 
 ### Port Already in Use
