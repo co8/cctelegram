@@ -19,8 +19,21 @@ export class CCTelegramBridgeClient {
     const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
     // Force absolute path resolution to prevent ~ expansion issues
     const ccTelegramDir = path.resolve(homeDir, '.cc_telegram');
-    this.eventsDir = process.env.CC_TELEGRAM_EVENTS_DIR || path.join(ccTelegramDir, 'events');
-    this.responsesDir = process.env.CC_TELEGRAM_RESPONSES_DIR || path.join(ccTelegramDir, 'responses');
+    
+    // Properly expand ~ in environment variables if present
+    const expandPath = (pathStr: string): string => {
+      if (pathStr.startsWith('~/')) {
+        return path.join(homeDir, pathStr.slice(2));
+      }
+      return path.resolve(pathStr);
+    };
+    
+    this.eventsDir = process.env.CC_TELEGRAM_EVENTS_DIR 
+      ? expandPath(process.env.CC_TELEGRAM_EVENTS_DIR)
+      : path.join(ccTelegramDir, 'events');
+    this.responsesDir = process.env.CC_TELEGRAM_RESPONSES_DIR 
+      ? expandPath(process.env.CC_TELEGRAM_RESPONSES_DIR)
+      : path.join(ccTelegramDir, 'responses');
     
     const healthPort = process.env.CC_TELEGRAM_HEALTH_PORT || '8080';
     this.healthEndpoint = `http://localhost:${healthPort}/health`;
