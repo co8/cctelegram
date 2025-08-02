@@ -1,22 +1,17 @@
 # CC Telegram Bridge Configuration Example
 # Copy this file to ~/.cc_telegram/config.toml and configure
+# NOTE: Telegram bot token, allowed users, and paths should be configured 
+# in the .env file instead of here for security reasons
 
 [telegram]
-# Your Telegram bot token (get from @BotFather)
-# Can also be set via TELEGRAM_BOT_TOKEN environment variable
-bot_token = ""
-
-# List of Telegram user IDs allowed to receive notifications
-# Can also be set via TELEGRAM_ALLOWED_USERS environment variable (comma-separated)
-# Your user ID: 297126051 (@enriqueco8)
-allowed_users = [297126051]
+# Configuration will be loaded from environment variables:
+# TELEGRAM_BOT_TOKEN - Your bot token from @BotFather
+# TELEGRAM_ALLOWED_USERS - Comma-separated user IDs (e.g., "123456,789012")
 
 [paths]
-# Directory where Claude Code/VSCode writes event files
-events_dir = "/Users/enrique/.cc_telegram/events"
-
-# Directory where responses are written
-responses_dir = "/Users/enrique/.cc_telegram/responses"
+# Paths will be loaded from environment variables:
+# CC_TELEGRAM_EVENTS_DIR - Custom events directory (optional)
+# CC_TELEGRAM_RESPONSES_DIR - Custom responses directory (optional)
 
 [notifications]
 # Enable/disable different types of notifications

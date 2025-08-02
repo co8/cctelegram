@@ -198,16 +198,16 @@ CC_TELEGRAM_RESPONSES_DIR="/custom/responses/path"
 
 ### Configuration File
 
-The application creates `~/.cc_telegram/config.toml` on first run:
+The application creates `~/.cc_telegram/config.toml` on first run. **Note**: Sensitive configuration (bot token, user IDs, paths) should be set in the `.env` file for security.
 
 ```toml
 [telegram]
-bot_token = ""
-allowed_users = []
+# Configuration loaded from environment variables:
+# TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS
 
 [paths]
-events_dir = "/Users/username/.cc_telegram/events"
-responses_dir = "/Users/username/.cc_telegram/responses"
+# Paths loaded from environment variables:
+# CC_TELEGRAM_EVENTS_DIR, CC_TELEGRAM_RESPONSES_DIR
 
 [notifications]
 task_completion = true

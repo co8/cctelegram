@@ -354,14 +354,23 @@ tmux new-session -d -s cctelegram './cc-telegram-bridge'
 ```
 
 ### Configuration Management
+**Environment Variables** (recommended for sensitive data):
+```bash
+# .env file
+TELEGRAM_BOT_TOKEN="your_bot_token_here"
+TELEGRAM_ALLOWED_USERS="123456789,987654321"
+CC_TELEGRAM_EVENTS_DIR="/custom/events/path"
+CC_TELEGRAM_RESPONSES_DIR="/custom/responses/path"
+```
+
+**Configuration File** (for non-sensitive settings):
 ```toml
 # ~/.cc_telegram/config.toml
 [telegram]
-bot_token = "env:TELEGRAM_BOT_TOKEN"
-allowed_users = [123456789, 987654321]
+# Loaded from environment variables
 
 [paths]
-events_dir = "~/.cc_telegram/events"
+# Loaded from environment variables
 responses_dir = "~/.cc_telegram/responses"
 
 [notifications]

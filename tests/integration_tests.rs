@@ -23,8 +23,8 @@ async fn test_config_loading_and_validation() -> Result<()> {
     match result {
         Ok(config) => {
             // Verify the environment variables were loaded
-            assert_eq!(config.telegram.bot_token, "test_token_123");
-            assert_eq!(config.telegram.allowed_users, vec![123456, 789012]);
+            assert_eq!(config.telegram.TELEGRAM_BOT_TOKEN, "test_token_123");
+            assert_eq!(config.telegram.TELEGRAM_ALLOWED_USERS, vec![123456, 789012]);
             assert!(config.paths.events_dir.is_absolute());
         }
         Err(e) => {

@@ -32,31 +32,56 @@ export class CCTelegramBridgeClient {
    * Send a structured event to the CC Telegram Bridge
    */
   async sendEvent(event: CCTelegramEvent): Promise<{ success: boolean; event_id: string; file_path: string }> {
+    console.error(`[DEBUG] sendEvent called with event type: ${event.type}`);
+    console.error(`[DEBUG] eventsDir: ${this.eventsDir}`);
+    console.error(`[DEBUG] Working directory: ${process.cwd()}`);
+    
     try {
+      console.error(`[DEBUG] Ensuring directories exist...`);
       await this.ensureDirectories();
+      console.error(`[DEBUG] Directories ensured`);
       
       // Generate unique event ID if not provided
       if (!event.task_id) {
         event.task_id = uuidv4();
+        console.error(`[DEBUG] Generated task_id: ${event.task_id}`);
+      } else {
+        console.error(`[DEBUG] Using provided task_id: ${event.task_id}`);
       }
 
       // Set timestamp if not provided
       if (!event.timestamp) {
         event.timestamp = new Date().toISOString();
+        console.error(`[DEBUG] Generated timestamp: ${event.timestamp}`);
       }
 
       // Create event file
       const fileName = `${event.task_id}_${Date.now()}.json`;
       const filePath = path.join(this.eventsDir, fileName);
+      console.error(`[DEBUG] Writing to file: ${filePath}`);
+      console.error(`[DEBUG] Event data:`, JSON.stringify(event, null, 2));
       
       await fs.writeJSON(filePath, event, { spaces: 2 });
+      console.error(`[DEBUG] File written successfully`);
       
-      return {
+      // Verify the file was created
+      const exists = await fs.pathExists(filePath);
+      console.error(`[DEBUG] File exists after write: ${exists}`);
+      
+      if (exists) {
+        const stats = await fs.stat(filePath);
+        console.error(`[DEBUG] File size: ${stats.size} bytes`);
+      }
+      
+      const result = {
         success: true,
         event_id: event.task_id,
         file_path: filePath
       };
+      console.error(`[DEBUG] Returning result:`, JSON.stringify(result, null, 2));
+      return result;
     } catch (error) {
+      console.error(`[DEBUG] Error in sendEvent:`, error);
       throw new Error(`Failed to send event: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
