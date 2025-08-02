@@ -4,6 +4,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
+import dotenv from 'dotenv';
 import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './types.js';
 
 const execAsync = promisify(exec);
@@ -331,6 +332,64 @@ export class CCTelegramBridgeClient {
   }
 
   /**
+   * Load environment variables from .env files if not already present
+   */
+  private loadEnvironmentVariables(): { [key: string]: string | undefined } {
+    const env = { ...process.env };
+    
+    // Check if required variables are already in environment
+    if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ALLOWED_USERS) {
+      console.error('[DEBUG] Environment variables already present in process.env');
+      return env;
+    }
+
+    console.error('[DEBUG] Environment variables not found in process.env, checking .env files...');
+    
+    // List of .env file paths to check (in order of priority)
+    const envFilePaths = [
+      // Project directory (where the bridge is built)
+      path.join(process.cwd(), '..', '.env'),
+      path.join(process.cwd(), '.env'),
+      // User's .cc_telegram directory
+      path.join(this.eventsDir, '..', '.env'),
+      // Home directory
+      path.join(process.env.HOME || process.env.USERPROFILE || '/tmp', '.cc_telegram', '.env')
+    ];
+
+    for (const envPath of envFilePaths) {
+      try {
+        if (fs.existsSync(envPath)) {
+          console.error(`[DEBUG] Found .env file at: ${envPath}`);
+          const result = dotenv.config({ path: envPath });
+          
+          if (result.parsed) {
+            // Merge with existing env, giving priority to .env file values
+            Object.assign(env, result.parsed);
+            console.error(`[DEBUG] Loaded ${Object.keys(result.parsed).length} variables from ${envPath}`);
+            
+            // Check if we now have the required variables
+            if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ALLOWED_USERS) {
+              console.error('[DEBUG] Successfully loaded required environment variables');
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`[DEBUG] Failed to load .env file from ${envPath}:`, error);
+      }
+    }
+
+    // Final check
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_ALLOWED_USERS) {
+      console.error('[DEBUG] Warning: Required environment variables still not found after checking .env files');
+      console.error(`[DEBUG] TELEGRAM_BOT_TOKEN present: ${!!env.TELEGRAM_BOT_TOKEN}`);
+      console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS present: ${!!env.TELEGRAM_ALLOWED_USERS}`);
+    }
+
+    return env;
+  }
+
+  /**
    * Find the bridge executable path
    */
   private async findBridgeExecutable(): Promise<string> {
@@ -383,15 +442,29 @@ export class CCTelegramBridgeClient {
       
       console.error(`[DEBUG] Starting bridge at: ${bridgePath}`);
       
+      // Load environment variables from .env files if needed
+      const env = this.loadEnvironmentVariables();
+      
+      // Validate required environment variables
+      if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_ALLOWED_USERS) {
+        return {
+          success: false,
+          message: 'Bridge failed to start. Check that TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS environment variables are set.'
+        };
+      }
+      
+      console.error(`[DEBUG] Environment variables loaded. Starting bridge with bot token: ${env.TELEGRAM_BOT_TOKEN ? '***configured***' : 'missing'}`);
+      console.error(`[DEBUG] Allowed users: ${env.TELEGRAM_ALLOWED_USERS || 'missing'}`);
+      
       // Start the bridge process in background
       const bridge = spawn(bridgePath, [], {
         detached: true,
         stdio: 'ignore',
         env: {
-          ...process.env,
-          // Ensure environment variables are passed
-          TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-          TELEGRAM_ALLOWED_USERS: process.env.TELEGRAM_ALLOWED_USERS,
+          ...env,
+          // Explicitly set the required variables
+          TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
+          TELEGRAM_ALLOWED_USERS: env.TELEGRAM_ALLOWED_USERS,
           CC_TELEGRAM_EVENTS_DIR: this.eventsDir,
           CC_TELEGRAM_RESPONSES_DIR: this.responsesDir
         }
