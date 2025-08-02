@@ -8,6 +8,18 @@ impl MessageFormatter {
         Self
     }
 
+    /// Escape special characters for MarkdownV2
+    fn escape_markdown_v2(text: &str) -> String {
+        text.chars()
+            .map(|c| match c {
+                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' => {
+                    format!("\\{}", c)
+                }
+                _ => c.to_string(),
+            })
+            .collect()
+    }
+
     pub fn format_completion_message(&self, event: &Event) -> String {
         let status = event.data.status.as_deref().unwrap_or("unknown");
         let results = event.data.results.as_deref().unwrap_or("No details provided");
@@ -20,19 +32,19 @@ impl MessageFormatter {
         };
 
         format!(
-            "{} **Task Completed**\n\n\
-            📋 **Title:** {}\n\
-            🔧 **Source:** {}\n\
-            📊 **Status:** {}\n\
-            ⏰ **Time:** {}\n\n\
-            📝 **Results:**\n{}\n\n\
-            💡 *Tap 'Details' for more information*",
+            "{} *Task Completed*\n\n\
+            📋 *Title:* {}\n\
+            🔧 *Source:* {}\n\
+            📊 *Status:* {}\n\
+            ⏰ *Time:* {}\n\n\
+            📝 *Results:*\n{}\n\n\
+            💡 _Tap 'Details' for more information_",
             status_emoji,
-            event.title,
-            event.source,
-            status,
-            self.format_timestamp(&event.timestamp),
-            results
+            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&event.source),
+            Self::escape_markdown_v2(status),
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::escape_markdown_v2(results)
         )
     }
 
@@ -43,18 +55,18 @@ impl MessageFormatter {
             .unwrap_or_else(|| "approve, deny".to_string());
 
         format!(
-            "🔐 **Approval Required**\n\n\
-            📋 **Title:** {}\n\
-            🔧 **Source:** {}\n\
-            ⏰ **Time:** {}\n\n\
-            ❓ **Request:**\n{}\n\n\
-            🎯 **Available Actions:** {}\n\n\
-            ⚡ *Please respond quickly - the process is waiting*",
-            event.title,
-            event.source,
-            self.format_timestamp(&event.timestamp),
-            prompt,
-            options
+            "🔐 *Approval Required*\n\n\
+            📋 *Title:* {}\n\
+            🔧 *Source:* {}\n\
+            ⏰ *Time:* {}\n\n\
+            ❓ *Request:*\n{}\n\n\
+            🎯 *Available Actions:* {}\n\n\
+            ⚡ _Please respond quickly \\- the process is waiting_",
+            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&event.source),
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::escape_markdown_v2(prompt),
+            Self::escape_markdown_v2(&options)
         )
     }
 
@@ -62,17 +74,17 @@ impl MessageFormatter {
         let progress_info = self.extract_progress_info(event);
         
         format!(
-            "🔄 **Progress Update**\n\n\
-            📋 **Title:** {}\n\
-            🔧 **Source:** {}\n\
-            ⏰ **Time:** {}\n\n\
-            📊 **Progress:** {}\n\n\
-            📝 **Description:**\n{}",
-            event.title,
-            event.source,
-            self.format_timestamp(&event.timestamp),
-            progress_info,
-            event.description
+            "🔄 *Progress Update*\n\n\
+            📋 *Title:* {}\n\
+            🔧 *Source:* {}\n\
+            ⏰ *Time:* {}\n\n\
+            📊 *Progress:* {}\n\n\
+            📝 *Description:*\n{}",
+            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&event.source),
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::escape_markdown_v2(&progress_info),
+            Self::escape_markdown_v2(&event.description)
         )
     }
 
@@ -80,17 +92,17 @@ impl MessageFormatter {
         let (emoji, event_name) = self.get_event_display_info(&event.event_type);
         
         format!(
-            "{} **{}**\n\n\
-            📋 **Title:** {}\n\
-            🔧 **Source:** {}\n\
-            ⏰ **Time:** {}\n\n\
-            📝 **Description:**\n{}",
+            "{} *{}*\n\n\
+            📋 *Title:* {}\n\
+            🔧 *Source:* {}\n\
+            ⏰ *Time:* {}\n\n\
+            📝 *Description:*\n{}",
             emoji,
-            event_name,
-            event.title,
-            event.source,
-            self.format_timestamp(&event.timestamp),
-            event.description
+            Self::escape_markdown_v2(event_name),
+            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&event.source),
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::escape_markdown_v2(&event.description)
         )
     }
 
