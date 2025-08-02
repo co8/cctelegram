@@ -18,6 +18,17 @@ use utils::{PerformanceMonitor, HealthServer};
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load environment variables from .env file if it exists
+    // This will load from shell environment if no .env file is found
+    if let Err(e) = dotenv::dotenv() {
+        // Only warn if the error is not "file not found"
+        if !e.to_string().contains("No such file or directory") && !e.to_string().contains("system cannot find the file") {
+            warn!("Failed to load .env file: {}", e);
+        }
+    } else {
+        info!("Loaded environment variables from .env file");
+    }
+
     // Initialize logging
     utils::setup_logging()?;
 
