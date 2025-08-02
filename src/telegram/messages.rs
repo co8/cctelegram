@@ -82,7 +82,7 @@ impl MessageFormatter {
 
         format!(
             "{} Task Completed {}\n\
-            ⏰ Time: {}\n\
+            ⏰ {}\n\
             📝 {}",
             status_emoji,
             Self::escape_markdown_v2(&event.title),
@@ -96,7 +96,7 @@ impl MessageFormatter {
 
         format!(
             "🔐 Approval Required {}\n\
-            ⏰ Time: {}\n\
+            ⏰ {}\n\
             📝 {}",
             Self::escape_markdown_v2(&event.title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
@@ -109,7 +109,7 @@ impl MessageFormatter {
         
         format!(
             "🔄 Progress Update {}\n\
-            ⏰ Time: {}\n\
+            ⏰ {}\n\
             📊 Progress: {}\n\
             📝 {}",
             Self::escape_markdown_v2(&event.title),
@@ -124,7 +124,7 @@ impl MessageFormatter {
         
         format!(
             "{} {} {}\n\
-            ⏰ Time: {}\n\
+            ⏰ {}\n\
             📝 {}",
             emoji,
             Self::escape_markdown_v2(event_name),
