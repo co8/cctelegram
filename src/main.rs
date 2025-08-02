@@ -61,11 +61,23 @@ async fn main() -> Result<()> {
     let telegram_bot = Arc::new(TelegramBot::new(
         config.telegram.telegram_bot_token.clone(),
         config.telegram.telegram_allowed_users.clone(),
+        config.paths.responses_dir.clone(),
     ));
 
     // Initialize file watcher
     let mut event_watcher = EventWatcher::new(&config.paths.events_dir)?;
     info!("File watcher initialized for: {}", config.paths.events_dir.display());
+
+    // Start Telegram message dispatcher
+    let telegram_dispatcher = {
+        let bot_clone = telegram_bot.clone();
+        tokio::spawn(async move {
+            info!("Starting Telegram message dispatcher");
+            if let Err(e) = bot_clone.start_dispatcher().await {
+                error!("Telegram dispatcher error: {}", e);
+            }
+        })
+    };
 
     // Start main event loop
     info!("Starting main event processing loop");
@@ -131,6 +143,7 @@ async fn main() -> Result<()> {
 
     // Wait for shutdown signal
     info!("CC Telegram Bridge is running. Press Ctrl+C to stop.");
+    info!("📱 Telegram dispatcher started - ready to receive messages");
     
     tokio::select! {
         _ = signal::ctrl_c() => {
@@ -139,6 +152,11 @@ async fn main() -> Result<()> {
         result = main_loop => {
             if let Err(e) = result {
                 error!("Main loop error: {}", e);
+            }
+        }
+        result = telegram_dispatcher => {
+            if let Err(e) = result {
+                error!("Telegram dispatcher error: {}", e);
             }
         }
     }
