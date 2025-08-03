@@ -1,6 +1,8 @@
 # CCTelegram MCP Server
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/security-8.5%2F10%20LOW%20RISK-green.svg)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20compliant-brightgreen.svg)](docs/SECURITY.md) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](docs/FEATURES.md) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](docs/FEATURES.md#comprehensive-testing) [![MCP](https://img.shields.io/badge/MCP-v1.2.0-purple.svg)](mcp-server/README.md)
+[![Bridge Version](https://img.shields.io/badge/Bridge-v0.5.1-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.5.1) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.3.0-4ECDC4?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
+
+[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-00B4D8?style=flat-square&logo=shield&logoColor=white)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/FEATURES.md) [![Tests](https://img.shields.io/badge/Tests-38%20Passing-06FFA5?style=flat-square&logo=jest&logoColor=white)](docs/FEATURES.md#comprehensive-testing) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/FEATURES.md#performance-monitoring)
 
 ## TL;DR
 
@@ -100,14 +102,16 @@ echo '{
 
 **Manual Bridge Setup (Advanced Users):**
 ```bash
-# Download and run bridge directly
-curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
-chmod +x cctelegram-bridge
+# Download and extract latest bridge (v0.5.1)
+curl -L https://github.com/co8/cctelegram/releases/download/v0.5.1/cctelegram-bridge-v0.5.1-source.tar.gz -o cctelegram-bridge-v0.5.1-source.tar.gz
+tar -xzf cctelegram-bridge-v0.5.1-source.tar.gz
+cd cctelegram-bridge-v0.5.1
+cargo build --release
 
 # Configure and run
 export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USERS="your_user_id_here"
-./cctelegram-bridge
+./target/release/cctelegram-bridge
 
 # Test with file creation
 mkdir -p ~/.cc_telegram/events
