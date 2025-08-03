@@ -2,7 +2,7 @@
 
 [![Bridge Version](https://img.shields.io/badge/Bridge-v0.5.1-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.5.1) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.3.0-4ECDC4?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
 
-[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-00B4D8?style=flat-square&logo=shield&logoColor=white)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/FEATURES.md) [![Tests](https://img.shields.io/badge/Tests-38%20Passing-06FFA5?style=flat-square&logo=jest&logoColor=white)](docs/FEATURES.md#comprehensive-testing) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/FEATURES.md#performance-monitoring)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-00B4D8?style=flat-square&logo=shield&logoColor=white)](@docs/reference/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](@docs/reference/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](@docs/reference/FEATURES.md) [![Tests](https://img.shields.io/badge/Tests-38%20Passing-06FFA5?style=flat-square&logo=jest&logoColor=white)](@test/) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](@docs/reference/FEATURES.md#performance-monitoring)
 
 ## TL;DR
 
@@ -52,7 +52,27 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 - **📊 Performance Monitoring** - Built-in metrics, health checks, Prometheus integration
 - **🔍 Comprehensive Audit Logging** - **NEW**: Secure event tracking, data sanitization
 
-→ **[See all features & capabilities](docs/FEATURES.md)**
+→ **[See all features & capabilities](@docs/reference/FEATURES.md)**
+
+---
+
+## 📁 Project Structure
+
+```
+cctelegram/
+├── @docs/                     # 📚 All Documentation
+│   ├── setup/                 # 🚀 Installation & Setup
+│   ├── reference/             # 📖 Technical References  
+│   ├── security/              # 🛡️ Security Audits
+│   └── development/           # 🔧 Contributing & Dev
+├── @test/                     # 🧪 Testing Framework
+│   └── unit/                  # Unit & Integration Tests
+├── @scripts/                  # ⚙️ Utility Scripts
+├── src/                       # 🦀 Rust Bridge Source
+├── mcp-server/                # 🔌 MCP Server (TypeScript)
+├── examples/                  # 💡 Usage Examples
+└── target/                    # 🏗️ Build Artifacts
+```
 
 ---
 
@@ -60,11 +80,14 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 
 | Guide | Description |
 |-------|-------------|
-| 🚀 **[Complete Setup Guide](QUICKSTART.md)** | Detailed installation, configuration, and deployment |
-| 🔧 **[Features & Capabilities](docs/FEATURES.md)** | All features, API reference, event types, monitoring |
-| 🔒 **[Security & Compliance](docs/SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
+| 🚀 **[Complete Setup Guide](@docs/setup/QUICKSTART.md)** | Detailed installation, configuration, and deployment |
+| 🔧 **[Features & Capabilities](@docs/reference/FEATURES.md)** | All features, API reference, event types, monitoring |
+| 🔒 **[Security & Compliance](@docs/reference/SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
 | 🎛️ **[MCP Integration](mcp-server/README.md)** | [Claude Code](https://github.com/anthropics/claude-code) MCP server setup and usage |
-| 📖 **[Technical Reference](docs/EVENT_SYSTEM.md)** | Event system architecture and implementation |
+| 📖 **[Technical Reference](@docs/reference/EVENT_SYSTEM.md)** | Event system architecture and implementation |
+| 🛡️ **[Security Audits](@docs/security/)** | Complete security audit reports and remediation |
+| 🧪 **[Testing Guide](@test/)** | Unit tests and testing framework documentation |
+| 🔧 **[Development Guide](@docs/development/CONTRIBUTING.md)** | Contributing guidelines and development setup |
 
 ---
 
