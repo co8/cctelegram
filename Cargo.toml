@@ -1,6 +1,6 @@
 [package]
 name = "cctelegram-bridge"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 authors = ["Enrique <@co8>"]
 description = "A Rust-based bridge between Claude Code/VSCode and Telegram for remote monitoring and interaction"
@@ -44,7 +44,8 @@ thiserror = "1.0"
 anyhow = "1.0"
 
 # Date/time handling
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+chrono-tz = "0.10"
 
 # Cross-platform paths and utilities
 dirs = "5.0"

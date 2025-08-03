@@ -1,5 +1,6 @@
 use crate::events::types::Event;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Utc, TimeZone};
+use chrono_tz::Europe::Berlin;
 
 pub struct MessageFormatter;
 
@@ -213,7 +214,8 @@ impl MessageFormatter {
     }
 
     fn format_timestamp(&self, timestamp: &DateTime<Utc>) -> String {
-        timestamp.to_rfc3339()
+        let local_time = Berlin.from_utc_datetime(&timestamp.naive_utc());
+        local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string()
     }
 
     fn extract_progress_info(&self, event: &Event) -> String {

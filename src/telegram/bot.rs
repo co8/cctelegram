@@ -5,7 +5,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use anyhow::Result;
 use tracing::{info, warn, error};
-use chrono::Utc;
+use chrono::{Utc, TimeZone};
+use chrono_tz::Europe::Berlin;
 use serde_json;
 use tokio::fs;
 use crate::events::types::{Event, EventType};
@@ -363,18 +364,17 @@ impl TelegramBot {
             }
             
             // Parse callback data to determine action
-            let timestamp = Self::escape_markdown_v2(&Utc::now().to_rfc3339());
+            let utc_now = Utc::now();
+            let local_time = Berlin.from_utc_datetime(&utc_now.naive_utc());
+            let timestamp = Self::escape_markdown_v2(&local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string());
             let response_message = if callback_data.starts_with("approve_") {
-                let task_id = callback_data.strip_prefix("approve_").unwrap_or("unknown");
                 format!("*✅ Request Approved*\n⏰ {}", timestamp)
             } else if callback_data.starts_with("deny_") {
-                let task_id = callback_data.strip_prefix("deny_").unwrap_or("unknown");
                 format!("*❌ Request Denied*\n⏰ {}", timestamp)
             } else if callback_data.starts_with("details_") {
                 let task_id = callback_data.strip_prefix("details_").unwrap_or("unknown");
                 format!("📄 *TASK DETAILS*\n\nTask ID: `{}`\n\n📋 *Request Information:*\n• Type: Approval Request\n• Status: Pending Response\n• Created: {}\n\n🔧 *Available Actions:*\n✅ Approve \\- Accept and proceed\n❌ Deny \\- Reject and cancel\n📄 Details \\- View this information", Self::escape_markdown_v2(task_id), timestamp)
             } else if callback_data.starts_with("ack_") {
-                let task_id = callback_data.strip_prefix("ack_").unwrap_or("unknown");
                 format!("*👍 Notification Acknowledged*\n⏰ {}", timestamp)
             } else {
                 format!("*🤖 Response Received*\n⏰ {}\n📝 {}", timestamp, Self::escape_markdown_v2(&callback_data))
