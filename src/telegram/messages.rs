@@ -213,7 +213,7 @@ impl MessageFormatter {
     }
 
     fn format_timestamp(&self, timestamp: &DateTime<Utc>) -> String {
-        timestamp.format("%d/%b/%y %H:%M").to_string()
+        timestamp.to_rfc3339()
     }
 
     fn extract_progress_info(&self, event: &Event) -> String {

@@ -211,6 +211,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
+        name: 'process_pending_responses',
+        description: 'Process pending approval responses and return actionable information',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            since_minutes: {
+              type: 'number',
+              description: 'Process responses from the last N minutes (default: 10)',
+              default: 10
+            }
+          }
+        }
+      },
+      {
         name: 'start_bridge',
         description: 'Start the CCTelegram Bridge process if not running',
         inputSchema: {
@@ -510,6 +524,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               deleted_count: deletedCount,
               message: `Cleared ${deletedCount} old response files`
             }, null, 2)
+          }
+        ]
+      };
+    }
+
+    case 'process_pending_responses': {
+      const { since_minutes = 10 } = args as any;
+      const result = await client.processPendingResponses(since_minutes);
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2)
           }
         ]
       };

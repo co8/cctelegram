@@ -366,6 +366,92 @@ export class CCTelegramBridgeClient {
   }
 
   /**
+   * Process pending approval responses and extract actionable information
+   */
+  async processPendingResponses(sinceMinutes = 10) {
+    try {
+      await this.ensureDirectories();
+      
+      const files = await fs.readdir(this.responsesDir);
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      const cutoffTime = Date.now() - (sinceMinutes * 60 * 1000);
+      
+      const recentResponses = [];
+      const actionableResponses = [];
+      
+      for (const file of jsonFiles) {
+        try {
+          const filePath = path.join(this.responsesDir, file);
+          const stats = await fs.stat(filePath);
+          
+          // Only process recent files
+          if (stats.mtime.getTime() < cutoffTime) {
+            continue;
+          }
+          
+          const response = await fs.readJSON(filePath);
+          recentResponses.push(response);
+          
+          // Check if it's an actionable approval/denial response
+          if (response.response_type === 'callback_query' && response.callback_data) {
+            const callbackData = response.callback_data;
+            
+            if (callbackData.startsWith('approve_') || callbackData.startsWith('deny_')) {
+              const action = callbackData.startsWith('approve_') ? 'approve' : 'deny';
+              const taskId = callbackData.replace(/^(approve_|deny_)/, '');
+              
+              actionableResponses.push({
+                action,
+                task_id: taskId,
+                user_id: response.user_id,
+                username: response.username,
+                timestamp: response.timestamp,
+                file_path: filePath,
+                response_data: response
+              });
+            }
+          }
+        } catch (error: any) {
+          console.warn(`Failed to process response file ${file}:`, error);
+        }
+      }
+      
+      return {
+        summary: {
+          total_recent_responses: recentResponses.length,
+          actionable_responses: actionableResponses.length,
+          pending_approvals: actionableResponses.filter(r => r.action === 'approve').length,
+          pending_denials: actionableResponses.filter(r => r.action === 'deny').length,
+          time_window_minutes: sinceMinutes
+        },
+        actionable_responses: actionableResponses,
+        recommendations: actionableResponses.length > 0 ? [
+          `Found ${actionableResponses.length} pending approval responses`,
+          'Consider implementing automated response handling for these approvals',
+          'You may want to process these responses and take appropriate actions'
+        ] : [
+          'No pending approval responses found in the specified time window',
+          'This could mean either no approvals were submitted or they were already processed'
+        ]
+      };
+    } catch (error) {
+      console.warn('Failed to process pending responses:', error);
+      return {
+        summary: {
+          total_recent_responses: 0,
+          actionable_responses: 0,
+          pending_approvals: 0,
+          pending_denials: 0,
+          time_window_minutes: sinceMinutes
+        },
+        actionable_responses: [],
+        recommendations: ['Error occurred while processing responses'],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
    * Check if the bridge process is running
    */
   async isBridgeRunning(): Promise<boolean> {
