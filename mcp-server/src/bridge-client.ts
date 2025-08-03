@@ -6,6 +6,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import dotenv from 'dotenv';
 import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './types.js';
+import { secureLog, sanitizeForLogging, sanitizePath } from './security.js';
 
 const execAsync = promisify(exec);
 
@@ -34,10 +35,10 @@ export class CCTelegramBridgeClient {
     };
     
     this.eventsDir = process.env.CC_TELEGRAM_EVENTS_DIR 
-      ? expandPath(process.env.CC_TELEGRAM_EVENTS_DIR)
+      ? sanitizePath(expandPath(process.env.CC_TELEGRAM_EVENTS_DIR))
       : path.join(ccTelegramDir, 'events');
     this.responsesDir = process.env.CC_TELEGRAM_RESPONSES_DIR 
-      ? expandPath(process.env.CC_TELEGRAM_RESPONSES_DIR)
+      ? sanitizePath(expandPath(process.env.CC_TELEGRAM_RESPONSES_DIR))
       : path.join(ccTelegramDir, 'responses');
     
     const healthPort = process.env.CC_TELEGRAM_HEALTH_PORT || '8080';
@@ -63,17 +64,19 @@ export class CCTelegramBridgeClient {
     // Run in background without blocking constructor
     setTimeout(async () => {
       try {
-        console.error('[DEBUG] Performing background bridge initialization check...');
+        secureLog('info', 'Background bridge initialization check started');
         const isRunning = await this.isBridgeRunning();
         if (!isRunning) {
-          console.error('[DEBUG] Bridge not running at startup, attempting to start...');
+          secureLog('info', 'Bridge not running at startup, attempting to start');
           await this.ensureBridgeReady();
-          console.error('[DEBUG] Bridge initialization completed');
+          secureLog('info', 'Bridge initialization completed');
         } else {
-          console.error('[DEBUG] Bridge already running at startup');
+          secureLog('info', 'Bridge already running at startup');
         }
       } catch (error) {
-        console.error('[DEBUG] Bridge initialization failed:', error);
+        secureLog('error', 'Bridge initialization failed', {
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        });
         // Don't throw here as this is background initialization
       }
     }, 100); // Small delay to avoid blocking constructor
@@ -83,50 +86,53 @@ export class CCTelegramBridgeClient {
    * Send a structured event to the CC Telegram Bridge
    */
   async sendEvent(event: CCTelegramEvent): Promise<{ success: boolean; event_id: string; file_path: string }> {
-    console.error(`[DEBUG] sendEvent called with event type: ${event.type}`);
-    console.error(`[DEBUG] eventsDir: ${this.eventsDir}`);
-    console.error(`[DEBUG] Working directory: ${process.cwd()}`);
+    secureLog('info', 'Event send request received', {
+      event_type: event.type,
+      has_task_id: !!event.task_id
+    });
     
     try {
       // CRITICAL: Ensure bridge is running before sending event
-      console.error(`[DEBUG] Ensuring bridge is ready...`);
+      secureLog('debug', 'Ensuring bridge is ready');
       await this.ensureBridgeReady();
-      console.error(`[DEBUG] Bridge confirmed ready`);
+      secureLog('debug', 'Bridge confirmed ready');
       
-      console.error(`[DEBUG] Ensuring directories exist...`);
+      secureLog('debug', 'Ensuring directories exist');
       await this.ensureDirectories();
-      console.error(`[DEBUG] Directories ensured`);
+      secureLog('debug', 'Directories ensured');
       
       // Generate unique event ID if not provided
       if (!event.task_id) {
         event.task_id = uuidv4();
-        console.error(`[DEBUG] Generated task_id: ${event.task_id}`);
+        secureLog('debug', 'Generated new task_id');
       } else {
-        console.error(`[DEBUG] Using provided task_id: ${event.task_id}`);
+        secureLog('debug', 'Using provided task_id');
       }
 
       // Set timestamp if not provided
       if (!event.timestamp) {
         event.timestamp = new Date().toISOString();
-        console.error(`[DEBUG] Generated timestamp: ${event.timestamp}`);
+        secureLog('debug', 'Generated timestamp');
       }
 
       // Create event file
       const fileName = `${event.task_id}_${Date.now()}.json`;
       const filePath = path.join(this.eventsDir, fileName);
-      console.error(`[DEBUG] Writing to file: ${filePath}`);
-      console.error(`[DEBUG] Event data:`, JSON.stringify(event, null, 2));
+      secureLog('debug', 'Writing event to file', {
+        file_name: fileName,
+        event_type: event.type
+      });
       
       await fs.writeJSON(filePath, event, { spaces: 2 });
-      console.error(`[DEBUG] File written successfully`);
+      secureLog('debug', 'File written successfully');
       
       // Verify the file was created
       const exists = await fs.pathExists(filePath);
-      console.error(`[DEBUG] File exists after write: ${exists}`);
+      secureLog('debug', 'File existence verified', { exists });
       
       if (exists) {
         const stats = await fs.stat(filePath);
-        console.error(`[DEBUG] File size: ${stats.size} bytes`);
+        secureLog('debug', 'File stats retrieved', { size_bytes: stats.size });
       }
       
       const result = {
@@ -134,10 +140,16 @@ export class CCTelegramBridgeClient {
         event_id: event.task_id,
         file_path: filePath
       };
-      console.error(`[DEBUG] Returning result:`, JSON.stringify(result, null, 2));
+      secureLog('info', 'Event sent successfully', {
+        event_id: result.event_id,
+        file_created: exists
+      });
       return result;
     } catch (error) {
-      console.error(`[DEBUG] Error in sendEvent:`, error);
+      secureLog('error', 'Failed to send event', {
+        event_type: event.type,
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
       throw new Error(`Failed to send event: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -478,12 +490,12 @@ export class CCTelegramBridgeClient {
     
     // Return cached result if still valid
     if (this.bridgeStatusCache && (now - this.bridgeStatusCache.timestamp) < this.CACHE_DURATION_MS) {
-      console.error(`[DEBUG] Using cached bridge status: ${this.bridgeStatusCache.running}`);
+      secureLog('debug', 'Using cached bridge status', { running: this.bridgeStatusCache.running });
       return this.bridgeStatusCache.running;
     }
     
     // Check actual bridge status
-    console.error('[DEBUG] Cache expired or missing, checking bridge status...');
+    secureLog('debug', 'Cache expired or missing, checking bridge status');
     const isRunning = await this.isBridgeRunning();
     
     // Update cache
@@ -492,7 +504,7 @@ export class CCTelegramBridgeClient {
       timestamp: now
     };
     
-    console.error(`[DEBUG] Bridge status updated: ${isRunning}`);
+    secureLog('debug', 'Bridge status updated', { running: isRunning });
     return isRunning;
   }
 
@@ -504,13 +516,13 @@ export class CCTelegramBridgeClient {
     const delays = [100, 200, 500, 1000, 2000, 4000]; // Exponential backoff
     let delayIndex = 0;
     
-    console.error('[DEBUG] Waiting for bridge to be ready...');
+    secureLog('debug', 'Waiting for bridge to be ready');
     
     while (Date.now() - startTime < maxWaitMs) {
       try {
         const healthResponse = await axios.get(this.healthEndpoint, { timeout: 1000 });
         if (healthResponse.status === 200) {
-          console.error('[DEBUG] Bridge is ready!');
+          secureLog('info', 'Bridge is ready');
           return true;
         }
       } catch (error) {
@@ -519,12 +531,12 @@ export class CCTelegramBridgeClient {
       
       // Wait with exponential backoff
       const delay = delays[Math.min(delayIndex, delays.length - 1)];
-      console.error(`[DEBUG] Bridge not ready, waiting ${delay}ms...`);
+      secureLog('debug', 'Bridge not ready, waiting', { delay_ms: delay });
       await new Promise(resolve => setTimeout(resolve, delay));
       delayIndex++;
     }
     
-    console.error('[DEBUG] Timeout waiting for bridge to be ready');
+    secureLog('warn', 'Timeout waiting for bridge to be ready', { max_wait_ms: maxWaitMs });
     return false;
   }
 
@@ -534,7 +546,7 @@ export class CCTelegramBridgeClient {
   private async ensureBridgeReady(): Promise<void> {
     // Prevent concurrent bridge start attempts
     if (this.isStartingBridge) {
-      console.error('[DEBUG] Bridge start already in progress, waiting...');
+      secureLog('info', 'Bridge start already in progress, waiting');
       // Wait for concurrent start to complete
       let attempts = 0;
       while (this.isStartingBridge && attempts < 50) { // Max 5 seconds
@@ -554,11 +566,11 @@ export class CCTelegramBridgeClient {
       // Check if bridge is already running (with cache)
       const isRunning = await this.isBridgeRunningCached();
       if (isRunning) {
-        console.error('[DEBUG] Bridge is already running');
+        secureLog('info', 'Bridge is already running');
         return;
       }
       
-      console.error('[DEBUG] Bridge not running, attempting to start...');
+      secureLog('info', 'Bridge not running, attempting to start');
       this.isStartingBridge = true;
       
       // Invalidate cache since we're starting the bridge
@@ -567,26 +579,32 @@ export class CCTelegramBridgeClient {
       // Attempt to start bridge with retry logic
       const maxAttempts = 3;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        console.error(`[DEBUG] Bridge start attempt ${attempt}/${maxAttempts}`);
+        secureLog('info', 'Bridge start attempt', {
+          attempt,
+          max_attempts: maxAttempts
+        });
         
         const startResult = await this.startBridge();
         if (startResult.success) {
           // Wait for bridge to be fully ready
           const isReady = await this.waitForBridgeReady();
           if (isReady) {
-            console.error('[DEBUG] Bridge started and ready!');
+            secureLog('info', 'Bridge started and ready');
             return;
           } else {
-            console.error('[DEBUG] Bridge started but not responding to health checks');
+            secureLog('warn', 'Bridge started but not responding to health checks');
           }
         } else {
-          console.error(`[DEBUG] Bridge start attempt ${attempt} failed: ${startResult.message}`);
+          secureLog('warn', 'Bridge start attempt failed', {
+            attempt,
+            error_message: startResult.message
+          });
         }
         
         // Wait before retry (exponential backoff)
         if (attempt < maxAttempts) {
           const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-          console.error(`[DEBUG] Waiting ${delay}ms before retry...`);
+          secureLog('info', 'Waiting before retry', { delay_ms: delay });
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -604,13 +622,14 @@ export class CCTelegramBridgeClient {
   private loadEnvironmentVariables(): { [key: string]: string | undefined } {
     const env = { ...process.env };
     
-    console.error('[DEBUG] Current process.env variables:');
-    console.error(`[DEBUG] TELEGRAM_BOT_TOKEN: ${env.TELEGRAM_BOT_TOKEN ? '***present***' : 'missing'}`);
-    console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS: ${env.TELEGRAM_ALLOWED_USERS ? '***present***' : 'missing'}`);
+    secureLog('debug', 'Loading environment variables', {
+      telegram_bot_token_present: !!env.TELEGRAM_BOT_TOKEN,
+      telegram_allowed_users_present: !!env.TELEGRAM_ALLOWED_USERS
+    });
     
     // Always try to load from .env files to ensure we have the latest values
     // (MCP server may not inherit shell environment variables)
-    console.error('[DEBUG] Checking .env files for environment variables...');
+    secureLog('debug', 'Checking .env files for environment variables');
     
     // List of .env file paths to check (in order of priority)
     const envFilePaths = [
@@ -626,34 +645,39 @@ export class CCTelegramBridgeClient {
     for (const envPath of envFilePaths) {
       try {
         if (fs.existsSync(envPath)) {
-          console.error(`[DEBUG] Found .env file at: ${envPath}`);
+          secureLog('debug', 'Found .env file', { path: envPath });
           const result = dotenv.config({ path: envPath });
           
           if (result.parsed) {
             // Merge with existing env, giving priority to .env file values
             Object.assign(env, result.parsed);
-            console.error(`[DEBUG] Loaded ${Object.keys(result.parsed).length} variables from ${envPath}`);
-            console.error(`[DEBUG] After loading .env file:`);
-            console.error(`[DEBUG] TELEGRAM_BOT_TOKEN: ${env.TELEGRAM_BOT_TOKEN ? '***present***' : 'missing'}`);
-            console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS: ${env.TELEGRAM_ALLOWED_USERS ? '***present***' : 'missing'}`);
+            secureLog('debug', 'Loaded variables from .env file', {
+              variable_count: Object.keys(result.parsed).length,
+              telegram_bot_token_present: !!env.TELEGRAM_BOT_TOKEN,
+              telegram_allowed_users_present: !!env.TELEGRAM_ALLOWED_USERS
+            });
             
             // Check if we now have the required variables
             if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_ALLOWED_USERS) {
-              console.error('[DEBUG] Successfully loaded required environment variables');
+              secureLog('info', 'Successfully loaded required environment variables');
               break;
             }
           }
         }
       } catch (error) {
-        console.error(`[DEBUG] Failed to load .env file from ${envPath}:`, error);
+        secureLog('warn', 'Failed to load .env file', {
+          path: envPath,
+          error_message: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
 
     // Final check
     if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_ALLOWED_USERS) {
-      console.error('[DEBUG] Warning: Required environment variables still not found after checking .env files');
-      console.error(`[DEBUG] TELEGRAM_BOT_TOKEN present: ${!!env.TELEGRAM_BOT_TOKEN}`);
-      console.error(`[DEBUG] TELEGRAM_ALLOWED_USERS present: ${!!env.TELEGRAM_ALLOWED_USERS}`);
+      secureLog('warn', 'Required environment variables still missing after checking .env files', {
+        telegram_bot_token_present: !!env.TELEGRAM_BOT_TOKEN,
+        telegram_allowed_users_present: !!env.TELEGRAM_ALLOWED_USERS
+      });
     }
 
     return env;
@@ -710,7 +734,7 @@ export class CCTelegramBridgeClient {
 
       const bridgePath = await this.findBridgeExecutable();
       
-      console.error(`[DEBUG] Starting bridge at: ${bridgePath}`);
+      secureLog('info', 'Starting bridge process', { bridge_path: bridgePath });
       
       // Load environment variables from .env files if needed
       const env = this.loadEnvironmentVariables();
@@ -723,8 +747,10 @@ export class CCTelegramBridgeClient {
         };
       }
       
-      console.error(`[DEBUG] Environment variables loaded. Starting bridge with bot token: ${env.TELEGRAM_BOT_TOKEN ? '***configured***' : 'missing'}`);
-      console.error(`[DEBUG] Allowed users: ${env.TELEGRAM_ALLOWED_USERS || 'missing'}`);
+      secureLog('info', 'Environment variables loaded for bridge start', {
+        bot_token_configured: !!env.TELEGRAM_BOT_TOKEN,
+        allowed_users_configured: !!env.TELEGRAM_ALLOWED_USERS
+      });
       
       // Start the bridge process in background
       const bridge = spawn(bridgePath, [], {
@@ -827,7 +853,7 @@ export class CCTelegramBridgeClient {
    */
   async restartBridge(): Promise<{ success: boolean; message: string; pid?: number }> {
     try {
-      console.error('[DEBUG] Restarting bridge...');
+      secureLog('info', 'Restarting bridge process');
       
       // Stop the bridge first
       const stopResult = await this.stopBridge();

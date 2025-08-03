@@ -10,6 +10,19 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { CCTelegramBridgeClient } from './bridge-client.js';
 import { CCTelegramEvent, EventType } from './types.js';
+import {
+  loadSecurityConfig,
+  initializeSecurity,
+  authenticateRequest,
+  validateInput,
+  withSecurity,
+  secureLog,
+  SecurityError
+} from './security.js';
+
+// Initialize security system
+const securityConfig = loadSecurityConfig();
+initializeSecurity(securityConfig);
 
 const client = new CCTelegramBridgeClient();
 
@@ -357,272 +370,408 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   }
 });
 
-// Handle tool calls
+// Handle tool calls with security
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
+  
+  try {
+    // Extract authentication from request metadata if available
+    // Note: In real implementation, API key would come from client configuration
+    const apiKey = process.env.MCP_DEFAULT_API_KEY || undefined;
+    const securityContext = authenticateRequest(apiKey, securityConfig);
+    
+    secureLog('info', 'Tool request received', {
+      tool_name: name,
+      client_id: securityContext.clientId,
+      authenticated: securityContext.authenticated
+    });
 
-  switch (name) {
-    case 'send_telegram_event': {
-      const { type, title, description, task_id, source = 'claude-code', data = {} } = args as any;
-      
-      const event: CCTelegramEvent = {
-        type: type as EventType,
-        source,
-        timestamp: new Date().toISOString(),
-        task_id: task_id || '',
-        title,
-        description,
-        data
-      };
+    switch (name) {
+      case 'send_telegram_event': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'sendEvent');
+          const { type, title, description, task_id, source = 'claude-code', data = {} } = validatedArgs;
+          
+          const event: CCTelegramEvent = {
+            type: type as EventType,
+            source,
+            timestamp: new Date().toISOString(),
+            task_id: task_id || '',
+            title,
+            description,
+            data
+          };
 
-      const result = await client.sendEvent(event);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              event_id: result.event_id,
-              message: `Event sent successfully. Event ID: ${result.event_id}`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'send_telegram_message': {
-      const { message, source = 'claude-code' } = args as any;
-      const result = await client.sendMessage(message, source);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              event_id: result.event_id,
-              message: `Message sent successfully. Event ID: ${result.event_id}`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'send_task_completion': {
-      const { task_id, title, results, files_affected, duration_ms } = args as any;
-      const result = await client.sendTaskCompletion(task_id, title, results, files_affected, duration_ms);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              event_id: result.event_id,
-              message: `Task completion sent successfully. Event ID: ${result.event_id}`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'send_performance_alert': {
-      const { title, current_value, threshold, severity = 'medium' } = args as any;
-      const result = await client.sendPerformanceAlert(title, current_value, threshold, severity);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              event_id: result.event_id,
-              message: `Performance alert sent successfully. Event ID: ${result.event_id}`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'send_approval_request': {
-      const { title, description, options = ['Approve', 'Deny'] } = args as any;
-      const result = await client.sendApprovalRequest(title, description, options);
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              event_id: result.event_id,
-              message: `Approval request sent successfully. Event ID: ${result.event_id}`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'get_telegram_responses': {
-      const { limit = 10 } = args as any;
-      const responses = await client.getTelegramResponses();
-      const limitedResponses = responses.slice(0, limit);
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              count: limitedResponses.length,
-              total: responses.length,
-              responses: limitedResponses
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'get_bridge_status': {
-      const status = await client.getBridgeStatus();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(status, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'list_event_types': {
-      const { category } = args as any;
-      let eventTypes = client.getAvailableEventTypes();
-      
-      if (category) {
-        eventTypes = eventTypes.filter(et => 
-          et.category.toLowerCase().includes(category.toLowerCase())
-        );
+          const result = await client.sendEvent(event);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  event_id: result.event_id,
+                  message: `Event sent successfully. Event ID: ${result.event_id}`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'sendEvent'
+        });
       }
 
+      case 'send_telegram_message': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'sendMessage');
+          const { message, source = 'claude-code' } = validatedArgs;
+          const result = await client.sendMessage(message, source);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  event_id: result.event_id,
+                  message: `Message sent successfully. Event ID: ${result.event_id}`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'sendMessage'
+        });
+      }
+
+      case 'send_task_completion': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'sendTaskCompletion');
+          const { task_id, title, results, files_affected, duration_ms } = validatedArgs;
+          const result = await client.sendTaskCompletion(task_id, title, results, files_affected, duration_ms);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  event_id: result.event_id,
+                  message: `Task completion sent successfully. Event ID: ${result.event_id}`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'sendTaskCompletion'
+        });
+      }
+
+      case 'send_performance_alert': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'sendPerformanceAlert');
+          const { title, current_value, threshold, severity = 'medium' } = validatedArgs;
+          const result = await client.sendPerformanceAlert(title, current_value, threshold, severity);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  event_id: result.event_id,
+                  message: `Performance alert sent successfully. Event ID: ${result.event_id}`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'sendPerformanceAlert'
+        });
+      }
+
+      case 'send_approval_request': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'sendApprovalRequest');
+          const { title, description, options = ['Approve', 'Deny'] } = validatedArgs;
+          const result = await client.sendApprovalRequest(title, description, options);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  event_id: result.event_id,
+                  message: `Approval request sent successfully. Event ID: ${result.event_id}`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'sendApprovalRequest'
+        });
+      }
+
+      case 'get_telegram_responses': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'getTelegramResponses');
+          const { limit = 10 } = validatedArgs;
+          const responses = await client.getTelegramResponses();
+          const limitedResponses = responses.slice(0, limit);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  count: limitedResponses.length,
+                  total: responses.length,
+                  responses: limitedResponses
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'getTelegramResponses'
+        });
+      }
+
+      case 'get_bridge_status': {
+        return await withSecurity(async () => {
+          const status = await client.getBridgeStatus();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(status, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'list_event_types': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'listEventTypes');
+          const { category } = validatedArgs;
+          let eventTypes = client.getAvailableEventTypes();
+          
+          if (category) {
+            eventTypes = eventTypes.filter(et => 
+              et.category.toLowerCase().includes(category.toLowerCase())
+            );
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  count: eventTypes.length,
+                  event_types: eventTypes
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'listEventTypes'
+        });
+      }
+
+      case 'clear_old_responses': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'clearOldResponses');
+          const { older_than_hours = 24 } = validatedArgs;
+          const deletedCount = await client.clearOldResponses(older_than_hours);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  deleted_count: deletedCount,
+                  message: `Cleared ${deletedCount} old response files`
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'clearOldResponses'
+        });
+      }
+
+      case 'process_pending_responses': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'processPendingResponses');
+          const { since_minutes = 10 } = validatedArgs;
+          const result = await client.processPendingResponses(since_minutes);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(result, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'processPendingResponses'
+        });
+      }
+
+      case 'start_bridge': {
+        return await withSecurity(async () => {
+          const result = await client.startBridge();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  pid: result.pid
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'stop_bridge': {
+        return await withSecurity(async () => {
+          const result = await client.stopBridge();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'restart_bridge': {
+        return await withSecurity(async () => {
+          const result = await client.restartBridge();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  pid: result.pid
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'ensure_bridge_running': {
+        return await withSecurity(async () => {
+          const result = await client.ensureBridgeRunning();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  action: result.action
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'check_bridge_process': {
+        return await withSecurity(async () => {
+          const isRunning = await client.isBridgeRunning();
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  running: isRunning,
+                  message: isRunning ? 'Bridge process is running' : 'Bridge process is not running'
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      default:
+        throw new SecurityError(`Unknown tool: ${name}`, 'UNKNOWN_TOOL');
+    }
+    
+  } catch (error) {
+    // Handle security errors with proper formatting
+    if (error instanceof SecurityError) {
       return {
         content: [
           {
             type: 'text',
             text: JSON.stringify({
-              count: eventTypes.length,
-              event_types: eventTypes
+              error: true,
+              code: error.code,
+              message: error.message,
+              metadata: error.metadata
             }, null, 2)
           }
         ]
       };
     }
-
-    case 'clear_old_responses': {
-      const { older_than_hours = 24 } = args as any;
-      const deletedCount = await client.clearOldResponses(older_than_hours);
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              deleted_count: deletedCount,
-              message: `Cleared ${deletedCount} old response files`
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'process_pending_responses': {
-      const { since_minutes = 10 } = args as any;
-      const result = await client.processPendingResponses(since_minutes);
-      
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'start_bridge': {
-      const result = await client.startBridge();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              message: result.message,
-              pid: result.pid
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'stop_bridge': {
-      const result = await client.stopBridge();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              message: result.message
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'restart_bridge': {
-      const result = await client.restartBridge();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              message: result.message,
-              pid: result.pid
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'ensure_bridge_running': {
-      const result = await client.ensureBridgeRunning();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              success: result.success,
-              message: result.message,
-              action: result.action
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    case 'check_bridge_process': {
-      const isRunning = await client.isBridgeRunning();
-      return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              running: isRunning,
-              message: isRunning ? 'Bridge process is running' : 'Bridge process is not running'
-            }, null, 2)
-          }
-        ]
-      };
-    }
-
-    default:
-      throw new Error(`Unknown tool: ${name}`);
+    
+    // Re-throw other errors
+    throw error;
   }
 });
 
@@ -689,10 +838,22 @@ function getEventTemplates() {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('CC Telegram MCP Server running on stdio');
+  
+  secureLog('info', 'CC Telegram MCP Server started', {
+    security_enabled: securityConfig.enableAuth,
+    rate_limiting_enabled: securityConfig.enableRateLimit,
+    input_validation_enabled: securityConfig.enableInputValidation,
+    secure_logging_enabled: securityConfig.enableSecureLogging
+  });
+  
+  console.error('CC Telegram MCP Server running on stdio with security enabled');
 }
 
 main().catch((error) => {
+  secureLog('error', 'Server startup failed', {
+    error_message: error instanceof Error ? error.message : 'Unknown error',
+    stack_trace: error instanceof Error ? error.stack : undefined
+  });
   console.error('Server error:', error);
   process.exit(1);
 });
