@@ -21,7 +21,7 @@
 <div align="center">
 
 | Build Success | Security Audit | Code Review |
-|:---:|:---:|:---:|
+| :-: | :-: | :-: |
 | ![Build Success](@docs/assets/screenshot-build-success.png) | ![Security Audit](@docs/assets/screenshot-security-audit.png) | ![Code Review](@docs/assets/screenshot-code-review.png) |
 | **✅ Comprehensive build metrics** | **🛡️ Zero-vulnerability reports** | **👀 Detailed review summaries** |
 | Real-time CI/CD pipeline results with test coverage, bundle optimization, and deployment readiness | OWASP-compliant security scans with vulnerability breakdown and compliance scoring | Pull request analysis with code quality metrics and approval workflows |
@@ -32,9 +32,9 @@
 
 <div align="center">
 
-| Initial Request | Detailed Review | Final Confirmation |
-|:---:|:---:|:---:|
-| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Available Actions](@docs/assets/cctelegram-screenshots-approval-3-optimized.png)<br/>![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) | ![Deployment Details](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) |
+| Initial Request and Response Options | Detailed Review | Final Confirmation |
+| :-: | :-: | :-: |
+| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) | ![Approved Response Confirmation](@docs/assets/cctelegram-screenshots-approval-3-optimized.png)<br/>![Denied Response Confirmation](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) |
 | **🚀 Production Deployment** | **📋 Comprehensive Details** | **✅ Confirmed Response** |
 | Critical changes with rating icons, pre-flight check status, and interactive approve/deny buttons | Enhanced authentication, performance improvements, security patches, and rollback planning | Real-time confirmation with timestamp and deployment tracking |
 
