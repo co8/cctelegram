@@ -1,19 +1,30 @@
-# CC Telegram MCP Server v1.1.1
+# CCTelegram MCP Server v1.1.1
 
-Model Context Protocol (MCP) server for seamless integration between Claude Code and the CC Telegram Bridge. This server provides a comprehensive set of tools that allow Claude Code to send notifications, monitor responses, process approvals intelligently, and interact with Telegram users remotely for effective remote development workflows.
+**Primary Interface for Telegram Development Notifications**
+
+Model Context Protocol (MCP) server that serves as the main interface for Claude Code users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for Telegram notifications, approval processing, and remote development workflows. Users interact exclusively with MCP tools - no manual bridge management required.
 
 ## Features
 
-- **📤 Event Sending**: Send structured events for all development activities with rich formatting
-- **💬 Simple Messaging**: Send quick text messages to Telegram with local timezone stamps
-- **📋 Task Tracking**: Specialized task completion notifications with duration and file tracking
-- **⚡ Performance Monitoring**: Send performance alerts and system status with thresholds
-- **🔄 Interactive Messaging**: Request approvals and get user responses with clean formatting
-- **🧠 Intelligent Response Processing**: **NEW** Automated processing of pending approvals/denials
-- **📊 Bridge Monitoring**: Check bridge health and status with detailed metrics
-- **🎯 Event Templates**: Pre-configured templates for common use cases
-- **🌍 Local Timezone Support**: All timestamps display in Europe/Berlin timezone (UTC+2/CEST)
-- **🛠️ Bridge Management**: Automated start/stop/restart bridge process management
+### 🎯 Primary Interface (MCP-First Architecture)
+- **Zero Configuration Setup**: MCP server handles all bridge management automatically
+- **Hands-Free Operation**: Users only interact with MCP tools - bridge runs transparently
+- **Intelligent Bridge Management**: Automatic start, monitor, restart of CCTelegram Bridge process
+- **Smart Discovery**: Automatically locates bridge executable across installation paths
+
+### 📤 Comprehensive Messaging System
+- **Structured Event Sending**: 44+ event types with rich formatting and context-aware emojis
+- **Concise Message Format**: 40% shorter messages with configurable styles (concise/detailed)
+- **Simple Text Messaging**: Quick notifications with automatic timezone formatting  
+- **Task Completion Tracking**: Specialized notifications with duration, files, and results
+- **Performance Monitoring**: Threshold-based alerts with severity levels and metrics
+
+### 🔄 Interactive & Intelligent Features
+- **Approval Workflows**: Request user approvals with custom button options
+- **Intelligent Response Processing**: Automated analysis of pending approvals/denials
+- **Real-time User Feedback**: Get user responses and interactions with clean formatting
+- **Configurable Timezone Support**: All timestamps display in your configured timezone
+- **Professional Message Design**: "*emoji title* ⏰ timestamp\ndescription" format
 
 ## Quick Installation
 
@@ -36,7 +47,7 @@ The script will:
 ### Prerequisites
 
 - Node.js 18+
-- CC Telegram Bridge running
+- CCTelegram Bridge built (but not running - MCP manages it)
 - Claude Code installed
 
 ### Setup Steps
@@ -62,7 +73,9 @@ Add to your `~/.claude/claude_desktop_config.json`:
       "env": {
         "CC_TELEGRAM_EVENTS_DIR": "~/.cc_telegram/events",
         "CC_TELEGRAM_RESPONSES_DIR": "~/.cc_telegram/responses",
-        "CC_TELEGRAM_HEALTH_PORT": "8080"
+        "CC_TELEGRAM_HEALTH_PORT": "8080",
+        "TELEGRAM_BOT_TOKEN": "your_bot_token",
+        "TELEGRAM_ALLOWED_USERS": "your_user_id"
       }
     }
   }
@@ -71,7 +84,11 @@ Add to your `~/.claude/claude_desktop_config.json`:
 
 4. **Restart Claude Code**
 
+The MCP server will automatically manage the bridge process - no manual startup required!
+
 ## Usage Examples
+
+All interactions happen through MCP tools. The bridge is managed automatically in the background.
 
 ### Send Simple Message
 ```
@@ -197,14 +214,14 @@ The MCP server provides these resources:
 4. Restart Claude Code after configuration changes
 
 ### Events Not Sending
-1. Verify CC Telegram Bridge is running
-2. Check events directory exists: `~/.cc_telegram/events`
-3. Verify bridge health: `@cctelegram get_bridge_status`
+1. Check bridge health: `@cctelegram get_bridge_status`
+2. Ensure bridge automatically starts: `@cctelegram ensure_bridge_running`
+3. Check events directory exists: `~/.cc_telegram/events`
 
 ### No Telegram Notifications
-1. Check Telegram bot token and user ID configuration
-2. Verify CC Telegram Bridge logs for errors
-3. Test with a simple message: `@cctelegram send_telegram_message "test"`
+1. Check Telegram bot token and user ID in MCP configuration
+2. Test bridge connectivity: `@cctelegram send_telegram_message "test"`
+3. Verify bridge auto-starts: `@cctelegram ensure_bridge_running`
 
 ### Permission Issues
 1. Ensure directories are writable: `chmod 755 ~/.cc_telegram`

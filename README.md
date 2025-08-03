@@ -1,8 +1,8 @@
-# CC Telegram Bridge
+# CCTelegram MCP Server
 
-[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](#-comprehensive-event-system) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](#-testing)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](#-comprehensive-event-system) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](#-testing) [![MCP](https://img.shields.io/badge/MCP-v1.1.1-purple.svg)](#-mcp-integration)
 
-A high-performance, secure Rust-based bridge between Claude Code/VSCode and Telegram for comprehensive development monitoring and remote interaction. Features a complete 44+ event type system, MCP server integration for automated management, and intelligent response processing with local timezone support.
+**Model Context Protocol (MCP) server for seamless Telegram integration with Claude Code.** The primary interface for developers - automatically manages the CCTelegram Bridge as a background process while providing comprehensive development monitoring, real-time notifications, and remote interaction capabilities through Telegram.
 
 ## 🚀 Features
 
@@ -14,11 +14,12 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 
 ### 🤖 Intelligent Telegram Integration
 - **Real-time Notifications**: Instant notifications for all development events with rich formatting and emojis
-- **Professional Message Design**: Bold headers, local timezone timestamps (2025-08-03 17:30:45 CEST), and consistent layout
+- **Concise Message Format**: Optimized single-line format with 40% shorter messages while preserving essential information
+- **Configurable Message Styles**: Choose between "concise" (default) or "detailed" formatting via configuration
 - **Interactive Messaging**: Approve actions, respond to prompts, and get status updates through inline keyboards
 - **Smart Response Processing**: Automated detection and handling of user approvals/denials with clean formatting
-- **Local Timezone Support**: All timestamps automatically display in Europe/Berlin timezone (UTC+2/CEST)
-- **Clean Approval Responses**: Professional "Request Approved/Denied" messages without technical IDs
+- **Configurable Timezone Support**: All timestamps display in your configured timezone (default: Europe/Berlin)
+- **Professional Message Design**: Format: "*emoji title* ⏰ timestamp\ndescription" for maximum readability
 - **Fallback Support**: Generic notification system handles unknown event types gracefully
 
 ### 🔒 Enterprise Security & Authentication
@@ -39,13 +40,14 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 - **Deployment Tools**: Performance monitoring scripts, health checks, and deployment validation
 - **Scalable Architecture**: Modular design supporting high-throughput event processing
 
-### 🎛️ Model Context Protocol (MCP) Integration (v1.1.1)
-- **Complete Claude Code Integration**: Native MCP server for seamless Claude Code workflow integration
-- **Automated Bridge Management**: Start, stop, and restart the bridge automatically via MCP tools
+### 🎛️ Model Context Protocol (MCP) Server (v1.1.1) - Primary Interface
+- **Claude Code Native Integration**: Primary interface for developers - MCP server manages everything automatically
+- **Automated Bridge Management**: Automatically starts, monitors, and manages the CCTelegram Bridge process
+- **Hands-Free Operation**: Users interact only with MCP tools - bridge runs transparently in background
 - **Intelligent Response Processing**: Process pending approvals/denials with actionable insights
-- **Health Monitoring**: Automatic health checks and process status verification  
-- **Smart Discovery**: Automatically finds bridge executable in multiple locations
-- **Background Operation**: Detached process spawning for hands-free remote development
+- **Health Monitoring**: Continuous bridge health checks with automatic restart capabilities
+- **Smart Discovery**: Automatically locates bridge executable across multiple installation paths
+- **Zero Configuration**: MCP server handles all bridge configuration and lifecycle management
 
 **Available MCP Tools:**
 - `send_telegram_message` - Send simple notifications
@@ -60,15 +62,16 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 - `ensure_bridge_running` - Ensure bridge is running, start if needed
 - `clear_old_responses` - Clean up old response files
 
-**Benefits:** Complete remote development workflow with automated management, intelligent response processing, and hands-free operation. Perfect for remote work scenarios!
+**Benefits:** Complete remote development workflow with zero-configuration setup. MCP server handles all complexity - users simply call MCP tools and receive Telegram notifications. Perfect for remote work and development monitoring!
 
-### 🆕 Latest Improvements (v0.4.3)
-- **Enhanced Message Formatting**: Clean approval responses without technical IDs for better UX
-- **Local Timezone Support**: All timestamps display in Europe/Berlin timezone (UTC+2/CEST) 
-- **Intelligent Response Processing**: New `process_pending_responses` tool for automated approval handling
-- **Professional Approval Flow**: "Request Approved/Denied" messages with local timestamps
-- **Improved Bridge Management**: More reliable process management and health monitoring
-- **Enhanced MCP Integration**: Expanded tool suite with better error handling and status reporting
+### 🆕 Latest Improvements (v0.4.4)
+- **Concise Messaging System**: Configurable message styles with 40% reduction in message length
+- **Smart Text Truncation**: Intelligent title (20-25 chars) and description (40-60 chars) limits
+- **Optimized Message Format**: Single-line "*emoji title* ⏰ timestamp\ndescription" format
+- **Configurable Timezone Support**: Set custom timezone via CC_TELEGRAM_TIMEZONE environment variable
+- **Message Style Control**: Toggle between "concise" (default) and "detailed" via CC_TELEGRAM_MESSAGE_STYLE
+- **Enhanced User Experience**: Shorter, more readable messages while preserving essential information
+- **MCP-First Architecture**: Users interact with MCP server, bridge managed automatically in background
 
 ## 📋 Prerequisites
 
@@ -225,6 +228,10 @@ cc-telegram/
 TELEGRAM_BOT_TOKEN="your_bot_token"
 TELEGRAM_ALLOWED_USERS="123456789,987654321"  # Comma-separated user IDs
 
+# Optional customization
+CC_TELEGRAM_TIMEZONE="America/New_York"        # Default: Europe/Berlin
+CC_TELEGRAM_MESSAGE_STYLE="concise"            # Options: concise|detailed
+
 # Optional paths
 CC_TELEGRAM_EVENTS_DIR="/custom/events/path"
 CC_TELEGRAM_RESPONSES_DIR="/custom/responses/path"
@@ -238,6 +245,8 @@ The application creates `~/.cc_telegram/config.toml` on first run. **Note**: Sen
 [telegram]
 # Configuration loaded from environment variables:
 # TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USERS
+timezone = "Europe/Berlin"           # Configurable timezone
+message_style = "concise"            # Options: "concise" (default), "detailed"
 
 [paths]
 # Paths loaded from environment variables:
@@ -279,8 +288,8 @@ health_endpoint = "/health"
 # Development mode with detailed logging
 RUST_LOG=info cargo run
 
-# Via MCP server (recommended for Claude Code users)
-# No manual startup needed - bridge starts automatically when needed
+# Via MCP server (RECOMMENDED - primary interface)
+# Bridge is managed automatically - use MCP tools for all interactions
 ```
 
 ### Event Processing
