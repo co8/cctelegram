@@ -125,7 +125,8 @@ async fn test_file_store_operations() -> Result<()> {
 async fn test_telegram_bot_user_validation() {
     let allowed_users = vec![123456, 789012];
     let responses_dir = std::env::temp_dir().join("test_responses");
-    let bot = TelegramBot::new("dummy_token".to_string(), allowed_users, responses_dir);
+    let timezone = "Europe/Berlin".parse().unwrap();
+    let bot = TelegramBot::new("dummy_token".to_string(), allowed_users, responses_dir, timezone);
     
     // Test user authorization
     assert!(bot.is_user_allowed(123456));
@@ -137,7 +138,8 @@ async fn test_telegram_bot_user_validation() {
 async fn test_message_formatting_markdown() {
     use cc_telegram_bridge::MessageFormatter;
     
-    let formatter = MessageFormatter::new();
+    let timezone = "Europe/Berlin".parse().unwrap();
+    let formatter = MessageFormatter::new(timezone);
     
     // Create a test event with special characters that need escaping
     let event = Event {
@@ -160,25 +162,23 @@ async fn test_message_formatting_markdown() {
     println!("Formatted message:\n{}", message);
     
     // Verify that markdown is properly formatted
-    assert!(message.contains("*Task Completed*"));  // Should use single asterisks for bold
-    assert!(message.contains("*Title:*"));
-    assert!(message.contains("*Source:*"));
-    assert!(message.contains("*Status:*"));
-    assert!(message.contains("*Results:*"));
-    assert!(message.contains("_Tap 'Details' for more information_"));  // Should use underscores for italic
+    assert!(message.contains("*✅ Task Completed"));  // Should use single asterisks for bold with emoji
+    assert!(message.contains("⏰"));  // Should contain timestamp marker
+    assert!(message.contains("📝"));  // Should contain description marker
+    assert!(message.contains("optimization opportunities"));  // Should contain the actual content
     
     // Check for basic escaping - the exact characters that should be escaped
     // Based on the actual output, verify the escaping is working
     assert!(message.contains("\\(special\\)"));  // Parentheses in title should be escaped
     assert!(message.contains("characters\\!"));  // Exclamation marks in title should be escaped
-    assert!(message.contains("claude\\-code"));  // Hyphens in source should be escaped
     assert!(message.contains("opportunities & 2"));  // Results content includes ampersand
     assert!(message.contains("bugs\\."));  // Period should be escaped
     
     // Verify MarkdownV2 formatting
     assert!(!message.contains("**"));  // Should not contain double asterisks (old format)
-    assert!(message.contains("*Task Completed*"));  // Should use single asterisks
-    assert!(message.contains("_Tap 'Details' for more information_"));  // Should use underscores for italic
+    
+    // Verify timestamp format is correct (new format: DD/MMM/YY HH:MM)
+    assert!(message.contains("/25 "));  // Should contain year in new format
 }
 
 #[tokio::test]

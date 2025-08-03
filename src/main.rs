@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, Context};
 use tracing::{info, warn, error};
 use tokio::signal;
 use std::sync::Arc;
@@ -68,11 +68,16 @@ async fn main() -> Result<()> {
     // Initialize event processor
     let event_processor = EventProcessor::new(&config.paths.events_dir);
 
+    // Parse timezone from config
+    let timezone: chrono_tz::Tz = config.telegram.timezone.parse()
+        .with_context(|| format!("Invalid timezone: {}", config.telegram.timezone))?;
+
     // Initialize Telegram bot
     let telegram_bot = Arc::new(TelegramBot::new(
         config.telegram.telegram_bot_token.clone(),
         config.telegram.telegram_allowed_users.clone(),
         config.paths.responses_dir.clone(),
+        timezone,
     ));
 
     // Initialize file watcher

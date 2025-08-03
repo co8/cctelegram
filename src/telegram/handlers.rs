@@ -1,6 +1,6 @@
 use crate::events::types::ResponseEvent;
 use chrono::{Utc, TimeZone};
-use chrono_tz::Europe::Berlin;
+use chrono_tz::Tz;
 use std::collections::HashMap;
 use anyhow::Result;
 use tracing::info;
@@ -8,12 +8,13 @@ use tracing::info;
 #[allow(dead_code)]
 pub struct CallbackHandler {
     responses_dir: std::path::PathBuf,
+    timezone: Tz,
 }
 
 #[allow(dead_code)]
 impl CallbackHandler {
-    pub fn new(responses_dir: std::path::PathBuf) -> Self {
-        Self { responses_dir }
+    pub fn new(responses_dir: std::path::PathBuf, timezone: Tz) -> Self {
+        Self { responses_dir, timezone }
     }
 
     pub async fn handle_callback(&self, callback_data: &str, user_id: i64) -> Result<String> {
@@ -53,8 +54,8 @@ impl CallbackHandler {
         self.write_response_file(&response_event).await?;
 
         let utc_now = Utc::now();
-        let local_time = Berlin.from_utc_datetime(&utc_now.naive_utc());
-        let timestamp = local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = local_time.format("%d/%b/%y %H:%M").to_string();
         let message = match response {
             "approve" => format!("*✅ Request Approved*\n⏰ {}", timestamp),
             "deny" => format!("*❌ Request Denied*\n⏰ {}", timestamp),
@@ -81,8 +82,8 @@ impl CallbackHandler {
         self.write_response_file(&response_event).await?;
 
         let utc_now = Utc::now();
-        let local_time = Berlin.from_utc_datetime(&utc_now.naive_utc());
-        let timestamp = local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = local_time.format("%d/%b/%y %H:%M").to_string();
         info!("User {} acknowledged task {}", user_id, task_id);
         Ok(format!("*👍 Notification Acknowledged*\n⏰ {}", timestamp))
     }

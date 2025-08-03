@@ -21,6 +21,12 @@ pub struct TelegramConfig {
     pub telegram_bot_token: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub telegram_allowed_users: Vec<i64>,
+    #[serde(default = "default_timezone")]
+    pub timezone: String,
+}
+
+fn default_timezone() -> String {
+    "Europe/Berlin".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -60,6 +66,7 @@ impl Default for Config {
             telegram: TelegramConfig {
                 telegram_bot_token: String::new(),
                 telegram_allowed_users: Vec::new(),
+                timezone: default_timezone(),
             },
             paths: PathsConfig {
                 events_dir: cc_telegram_dir.join("events"),
@@ -133,6 +140,7 @@ impl Config {
         content.push_str("# Optional environment variables:\n");
         content.push_str("#   CC_TELEGRAM_EVENTS_DIR=\"/custom/events/path\"\n");
         content.push_str("#   CC_TELEGRAM_RESPONSES_DIR=\"/custom/responses/path\"\n");
+        content.push_str("#   CC_TELEGRAM_TIMEZONE=\"America/New_York\"  # Default: Europe/Berlin\n");
         content.push_str("\n");
         
         let config_content = toml::to_string_pretty(self)
@@ -172,6 +180,14 @@ impl Config {
                         warn!("Failed to parse TELEGRAM_ALLOWED_USERS: {}", e);
                     }
                 }
+            }
+        }
+
+        // Load timezone from environment
+        if let Ok(timezone) = std::env::var("CC_TELEGRAM_TIMEZONE") {
+            if !timezone.is_empty() {
+                self.telegram.timezone = timezone;
+                info!("Loaded timezone from environment: {}", self.telegram.timezone);
             }
         }
 

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use tracing::{info, warn, error};
 use chrono::{Utc, TimeZone};
-use chrono_tz::Europe::Berlin;
+use chrono_tz::Tz;
 use serde_json;
 use tokio::fs;
 use crate::events::types::{Event, EventType};
@@ -17,6 +17,7 @@ pub struct TelegramBot {
     allowed_users: HashSet<i64>,
     formatter: MessageFormatter,
     responses_dir: PathBuf,
+    timezone: Tz,
 }
 
 #[derive(serde::Serialize)]
@@ -53,12 +54,13 @@ impl TelegramBot {
             .collect()
     }
 
-    pub fn new(token: String, allowed_users: Vec<i64>, responses_dir: PathBuf) -> Self {
+    pub fn new(token: String, allowed_users: Vec<i64>, responses_dir: PathBuf, timezone: Tz) -> Self {
         Self {
             bot: Bot::new(token),
             allowed_users: allowed_users.into_iter().collect(),
-            formatter: MessageFormatter::new(),
+            formatter: MessageFormatter::new(timezone),
             responses_dir,
+            timezone,
         }
     }
 
@@ -365,8 +367,8 @@ impl TelegramBot {
             
             // Parse callback data to determine action
             let utc_now = Utc::now();
-            let local_time = Berlin.from_utc_datetime(&utc_now.naive_utc());
-            let timestamp = Self::escape_markdown_v2(&local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string());
+            let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+            let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M").to_string());
             let response_message = if callback_data.starts_with("approve_") {
                 format!("*✅ Request Approved*\n⏰ {}", timestamp)
             } else if callback_data.starts_with("deny_") {

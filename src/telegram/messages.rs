@@ -1,12 +1,18 @@
 use crate::events::types::Event;
 use chrono::{DateTime, Utc, TimeZone};
-use chrono_tz::Europe::Berlin;
+use chrono_tz::Tz;
 
-pub struct MessageFormatter;
+pub struct MessageFormatter {
+    timezone: Tz,
+}
 
 impl MessageFormatter {
-    pub fn new() -> Self {
-        Self
+    pub fn new(timezone: Tz) -> Self {
+        Self { timezone }
+    }
+    
+    pub fn new_with_default() -> Self {
+        Self::new("Europe/Berlin".parse().unwrap())
     }
 
     /// Escape special characters for MarkdownV2
@@ -214,8 +220,8 @@ impl MessageFormatter {
     }
 
     fn format_timestamp(&self, timestamp: &DateTime<Utc>) -> String {
-        let local_time = Berlin.from_utc_datetime(&timestamp.naive_utc());
-        local_time.format("%Y-%m-%d %H:%M:%S %Z").to_string()
+        let local_time = self.timezone.from_utc_datetime(&timestamp.naive_utc());
+        local_time.format("%d/%b/%y %H:%M").to_string()
     }
 
     fn extract_progress_info(&self, event: &Event) -> String {
