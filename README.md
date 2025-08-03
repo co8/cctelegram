@@ -1,4 +1,4 @@
-![CCTelegram GitHub Header](cctelegram-github-header.jpg)
+![CCTelegram GitHub Header](@docs/assets/cctelegram-github-header-optimized.jpg)
 
 # CCTelegram MCP Server
 
@@ -15,6 +15,18 @@
 **CCTelegram MCP Server** - Connect to Claude Code / VS Code<br> **CCTelegram Bridge** - Built in Rust and sends/receives messages
 
 🛡️ **Security Score: 8.5/10 (LOW RISK)** | 🔒 **OWASP Top 10 2021: 100% Compliant** | ✅ **Zero Critical Vulnerabilities**
+
+## 📱 Live Notifications
+
+<div align="center">
+
+| Build Success | Security Audit | Code Review |
+|:---:|:---:|:---:|
+| ![Build Success](@docs/assets/screenshot-build-success.png) | ![Security Audit](@docs/assets/screenshot-security-audit.png) | ![Code Review](@docs/assets/screenshot-code-review.png) |
+| **✅ Comprehensive build metrics** | **🛡️ Zero-vulnerability reports** | **👀 Detailed review summaries** |
+| Real-time CI/CD pipeline results with test coverage, bundle optimization, and deployment readiness | OWASP-compliant security scans with vulnerability breakdown and compliance scoring | Pull request analysis with code quality metrics and approval workflows |
+
+</div>
 
 ---
 
