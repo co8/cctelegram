@@ -34,7 +34,7 @@
 
 | Initial Request | Detailed Review | Final Confirmation |
 |:---:|:---:|:---:|
-| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Deployment Details](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) | ![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) |
+| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Available Actions](@docs/assets/cctelegram-screenshots-approval-3-optimized.png)<br/>![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) | ![Deployment Details](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) |
 | **🚀 Production Deployment** | **📋 Comprehensive Details** | **✅ Confirmed Response** |
 | Critical changes with rating icons, pre-flight check status, and interactive approve/deny buttons | Enhanced authentication, performance improvements, security patches, and rollback planning | Real-time confirmation with timestamp and deployment tracking |
 
