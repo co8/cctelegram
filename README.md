@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-**Enterprise-grade development notifications** for [Telegram](https://telegram.org/). Get real-time notifications about builds, tests, deployments, and code changes with **comprehensive security**, **OWASP compliance**, and zero-config MCP integration with [Claude Code](https://github.com/anthropics/claude-code).
+**MCP for Notifications over [Telegram](https://telegram.org/) from [Claude Code](https://github.com/anthropics/claude-code)**. Get real-time notifications about builds, tests, deployments, and code changes with **comprehensive security**, **OWASP compliance**
 
 🛡️ **Security Score: 8.5/10 (LOW RISK)** | 🔒 **OWASP Top 10 2021: 100% Compliant** | ✅ **Zero Critical Vulnerabilities**
 
@@ -15,10 +15,12 @@
 ## ⚡ 30-Second Install
 
 ### 1. Get [Telegram](https://telegram.org/) Ready
+
 - Create bot with [@BotFather](https://t.me/botfather): `/newbot`
 - Get your user ID from [@userinfobot](https://t.me/userinfobot)
 
 ### 2. Install MCP Server
+
 ```bash
 # Navigate to MCP server and install
 cd mcp-server
@@ -31,20 +33,21 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 ```
 
 ### 3. Test with [Claude Code](https://github.com/anthropics/claude-code)
+
 ```bash
 # Restart Claude Code, then test with MCP tools:
 @cctelegram send_telegram_message "🎉 CCTelegram MCP Server Working!"
 ```
 
 **🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**  
-*The bridge runs automatically in the background - no manual management needed.*
+_The bridge runs automatically in the background - no manual management needed._
 
 ---
 
 ## 🎯 Key Features
 
 - **🔔 44+ Event Types** - Complete development lifecycle monitoring
-- **🔌 MCP Server Integration** - Zero-config [Claude Code](https://github.com/anthropics/claude-code) integration  
+- **🔌 MCP Server Integration** - Zero-config [Claude Code](https://github.com/anthropics/claude-code) integration
 - **📱 Real-time [Telegram](https://telegram.org/) Notifications** - Instant alerts with rich formatting
 - **✅ Interactive Approvals** - Approve deployments, code reviews via [Telegram](https://telegram.org/)
 - **🛡️ Enterprise Security** - **NEW**: OWASP-compliant, zero critical vulnerabilities
@@ -62,7 +65,7 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 cctelegram/
 ├── @docs/                     # 📚 All Documentation
 │   ├── setup/                 # 🚀 Installation & Setup
-│   ├── reference/             # 📖 Technical References  
+│   ├── reference/             # 📖 Technical References
 │   ├── security/              # 🛡️ Security Audits
 │   └── development/           # 🔧 Contributing & Dev
 ├── @test/                     # 🧪 Testing Framework
@@ -79,7 +82,7 @@ cctelegram/
 ## 📚 Documentation
 
 | Guide | Description |
-|-------|-------------|
+| --- | --- |
 | 🚀 **[Complete Setup Guide](@docs/setup/QUICKSTART.md)** | Detailed installation, configuration, and deployment |
 | 🔧 **[Features & Capabilities](@docs/reference/FEATURES.md)** | All features, API reference, event types, monitoring |
 | 🔒 **[Security & Compliance](@docs/reference/SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
@@ -94,10 +97,11 @@ cctelegram/
 ## 💡 Quick Example
 
 **Task Completion Notification:**
+
 ```bash
 # Your build system creates this file when a task completes:
 echo '{
-  "type": "task_completion", 
+  "type": "task_completion",
   "source": "ci_system",
   "title": "✅ Deploy Complete",
   "description": "Production deployment v2.1.0 successful"
@@ -108,11 +112,12 @@ echo '{
 ```
 
 **Performance Alert:**
+
 ```bash
 # Monitoring system triggers alert:
 echo '{
   "type": "performance_alert",
-  "title": "⚠️ Memory High", 
+  "title": "⚠️ Memory High",
   "description": "Server memory usage: 85% (threshold: 80%)"
 }' > ~/.cc_telegram/events/memory-alert.json
 
@@ -124,6 +129,7 @@ echo '{
 ## ⚙️ Alternative Installation
 
 **Manual Bridge Setup (Advanced Users):**
+
 ```bash
 # Download and extract latest bridge (v0.5.1)
 curl -L https://github.com/co8/cctelegram/releases/download/v0.5.1/cctelegram-bridge-v0.5.1-source.tar.gz -o cctelegram-bridge-v0.5.1-source.tar.gz
@@ -142,9 +148,10 @@ echo '{"type": "task_completion", "title": "Bridge Test", "description": "Manual
 ```
 
 **Build from Source:**
+
 ```bash
 git clone https://github.com/co8/cctelegram.git
-cd cctelegram  
+cd cctelegram
 cargo build --release
 ./target/release/cctelegram-bridge
 ```
