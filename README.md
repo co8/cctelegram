@@ -1,3 +1,5 @@
+![CCTelegram GitHub Header](cctelegram-github-header.jpg)
+
 # CCTelegram MCP Server
 
 [![Bridge Version](https://img.shields.io/badge/Bridge-v0.5.1-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.5.1) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.3.0-4ECDC4?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
