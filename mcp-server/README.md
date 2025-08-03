@@ -12,19 +12,15 @@ Model Context Protocol (MCP) server that serves as the main interface for [Claud
 - **Intelligent Bridge Management**: Automatic start, monitor, restart of CCTelegram Bridge process
 - **Smart Discovery**: Automatically locates bridge executable across installation paths
 
-### 📤 Comprehensive Notification System
-- **Structured Event Notifications**: Send notifications about 44+ event types with rich formatting and context-aware emojis
-- **Concise Message Format**: 40% shorter messages with configurable styles (concise/detailed)
-- **Simple Text Notifications**: Send quick status updates with automatic timezone formatting  
-- **Task Status Notifications**: Send specialized notifications about task completion with duration, files, and results
-- **Performance Alert Notifications**: Send threshold-based alerts with severity levels and metrics
+### 📤 MCP Tools Available
+- **Event Notifications** - 44+ event types with rich formatting
+- **Task Completion** - Detailed task notifications with results
+- **Performance Alerts** - Threshold-based monitoring alerts
+- **Approval Workflows** - Interactive approval requests
+- **Response Processing** - Automated approval/denial analysis
+- **Bridge Management** - Health monitoring and auto-restart
 
-### 🔄 Interactive & Intelligent Features
-- **Approval Workflows**: Request user approvals with custom button options
-- **Intelligent Response Processing**: Automated analysis of pending approvals/denials
-- **Real-time User Feedback**: Get user responses and interactions with clean formatting
-- **Configurable Timezone Support**: All timestamps display in your configured timezone
-- **Professional Message Design**: "*emoji title* ⏰ timestamp\ndescription" format
+→ **[See all features & capabilities](../docs/FEATURES.md)**
 
 ## Quick Installation
 
