@@ -5,6 +5,60 @@ All notable changes to CC Telegram Bridge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-08-03
+
+### 🔧 Fixed
+- **Bridge**: Minor version update for compatibility with MCP Server v1.3.0
+- System stability improvements after MCP protocol fixes
+
+### 🛠️ Dependencies
+- Bridge: v0.5.0 → v0.5.1
+- Compatible with MCP Server v1.3.0
+
+---
+
+## [0.5.0] - 2025-08-03
+
+### 🚀 Added  
+- **MCP Server Integration**: Complete Model Context Protocol server implementation
+- **Tool Integration**: 14 MCP tools for Claude Code integration
+- **Event Management**: Advanced event processing with multiple event types
+- **Security Enhancements**: Comprehensive path validation and security audit features
+
+### 🔧 Fixed
+- **MCP Protocol Compatibility**: Updated SDK from v0.4.0 to v1.17.1
+- **Capability Declarations**: Added proper MCP server capability registration
+- **Security Path Validation**: Fixed trusted directory path handling
+- **JSON Event Processing**: Resolved parsing errors for malformed event files
+
+### 🛠️ Technical Updates
+- **MCP Server**: v1.2.0 → v1.3.0
+- **Bridge**: Initial production release v0.5.0
+- **SDK Dependencies**: @modelcontextprotocol/sdk ^1.17.1
+
+### 📱 MCP Tools Added
+- `send_telegram_event` - Structured event notifications
+- `send_telegram_message` - Simple text messaging  
+- `send_task_completion` - Task completion notifications with results
+- `send_performance_alert` - Performance threshold alerts
+- `send_approval_request` - Interactive approval workflows
+- `get_telegram_responses` - Retrieve user responses
+- `get_bridge_status` - System health and status monitoring
+- `list_event_types` - Available event type documentation
+- `clear_old_responses` - Response file cleanup
+- `process_pending_responses` - Batch response processing
+- `start_bridge`, `stop_bridge`, `restart_bridge` - Bridge lifecycle management
+- `ensure_bridge_running` - Automatic bridge management
+- `check_bridge_process` - Process monitoring
+
+### 🔒 Security Improvements
+- Trusted path validation for secure file operations
+- Environment variable authentication controls  
+- Path traversal protection with whitelist validation
+- Secure event file processing with JSON validation
+
+---
+
 ## [0.1.0] - 2024-07-31
 
 ### 🎉 Initial Release
