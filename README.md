@@ -32,11 +32,11 @@
 
 <div align="center">
 
-| Initial Request | Detailed Review | Approval Actions | Final Confirmation |
-|:---:|:---:|:---:|:---:|
-| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Deployment Details](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) | ![Available Actions](@docs/assets/cctelegram-screenshots-approval-3-optimized.png) | ![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) |
-| **🚀 Production Deployment** | **📋 Comprehensive Details** | **⚡ Instant Actions** | **✅ Confirmed Response** |
-| Critical changes with rating icons, pre-flight check status, and priority indicators | Enhanced authentication, performance improvements, security patches, and rollback planning | Interactive approve/deny buttons with consistent visual hierarchy | Real-time confirmation with timestamp and deployment tracking |
+| Initial Request | Detailed Review | Final Confirmation |
+|:---:|:---:|:---:|
+| ![Approval Request](@docs/assets/cctelegram-screenshots-approval-1-optimized.png) | ![Deployment Details](@docs/assets/cctelegram-screenshots-approval-2-optimized.png) | ![Request Approved](@docs/assets/cctelegram-screenshots-approval-4-optimized.png) |
+| **🚀 Production Deployment** | **📋 Comprehensive Details** | **✅ Confirmed Response** |
+| Critical changes with rating icons, pre-flight check status, and interactive approve/deny buttons | Enhanced authentication, performance improvements, security patches, and rollback planning | Real-time confirmation with timestamp and deployment tracking |
 
 </div>
 
