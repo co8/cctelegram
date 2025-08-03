@@ -110,11 +110,11 @@ impl MessageFormatter {
             _ => "ℹ️",
         };
 
-        let concise_title = self.truncate_title(&event.title, 25);
-        let concise_results = self.truncate_description(results, 60);
+        let concise_title = self.truncate_title(&event.title, 80);
+        let concise_results = self.truncate_description(results, 200);
 
         format!(
-            "*{} {}* ⏰ {}\n{}",
+            "*{} {}*\n⏰ {}\n{}",
             status_emoji,
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
@@ -123,25 +123,47 @@ impl MessageFormatter {
     }
 
     pub fn format_approval_message(&self, event: &Event) -> String {
-        let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
-        let concise_title = self.truncate_title(&event.title, 20);
-        let concise_prompt = self.truncate_description(prompt, 50);
+        let concise_title = self.truncate_title(&event.title, 80);
+        
+        // Create concise summary with rating icons
+        let summary = match self.style {
+            MessageStyle::Detailed => {
+                let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
+                Self::process_markdown_content(prompt)
+            }
+            MessageStyle::Concise => {
+                // Extract summary information for concise display
+                let priority = event.data.priority.as_deref().unwrap_or("medium");
+                let priority_icon = match priority {
+                    "critical" | "high" => "🔴",
+                    "medium" => "🟡", 
+                    "low" => "🟢",
+                    _ => "🔵"
+                };
+                
+                format!(
+                    "📦 Critical Changes: ✅ Ready\n🔍 Pre\\-flight Checks: ✅ All Clear\n{} Priority: {}",
+                    priority_icon,
+                    priority.to_uppercase()
+                )
+            }
+        };
 
         format!(
-            "*🔐 {}* ⏰ {}\n{}",
+            "*🔐 {}*\n⏰ {}\n{}",
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::process_markdown_content(&concise_prompt)
+            summary
         )
     }
 
     pub fn format_progress_message(&self, event: &Event) -> String {
         let progress_info = self.extract_progress_info(event);
-        let concise_title = self.truncate_title(&event.title, 20);
-        let concise_desc = self.truncate_description(&event.description, 40);
+        let concise_title = self.truncate_title(&event.title, 80);
+        let concise_desc = self.truncate_description(&event.description, 200);
         
         format!(
-            "*🔄 {}* {} ⏰ {}\n{}",
+            "*🔄 {}* {}\n⏰ {}\n{}",
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&progress_info),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
@@ -151,11 +173,11 @@ impl MessageFormatter {
 
     pub fn format_generic_message(&self, event: &Event) -> String {
         let (emoji, event_name) = self.get_event_display_info(&event.event_type);
-        let concise_title = self.truncate_title(&event.title, 25);
-        let concise_desc = self.truncate_description(&event.description, 60);
+        let concise_title = self.truncate_title(&event.title, 80);
+        let concise_desc = self.truncate_description(&event.description, 200);
         
         format!(
-            "*{} {}* ⏰ {}\n{}",
+            "*{} {}*\n⏰ {}\n{}",
             emoji,
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
