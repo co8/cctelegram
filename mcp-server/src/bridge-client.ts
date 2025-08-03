@@ -14,6 +14,11 @@ export class CCTelegramBridgeClient {
   private responsesDir: string;
   private healthEndpoint: string;
   private metricsEndpoint: string;
+  
+  // Bridge status caching
+  private bridgeStatusCache: { running: boolean; timestamp: number } | null = null;
+  private readonly CACHE_DURATION_MS = 30000; // 30 seconds
+  private isStartingBridge = false; // Prevent concurrent starts
 
   constructor() {
     const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
@@ -41,11 +46,37 @@ export class CCTelegramBridgeClient {
 
     // Ensure directories exist
     this.ensureDirectories();
+    
+    // Initialize bridge in background (non-blocking)
+    this.initializeBridge();
   }
 
   private async ensureDirectories(): Promise<void> {
     await fs.ensureDir(this.eventsDir);
     await fs.ensureDir(this.responsesDir);
+  }
+
+  /**
+   * Initialize bridge at startup (non-blocking background check)
+   */
+  private initializeBridge(): void {
+    // Run in background without blocking constructor
+    setTimeout(async () => {
+      try {
+        console.error('[DEBUG] Performing background bridge initialization check...');
+        const isRunning = await this.isBridgeRunning();
+        if (!isRunning) {
+          console.error('[DEBUG] Bridge not running at startup, attempting to start...');
+          await this.ensureBridgeReady();
+          console.error('[DEBUG] Bridge initialization completed');
+        } else {
+          console.error('[DEBUG] Bridge already running at startup');
+        }
+      } catch (error) {
+        console.error('[DEBUG] Bridge initialization failed:', error);
+        // Don't throw here as this is background initialization
+      }
+    }, 100); // Small delay to avoid blocking constructor
   }
 
   /**
@@ -57,6 +88,11 @@ export class CCTelegramBridgeClient {
     console.error(`[DEBUG] Working directory: ${process.cwd()}`);
     
     try {
+      // CRITICAL: Ensure bridge is running before sending event
+      console.error(`[DEBUG] Ensuring bridge is ready...`);
+      await this.ensureBridgeReady();
+      console.error(`[DEBUG] Bridge confirmed ready`);
+      
       console.error(`[DEBUG] Ensuring directories exist...`);
       await this.ensureDirectories();
       console.error(`[DEBUG] Directories ensured`);
@@ -345,6 +381,134 @@ export class CCTelegramBridgeClient {
       } catch (procError) {
         return false;
       }
+    }
+  }
+
+  /**
+   * Check bridge status with caching to avoid excessive health checks
+   */
+  private async isBridgeRunningCached(): Promise<boolean> {
+    const now = Date.now();
+    
+    // Return cached result if still valid
+    if (this.bridgeStatusCache && (now - this.bridgeStatusCache.timestamp) < this.CACHE_DURATION_MS) {
+      console.error(`[DEBUG] Using cached bridge status: ${this.bridgeStatusCache.running}`);
+      return this.bridgeStatusCache.running;
+    }
+    
+    // Check actual bridge status
+    console.error('[DEBUG] Cache expired or missing, checking bridge status...');
+    const isRunning = await this.isBridgeRunning();
+    
+    // Update cache
+    this.bridgeStatusCache = {
+      running: isRunning,
+      timestamp: now
+    };
+    
+    console.error(`[DEBUG] Bridge status updated: ${isRunning}`);
+    return isRunning;
+  }
+
+  /**
+   * Wait for bridge to be ready by polling health endpoint
+   */
+  private async waitForBridgeReady(maxWaitMs = 10000): Promise<boolean> {
+    const startTime = Date.now();
+    const delays = [100, 200, 500, 1000, 2000, 4000]; // Exponential backoff
+    let delayIndex = 0;
+    
+    console.error('[DEBUG] Waiting for bridge to be ready...');
+    
+    while (Date.now() - startTime < maxWaitMs) {
+      try {
+        const healthResponse = await axios.get(this.healthEndpoint, { timeout: 1000 });
+        if (healthResponse.status === 200) {
+          console.error('[DEBUG] Bridge is ready!');
+          return true;
+        }
+      } catch (error) {
+        // Bridge not ready yet, continue waiting
+      }
+      
+      // Wait with exponential backoff
+      const delay = delays[Math.min(delayIndex, delays.length - 1)];
+      console.error(`[DEBUG] Bridge not ready, waiting ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delayIndex++;
+    }
+    
+    console.error('[DEBUG] Timeout waiting for bridge to be ready');
+    return false;
+  }
+
+  /**
+   * Ensure bridge is running, start it if necessary
+   */
+  private async ensureBridgeReady(): Promise<void> {
+    // Prevent concurrent bridge start attempts
+    if (this.isStartingBridge) {
+      console.error('[DEBUG] Bridge start already in progress, waiting...');
+      // Wait for concurrent start to complete
+      let attempts = 0;
+      while (this.isStartingBridge && attempts < 50) { // Max 5 seconds
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      // Check if bridge is now running
+      const isRunning = await this.isBridgeRunningCached();
+      if (!isRunning) {
+        throw new Error('Bridge failed to start in concurrent operation');
+      }
+      return;
+    }
+    
+    try {
+      // Check if bridge is already running (with cache)
+      const isRunning = await this.isBridgeRunningCached();
+      if (isRunning) {
+        console.error('[DEBUG] Bridge is already running');
+        return;
+      }
+      
+      console.error('[DEBUG] Bridge not running, attempting to start...');
+      this.isStartingBridge = true;
+      
+      // Invalidate cache since we're starting the bridge
+      this.bridgeStatusCache = null;
+      
+      // Attempt to start bridge with retry logic
+      const maxAttempts = 3;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        console.error(`[DEBUG] Bridge start attempt ${attempt}/${maxAttempts}`);
+        
+        const startResult = await this.startBridge();
+        if (startResult.success) {
+          // Wait for bridge to be fully ready
+          const isReady = await this.waitForBridgeReady();
+          if (isReady) {
+            console.error('[DEBUG] Bridge started and ready!');
+            return;
+          } else {
+            console.error('[DEBUG] Bridge started but not responding to health checks');
+          }
+        } else {
+          console.error(`[DEBUG] Bridge start attempt ${attempt} failed: ${startResult.message}`);
+        }
+        
+        // Wait before retry (exponential backoff)
+        if (attempt < maxAttempts) {
+          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          console.error(`[DEBUG] Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
+      throw new Error(`Failed to start bridge after ${maxAttempts} attempts. Check that TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS environment variables are set correctly.`);
+      
+    } finally {
+      this.isStartingBridge = false;
     }
   }
 
