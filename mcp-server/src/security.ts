@@ -310,9 +310,23 @@ export function sanitizePath(inputPath: string): string {
   // Remove any path traversal attempts
   const sanitized = path.normalize(inputPath).replace(/\.\./g, '');
   
-  // Ensure it's within allowed boundaries (no absolute paths)
+  // For MCP server initialization, allow absolute paths in trusted directories
+  const trustedPaths = [
+    '/Users/enrique/.cc_telegram',
+    process.env.HOME && path.join(process.env.HOME, '.cc_telegram'),
+    process.env.CC_TELEGRAM_EVENTS_DIR,
+    process.env.CC_TELEGRAM_RESPONSES_DIR
+  ].filter(Boolean);
+  
+  // Check if this is a trusted absolute path
   if (path.isAbsolute(sanitized)) {
-    throw new SecurityError('Absolute paths not allowed', 'PATH_TRAVERSAL_ATTEMPT');
+    const isTrusted = trustedPaths.some(trustedPath => 
+      trustedPath && sanitized.startsWith(trustedPath)
+    );
+    
+    if (!isTrusted) {
+      throw new SecurityError('Absolute paths not allowed', 'PATH_TRAVERSAL_ATTEMPT');
+    }
   }
   
   return sanitized;
