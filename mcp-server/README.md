@@ -1,4 +1,4 @@
-# CCTelegram MCP Server v1.1.1
+# CCTelegram MCP Server v1.2.0
 
 **🔒 Secure Primary Interface for [Telegram](https://telegram.org/) Development Notifications**
 
