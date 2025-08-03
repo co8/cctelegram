@@ -6,7 +6,11 @@
 
 ## TL;DR
 
-**MCP for Notifications over [Telegram](https://telegram.org/) from [Claude Code](https://github.com/anthropics/claude-code)**. Get real-time notifications about builds, tests, deployments, and code changes with **comprehensive security**, **OWASP compliance**
+**MCP for Notifications over [Telegram](https://telegram.org/) from [Claude Code](https://github.com/anthropics/claude-code)**<br> Get real-time notifications about builds, tests, deployments, and code changes.
+
+**Approve or Deny while you're away. Get progress updates with notes**
+
+**CCTelegram MCP Server** - Connect to Claude Code / VS Code<br> **CCTelegram Bridge** - Built in Rust and sends/receives messages
 
 🛡️ **Security Score: 8.5/10 (LOW RISK)** | 🔒 **OWASP Top 10 2021: 100% Compliant** | ✅ **Zero Critical Vulnerabilities**
 
