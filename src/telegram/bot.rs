@@ -10,7 +10,7 @@ use chrono_tz::Tz;
 use serde_json;
 use tokio::fs;
 use crate::events::types::{Event, EventType};
-use super::messages::MessageFormatter;
+use super::messages::{MessageFormatter, MessageStyle};
 
 pub struct TelegramBot {
     bot: Bot,
@@ -59,6 +59,16 @@ impl TelegramBot {
             bot: Bot::new(token),
             allowed_users: allowed_users.into_iter().collect(),
             formatter: MessageFormatter::new(timezone),
+            responses_dir,
+            timezone,
+        }
+    }
+
+    pub fn new_with_style(token: String, allowed_users: Vec<i64>, responses_dir: PathBuf, timezone: Tz, message_style: MessageStyle) -> Self {
+        Self {
+            bot: Bot::new(token),
+            allowed_users: allowed_users.into_iter().collect(),
+            formatter: MessageFormatter::new_with_style(timezone, message_style),
             responses_dir,
             timezone,
         }

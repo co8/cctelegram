@@ -7,7 +7,7 @@ pub mod utils;
 pub use config::Config;
 pub use events::{EventWatcher, EventProcessor, types};
 pub use telegram::TelegramBot;
-pub use telegram::messages::MessageFormatter;
+pub use telegram::messages::{MessageFormatter, MessageStyle};
 pub use telegram::handlers::CallbackHandler;
 pub use storage::FileStore;
 pub use storage::queue::EventQueue;

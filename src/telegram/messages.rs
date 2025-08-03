@@ -4,11 +4,34 @@ use chrono_tz::Tz;
 
 pub struct MessageFormatter {
     timezone: Tz,
+    style: MessageStyle,
+}
+
+#[derive(Clone, Debug)]
+pub enum MessageStyle {
+    Concise,
+    Detailed,
+}
+
+impl MessageStyle {
+    pub fn from_str(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "detailed" | "verbose" | "full" => MessageStyle::Detailed,
+            _ => MessageStyle::Concise,
+        }
+    }
 }
 
 impl MessageFormatter {
     pub fn new(timezone: Tz) -> Self {
-        Self { timezone }
+        Self { 
+            timezone,
+            style: MessageStyle::Concise,
+        }
+    }
+    
+    pub fn new_with_style(timezone: Tz, style: MessageStyle) -> Self {
+        Self { timezone, style }
     }
     
     pub fn new_with_default() -> Self {
@@ -87,60 +110,56 @@ impl MessageFormatter {
             _ => "ℹ️",
         };
 
+        let concise_title = self.truncate_title(&event.title, 25);
+        let concise_results = self.truncate_description(results, 60);
+
         format!(
-            "*{} Task Completed {}*\n\
-            ⏰ {}\n\
-            📝 {}",
+            "*{} {}* ⏰ {}\n{}",
             status_emoji,
-            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::process_markdown_content(results)
+            Self::process_markdown_content(&concise_results)
         )
     }
 
     pub fn format_approval_message(&self, event: &Event) -> String {
         let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
+        let concise_title = self.truncate_title(&event.title, 20);
+        let concise_prompt = self.truncate_description(prompt, 50);
 
         format!(
-            "*🔐 {}*\n\
-            ⏰ {}\n\
-            📝 Approval Required {}\n\
-            \n\
-            {}",
-            Self::escape_markdown_v2(&event.title),
+            "*🔐 {}* ⏰ {}\n{}",
+            Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::escape_markdown_v2(&event.title),
-            Self::process_markdown_content(prompt)
+            Self::process_markdown_content(&concise_prompt)
         )
     }
 
     pub fn format_progress_message(&self, event: &Event) -> String {
         let progress_info = self.extract_progress_info(event);
+        let concise_title = self.truncate_title(&event.title, 20);
+        let concise_desc = self.truncate_description(&event.description, 40);
         
         format!(
-            "*🔄 Progress Update {}*\n\
-            ⏰ {}\n\
-            📊 Progress: {}\n\
-            📝 {}",
-            Self::escape_markdown_v2(&event.title),
-            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            "*🔄 {}* {} ⏰ {}\n{}",
+            Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&progress_info),
-            Self::process_markdown_content(&event.description)
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            Self::process_markdown_content(&concise_desc)
         )
     }
 
     pub fn format_generic_message(&self, event: &Event) -> String {
         let (emoji, event_name) = self.get_event_display_info(&event.event_type);
+        let concise_title = self.truncate_title(&event.title, 25);
+        let concise_desc = self.truncate_description(&event.description, 60);
         
         format!(
-            "*{} {} {}*\n\
-            ⏰ {}\n\
-            📝 {}",
+            "*{} {}* ⏰ {}\n{}",
             emoji,
-            Self::escape_markdown_v2(event_name),
-            Self::escape_markdown_v2(&event.title),
+            Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
-            Self::process_markdown_content(&event.description)
+            Self::process_markdown_content(&concise_desc)
         )
     }
 
@@ -222,6 +241,32 @@ impl MessageFormatter {
     fn format_timestamp(&self, timestamp: &DateTime<Utc>) -> String {
         let local_time = self.timezone.from_utc_datetime(&timestamp.naive_utc());
         local_time.format("%d/%b/%y %H:%M").to_string()
+    }
+
+    fn truncate_title(&self, title: &str, max_len: usize) -> String {
+        match self.style {
+            MessageStyle::Detailed => title.to_string(),
+            MessageStyle::Concise => {
+                if title.len() <= max_len {
+                    title.to_string()
+                } else {
+                    format!("{}…", &title[..max_len.saturating_sub(1)])
+                }
+            }
+        }
+    }
+
+    fn truncate_description(&self, desc: &str, max_len: usize) -> String {
+        match self.style {
+            MessageStyle::Detailed => desc.to_string(),
+            MessageStyle::Concise => {
+                if desc.len() <= max_len {
+                    desc.to_string()
+                } else {
+                    format!("{}…", &desc[..max_len.saturating_sub(1)])
+                }
+            }
+        }
     }
 
     fn extract_progress_info(&self, event: &Event) -> String {

@@ -13,6 +13,7 @@ mod utils;
 use config::Config;
 use events::{EventWatcher, EventProcessor};
 use telegram::TelegramBot;
+use telegram::messages::MessageStyle;
 use storage::FileStore;
 use utils::{PerformanceMonitor, HealthServer};
 
@@ -72,12 +73,16 @@ async fn main() -> Result<()> {
     let timezone: chrono_tz::Tz = config.telegram.timezone.parse()
         .with_context(|| format!("Invalid timezone: {}", config.telegram.timezone))?;
 
+    // Parse message style from config
+    let message_style = MessageStyle::from_str(&config.telegram.message_style);
+
     // Initialize Telegram bot
-    let telegram_bot = Arc::new(TelegramBot::new(
+    let telegram_bot = Arc::new(TelegramBot::new_with_style(
         config.telegram.telegram_bot_token.clone(),
         config.telegram.telegram_allowed_users.clone(),
         config.paths.responses_dir.clone(),
         timezone,
+        message_style,
     ));
 
     // Initialize file watcher

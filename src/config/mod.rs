@@ -23,10 +23,16 @@ pub struct TelegramConfig {
     pub telegram_allowed_users: Vec<i64>,
     #[serde(default = "default_timezone")]
     pub timezone: String,
+    #[serde(default = "default_message_style")]
+    pub message_style: String,
 }
 
 fn default_timezone() -> String {
     "Europe/Berlin".to_string()
+}
+
+fn default_message_style() -> String {
+    "concise".to_string()
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -67,6 +73,7 @@ impl Default for Config {
                 telegram_bot_token: String::new(),
                 telegram_allowed_users: Vec::new(),
                 timezone: default_timezone(),
+                message_style: default_message_style(),
             },
             paths: PathsConfig {
                 events_dir: cc_telegram_dir.join("events"),
@@ -188,6 +195,14 @@ impl Config {
             if !timezone.is_empty() {
                 self.telegram.timezone = timezone;
                 info!("Loaded timezone from environment: {}", self.telegram.timezone);
+            }
+        }
+
+        // Load message style from environment
+        if let Ok(message_style) = std::env::var("CC_TELEGRAM_MESSAGE_STYLE") {
+            if !message_style.is_empty() {
+                self.telegram.message_style = message_style;
+                info!("Loaded message style from environment: {}", self.telegram.message_style);
             }
         }
 

@@ -136,10 +136,10 @@ async fn test_telegram_bot_user_validation() {
 
 #[tokio::test]
 async fn test_message_formatting_markdown() {
-    use cc_telegram_bridge::MessageFormatter;
+    use cc_telegram_bridge::{MessageFormatter, MessageStyle};
     
     let timezone = "Europe/Berlin".parse().unwrap();
-    let formatter = MessageFormatter::new(timezone);
+    let formatter = MessageFormatter::new_with_style(timezone, MessageStyle::Concise);
     
     // Create a test event with special characters that need escaping
     let event = Event {
@@ -161,16 +161,15 @@ async fn test_message_formatting_markdown() {
     
     println!("Formatted message:\n{}", message);
     
-    // Verify that markdown is properly formatted
-    assert!(message.contains("*✅ Task Completed"));  // Should use single asterisks for bold with emoji
+    // Verify that markdown is properly formatted with new concise format
+    assert!(message.contains("*✅ Test Task"));  // Should use single asterisks for bold with emoji
     assert!(message.contains("⏰"));  // Should contain timestamp marker
-    assert!(message.contains("📝"));  // Should contain description marker
     assert!(message.contains("optimization opportunities"));  // Should contain the actual content
     
     // Check for basic escaping - the exact characters that should be escaped
     // Based on the actual output, verify the escaping is working
     assert!(message.contains("\\(special\\)"));  // Parentheses in title should be escaped
-    assert!(message.contains("characters\\!"));  // Exclamation marks in title should be escaped
+    // Title is truncated to 25 chars, so "characters!" may be cut off
     assert!(message.contains("opportunities & 2"));  // Results content includes ampersand
     assert!(message.contains("bugs\\."));  // Period should be escaped
     

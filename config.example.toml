@@ -8,6 +8,7 @@
 # TELEGRAM_BOT_TOKEN - Your bot token from @BotFather
 # TELEGRAM_ALLOWED_USERS - Comma-separated user IDs (e.g., "123456,789012")
 timezone = "Europe/Madrid"
+message_style = "concise"  # Options: "concise" (default), "detailed"
 
 [paths]
 # Paths will be loaded from environment variables:
