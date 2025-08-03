@@ -638,4 +638,4 @@ The event system is designed for extensibility:
 
 ---
 
-*This documentation covers the comprehensive event system implementation for CC Telegram Bridge v0.1.0. For the latest updates and changes, refer to the project repository.*
+*This documentation covers the comprehensive event system implementation for CC Telegram Bridge v0.4.4. For the latest updates and changes, refer to the project repository.*
