@@ -2,15 +2,15 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](#-comprehensive-event-system) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](#-testing) [![MCP](https://img.shields.io/badge/MCP-v1.1.1-purple.svg)](#-mcp-integration)
 
-**Model Context Protocol (MCP) server for seamless Telegram integration with Claude Code.** The primary interface for developers - automatically manages the CCTelegram Bridge as a background process while providing comprehensive development monitoring, real-time notifications, and remote interaction capabilities through Telegram.
+**Model Context Protocol (MCP) server for seamless Telegram integration with Claude Code.** The primary interface for developers - automatically manages the CCTelegram Bridge as a background process while providing comprehensive development activity monitoring, real-time notifications, and approval workflows through Telegram. This is a notification and monitoring system, not a command execution platform.
 
 ## 🚀 Features
 
-### 🎯 Comprehensive Event System
-- **44+ Event Types**: Complete coverage of development lifecycle including task management, code operations, file system changes, build processes, git operations, system monitoring, and user interactions
-- **10 Event Categories**: Organized event types covering Task Management, Code Operations, File System, Build & Development, Git & Version Control, System & Monitoring, User Interaction, Notifications, Integration, and Custom events
-- **Builder Pattern API**: 15+ specialized builder methods for easy event creation with type safety
-- **Advanced Validation**: Event-type specific validation with severity levels and priority handling
+### 🎯 Comprehensive Event Monitoring System
+- **44+ Event Types**: Complete monitoring coverage of development lifecycle including task status, code operation results, file system changes, build outcomes, git activity, system health, and user interactions
+- **10 Event Categories**: Organized notification types for Task Management, Code Operations, File System, Build & Development, Git & Version Control, System & Monitoring, User Interaction, Notifications, Integration, and Custom events
+- **Builder Pattern API**: 15+ specialized builder methods for easy event notification creation with type safety
+- **Advanced Validation**: Event-type specific validation with severity levels and priority handling for notifications
 
 ### 🤖 Intelligent Telegram Integration
 - **Real-time Notifications**: Instant notifications for all development events with rich formatting and emojis
@@ -153,21 +153,21 @@ EOF
 
 For complete setup instructions, production deployment, troubleshooting, and advanced configuration, see **[QUICKSTART.md](QUICKSTART.md)**.
 
-## 🎯 Comprehensive Event System
+## 🎯 Comprehensive Event Monitoring System
 
-The CC Telegram Bridge features a **complete 44+ event type system** covering the entire development lifecycle:
+The CCTelegram system features a **complete 44+ event notification system** for monitoring the entire development lifecycle:
 
-### Event Categories
-- **📋 Task Management** (5 events): Task lifecycle from start to completion/failure
-- **🔨 Code Operations** (6 events): Generation, analysis, refactoring, review, testing, deployment
-- **📁 File System** (5 events): File and directory create/modify/delete operations
-- **🔨 Build & Development** (8 events): Build process, testing, linting, type checking
-- **📝 Git & Version Control** (7 events): Commits, pushes, merges, branches, PRs
-- **💚 System & Monitoring** (5 events): Health checks, performance alerts, resource usage
-- **💬 User Interaction** (3 events): Approval requests, responses, command execution
-- **🔄 Notifications** (4 events): Progress updates, status changes, alerts
-- **🌐 Integration** (3 events): API calls, webhooks, service integrations
-- **🎯 Custom Events** (1 event): User-defined custom events
+### Event Categories (Monitoring & Notifications)
+- **📋 Task Management** (5 events): Monitor task lifecycle status from start to completion/failure
+- **🔨 Code Operations** (6 events): Notifications about code generation results, analysis completion, refactoring status
+- **📁 File System** (5 events): Monitor file and directory create/modify/delete activities
+- **🔨 Build & Development** (8 events): Build process results, test outcomes, linting reports
+- **📝 Git & Version Control** (7 events): Git activity notifications - commits, pushes, merges, branches, PRs
+- **💚 System & Monitoring** (5 events): Health status reports, performance alerts, resource usage updates
+- **💬 User Interaction** (3 events): Approval request handling, user responses, command execution notifications
+- **🔄 Notifications** (4 events): Progress updates, status changes, system alerts
+- **🌐 Integration** (3 events): API call results, webhook notifications, service integration status
+- **🎯 Custom Events** (1 event): User-defined custom notification events
 
 ### Quick Examples
 
@@ -292,9 +292,9 @@ RUST_LOG=info cargo run
 # Bridge is managed automatically - use MCP tools for all interactions
 ```
 
-### Event Processing
+### Event Processing (Monitoring Mode)
 
-The system supports **44+ event types** across 10 categories. Place JSON event files in the events directory (`~/.cc_telegram/events/`):
+The system monitors for **44+ event types** across 10 categories. External systems place JSON event files in the events directory (`~/.cc_telegram/events/`) and CCTelegram sends notifications about them:
 
 #### Task Completion Example
 ```json
@@ -354,28 +354,28 @@ The system supports **44+ event types** across 10 categories. Place JSON event f
 }
 ```
 
-### Telegram Interactions
+### Telegram Interactions (Notification & Approval System)
 
-- **📱 Real-time Notifications**: Receive instant notifications with rich formatting and context-appropriate emojis
-- **🎛️ Interactive Controls**: Approve/deny actions using inline keyboards with custom options
-- **📊 Detailed Reports**: Get comprehensive event details including performance metrics and file changes
-- **🔍 System Monitoring**: Monitor health, performance alerts, and resource usage in real-time
-- **⚡ Quick Actions**: Execute commands and receive immediate feedback through the bot interface
+- **📱 Real-time Notifications**: Receive instant notifications about development activities with rich formatting and context-appropriate emojis
+- **🎛️ Interactive Approval Controls**: Approve/deny requested actions using inline keyboards with custom options
+- **📊 Detailed Activity Reports**: Get comprehensive notifications about events including performance metrics and file changes
+- **🔍 System Status Monitoring**: Receive health notifications, performance alerts, and resource usage updates in real-time
+- **⚡ Activity Feedback**: Get immediate notifications about development activities and their outcomes
 
-### Event Categories Supported
+### Event Categories Monitored
 
-| Category | Events | Example Use Cases |
+| Category | Events | Example Monitoring Use Cases |
 |----------|--------|-------------------|
-| 📋 **Task Management** | 5 types | Claude Code task lifecycle tracking |
-| 🔨 **Code Operations** | 6 types | Code generation, analysis, refactoring |
-| 📁 **File System** | 5 types | File/directory monitoring and changes |
-| 🔨 **Build & Development** | 8 types | Build processes, testing, linting |
-| 📝 **Git Operations** | 7 types | Version control activities and PR management |
-| 💚 **System Monitoring** | 5 types | Health checks, performance, security alerts |
-| 💬 **User Interaction** | 3 types | Approval workflows and command execution |
-| 🔄 **Notifications** | 4 types | Progress updates and status changes |
-| 🌐 **Integration** | 3 types | API calls, webhooks, service integrations |
-| 🎯 **Custom Events** | 1 type | User-defined custom notifications |
+| 📋 **Task Management** | 5 types | Claude Code task lifecycle status notifications |
+| 🔨 **Code Operations** | 6 types | Code generation results, analysis completion alerts |
+| 📁 **File System** | 5 types | File/directory change monitoring and notifications |
+| 🔨 **Build & Development** | 8 types | Build outcome reports, test result notifications |
+| 📝 **Git Operations** | 7 types | Version control activity notifications and PR status |
+| 💚 **System Monitoring** | 5 types | Health status reports, performance alerts, security notifications |
+| 💬 **User Interaction** | 3 types | Approval workflow handling and activity notifications |
+| 🔄 **Notifications** | 4 types | Progress updates and status change alerts |
+| 🌐 **Integration** | 3 types | API result notifications, webhook monitoring, service status |
+| 🎯 **Custom Events** | 1 type | User-defined custom activity notifications |
 
 **📖 For detailed event documentation and examples**, see [docs/EVENT_SYSTEM.md](docs/EVENT_SYSTEM.md) and [docs/QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md).
 

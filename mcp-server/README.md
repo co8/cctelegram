@@ -2,7 +2,7 @@
 
 **Primary Interface for Telegram Development Notifications**
 
-Model Context Protocol (MCP) server that serves as the main interface for Claude Code users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for Telegram notifications, approval processing, and remote development workflows. Users interact exclusively with MCP tools - no manual bridge management required.
+Model Context Protocol (MCP) server that serves as the main interface for Claude Code users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for sending Telegram notifications about development activities, processing approval workflows, and monitoring development status. This is a notification and monitoring system - users interact exclusively with MCP tools for sending notifications, not executing commands.
 
 ## Features
 
@@ -12,12 +12,12 @@ Model Context Protocol (MCP) server that serves as the main interface for Claude
 - **Intelligent Bridge Management**: Automatic start, monitor, restart of CCTelegram Bridge process
 - **Smart Discovery**: Automatically locates bridge executable across installation paths
 
-### 📤 Comprehensive Messaging System
-- **Structured Event Sending**: 44+ event types with rich formatting and context-aware emojis
+### 📤 Comprehensive Notification System
+- **Structured Event Notifications**: Send notifications about 44+ event types with rich formatting and context-aware emojis
 - **Concise Message Format**: 40% shorter messages with configurable styles (concise/detailed)
-- **Simple Text Messaging**: Quick notifications with automatic timezone formatting  
-- **Task Completion Tracking**: Specialized notifications with duration, files, and results
-- **Performance Monitoring**: Threshold-based alerts with severity levels and metrics
+- **Simple Text Notifications**: Send quick status updates with automatic timezone formatting  
+- **Task Status Notifications**: Send specialized notifications about task completion with duration, files, and results
+- **Performance Alert Notifications**: Send threshold-based alerts with severity levels and metrics
 
 ### 🔄 Interactive & Intelligent Features
 - **Approval Workflows**: Request user approvals with custom button options
@@ -160,32 +160,32 @@ All interactions happen through MCP tools. The bridge is managed automatically i
 | `ensure_bridge_running` | Start bridge if not running | Automated management |
 | `check_bridge_process` | Check if bridge process is running | Process monitoring |
 
-## Event Types
+## Event Types (Notification Support)
 
-The server supports 40+ event types across 10 categories:
+The server can send notifications for 40+ event types across 10 categories:
 
-### 📋 Task Management
+### 📋 Task Management Notifications
 - `task_completion`, `task_started`, `task_failed`, `task_progress`, `task_cancelled`
 
-### 🔨 Code Operations  
+### 🔨 Code Operations Notifications  
 - `code_generation`, `code_analysis`, `code_refactoring`, `code_review`, `code_testing`, `code_deployment`
 
-### 📁 File System
+### 📁 File System Activity Notifications
 - `file_created`, `file_modified`, `file_deleted`, `directory_created`, `directory_deleted`
 
-### 🔨 Build & Development
+### 🔨 Build & Development Result Notifications
 - `build_completed`, `build_failed`, `test_suite_run`, `lint_check`, `type_check`
 
-### 📝 Git Operations
+### 📝 Git Operations Activity Notifications
 - `git_commit`, `git_push`, `git_merge`, `git_branch`, `git_tag`, `pull_request_created`
 
-### 💚 System Monitoring
+### 💚 System Monitoring & Status Notifications
 - `performance_alert`, `error_occurred`, `system_health`, `resource_usage`
 
-### 💬 User Interaction
+### 💬 User Interaction & Approval Notifications
 - `approval_request`, `user_response`, `command_executed`
 
-### 🔄 Notifications
+### 🔄 General Status Notifications
 - `info_notification`, `alert_notification`, `progress_update`, `status_change`
 
 ## Configuration
