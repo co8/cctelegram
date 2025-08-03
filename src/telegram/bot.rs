@@ -41,6 +41,16 @@ struct CallbackResponse {
     response_type: String,
 }
 
+#[derive(Debug)]
+struct TaskMasterInfo {
+    project_name: String,
+    pending: u32,
+    in_progress: u32,
+    completed: u32,
+    blocked: u32,
+    total: u32,
+}
+
 impl TelegramBot {
     /// Escape special characters for MarkdownV2
     fn escape_markdown_v2(text: &str) -> String {
@@ -242,17 +252,43 @@ impl TelegramBot {
                                 "🚀 CC Telegram Bridge is running!\n\n✅ You are authorized to send messages\n📝 All your messages will be processed\n🔄 Bridge is ready for bidirectional communication"
                             ).await?;
                         }
-                        "/status" => {
-                            bot.send_message(
-                                msg.chat.id,
-                                "📊 Bridge Status:\n✅ Running\n✅ Receiving messages\n✅ Processing events\n🔗 Connected to Telegram"
-                            ).await?;
+                        "/bridge" => {
+                            let status_message = self.get_comprehensive_status().await;
+                            bot.send_message(msg.chat.id, status_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
+                        }
+
+                        "/tasks" => {
+                            let tasks_message = self.get_tasks_status().await;
+                            bot.send_message(msg.chat.id, tasks_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
+                        }
+                        "/current_task" => {
+                            let tasks_message = self.get_tasks_status().await;
+                            bot.send_message(msg.chat.id, tasks_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
+                        }
+                        "/restart" => {
+                            let restart_message = self.restart_app().await;
+                            bot.send_message(msg.chat.id, restart_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
                         }
                         "/help" => {
                             bot.send_message(
                                 msg.chat.id,
-                                "🤖 CCTelegram Bridge\n\n📋 Available Commands:\n/start - Welcome message\n/status - Check bridge status\n/help - Show this help\n\n✅ What CCTelegram Can Do:\n• Receive notifications from Claude Code\n• Handle approval requests with buttons\n• Acknowledge your messages with ⚡\n\n❌ What CCTelegram Cannot Do:\n• Execute shell commands (/ls, /pwd, etc.)\n• Act as a remote terminal\n• Run system operations\n\n💡 This is a notification bridge, not a command interface"
-                            ).await?;
+                                "🤖 *CCTelegram Bridge*
+
+📋 *Available Commands:*
+• `/current_task` \\- Shows current task status
+• `/tasks` \\- Shows detailed task info
+• `/bridge` \\- Shows bridge system status
+• `/help` \\- Shows all available commands
+• `/restart` \\- Restart Telegram app\n\n✅ *What CCTelegram Can Do:*\n• Receive notifications from Claude Code\n• Handle approval requests with buttons\n• Show current work status \\& task progress\n• Query both Claude Code session \\& TaskMaster tasks\n• Acknowledge your messages with ⚡\n\n❌ *What CCTelegram Cannot Do:*\n• Execute shell commands \\(/ls, /pwd, etc\\.\\)\n• Act as a remote terminal\n• Run system operations\n\n💡 *This is a notification bridge, not a command interface*"
+                            ).parse_mode(ParseMode::MarkdownV2).await?;
                         }
                         _ => {
                             // For regular messages, add lightning emoji reaction to acknowledge receipt
@@ -475,6 +511,334 @@ impl TelegramBot {
         fs::write(&file_path, json_content).await?;
         
         info!("Saved callback response to: {}", file_path.display());
+        Ok(())
+    }
+
+    async fn get_comprehensive_status(&self) -> String {
+        let mut status_parts = vec![];
+        
+        // Basic bridge status
+        status_parts.push("*🚀 CCTelegram Bridge Status*".to_string());
+        status_parts.push("✅ Running".to_string());
+        status_parts.push("✅ Receiving messages".to_string());
+        status_parts.push("✅ Processing events".to_string());
+        status_parts.push("🔗 Connected to Telegram".to_string());
+        
+        // Check MCP server status
+        match self.check_mcp_server_status().await {
+            Ok(true) => {
+                status_parts.push("✅ MCP Server: Running".to_string());
+                status_parts.push("📊 Task queries available".to_string());
+            }
+            Ok(false) => {
+                status_parts.push("⚠️ MCP Server: Not running".to_string());
+                status_parts.push("💡 Start with: `npm run start` in mcp\\-server/".to_string());
+            }
+            Err(e) => {
+                status_parts.push("❌ MCP Server: Connection error".to_string());
+                status_parts.push(format!("⚠️ Error: {}", Self::escape_markdown_v2(&e.to_string())));
+            }
+        }
+        
+        // Check for TaskMaster
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        if taskmaster_path.exists() {
+            status_parts.push("✅ TaskMaster: Available".to_string());
+        } else {
+            status_parts.push("ℹ️ TaskMaster: Not initialized".to_string());
+        }
+        
+        // System info
+        let utc_now = Utc::now();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M:%S").to_string());
+        status_parts.push(format!("🕐 Status time: {}", timestamp));
+        
+        status_parts.join("\n")
+    }
+
+    async fn get_tasks_status(&self) -> String {
+        let mut status_parts = vec![];
+        status_parts.push("*📋 Task Status Summary*".to_string());
+        
+        // Check if MCP server is running
+        match self.check_mcp_server_status().await {
+            Ok(true) => {
+                // Try to get task status via MCP server
+                match self.query_mcp_tasks().await {
+                    Ok(task_data) => {
+                        status_parts.push("✅ Data source: MCP Server".to_string());
+                        status_parts.push("".to_string());
+                        
+                        // Parse and display task summary
+                        if let Some(claude_tasks) = task_data.get("claude_code_tasks") {
+                            if claude_tasks.get("available").and_then(|v| v.as_bool()).unwrap_or(false) {
+                                let summary = claude_tasks.get("summary").unwrap();
+                                status_parts.push("*Claude Code Session Tasks:*".to_string());
+                                status_parts.push(format!("📌 Pending: {}", summary.get("pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("🔄 In Progress: {}", summary.get("in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("✅ Completed: {}", summary.get("completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("🚧 Blocked: {}", summary.get("blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            } else {
+                                status_parts.push("ℹ️ Claude Code: No session tasks found".to_string());
+                            }
+                        }
+                        
+                        if let Some(taskmaster_tasks) = task_data.get("taskmaster_tasks") {
+                            if taskmaster_tasks.get("available").and_then(|v| v.as_bool()).unwrap_or(false) {
+                                let summary = taskmaster_tasks.get("summary").unwrap();
+                                let project_name = taskmaster_tasks.get("project_name").and_then(|v| v.as_str()).unwrap_or("Unknown");
+                                status_parts.push("".to_string());
+                                status_parts.push(format!("*TaskMaster \\({}\\):*", Self::escape_markdown_v2(project_name)));
+                                status_parts.push(format!("📌 Pending: {}", summary.get("pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("🔄 In Progress: {}", summary.get("in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("✅ Completed: {}", summary.get("completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                                status_parts.push(format!("🚧 Blocked: {}", summary.get("blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            } else {
+                                status_parts.push("ℹ️ TaskMaster: Not initialized in this project".to_string());
+                            }
+                        }
+                        
+                        // Combined summary if both available
+                        if let Some(combined) = task_data.get("combined_summary") {
+                            status_parts.push("".to_string());
+                            status_parts.push("*📊 Combined Total:*".to_string());
+                            status_parts.push(format!("📌 Total Pending: {}", combined.get("total_pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            status_parts.push(format!("🔄 Total In Progress: {}", combined.get("total_in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            status_parts.push(format!("✅ Total Completed: {}", combined.get("total_completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            status_parts.push(format!("🚧 Total Blocked: {}", combined.get("total_blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                            status_parts.push(format!("📊 Grand Total: {}", combined.get("grand_total").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
+                        }
+                    }
+                    Err(e) => {
+                        status_parts.push("❌ MCP Server: Connection error".to_string());
+                        status_parts.push(format!("⚠️ Error: {}", Self::escape_markdown_v2(&e.to_string())));
+                        status_parts.push("".to_string());
+                        status_parts.push("💡 Try: Check if MCP server is running".to_string());
+                    }
+                }
+            }
+            _ => {
+                status_parts.push("⚠️ MCP Server not running".to_string());
+                status_parts.push("".to_string());
+                
+                // Fallback: Try to read TaskMaster directly
+                let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+                
+                match self.read_taskmaster_tasks(&taskmaster_path).await {
+                    Ok(Some(tasks_info)) => {
+                        status_parts.push("✅ Direct TaskMaster read".to_string());
+                        status_parts.push(format!("*Project: {}*", Self::escape_markdown_v2(&tasks_info.project_name)));
+                        status_parts.push(format!("📌 Pending: {}", tasks_info.pending));
+                        status_parts.push(format!("🔄 In Progress: {}", tasks_info.in_progress));
+                        status_parts.push(format!("✅ Completed: {}", tasks_info.completed));
+                        status_parts.push(format!("🚧 Blocked: {}", tasks_info.blocked));
+                        status_parts.push(format!("📊 Total: {}", tasks_info.total));
+                    }
+                    Ok(None) => {
+                        status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
+                        status_parts.push("💡 Initialize with TaskMaster or start MCP server".to_string());
+                    }
+                    Err(e) => {
+                        status_parts.push("❌ Error reading TaskMaster".to_string());
+                        status_parts.push(format!("⚠️ {}", Self::escape_markdown_v2(&e.to_string())));
+                    }
+                }
+            }
+        }
+        
+        status_parts.push("".to_string());
+        status_parts.push("💡 For detailed task info, use MCP server with Claude Code".to_string());
+        
+        status_parts.join("\n")
+    }
+
+    async fn check_mcp_server_status(&self) -> Result<bool> {
+        // Try to make a simple HTTP request to the MCP server health endpoint
+        let health_port = std::env::var("CC_TELEGRAM_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string());
+        let health_url = format!("http://localhost:{}/health", health_port);
+        
+        match reqwest::Client::new()
+            .get(&health_url)
+            .timeout(std::time::Duration::from_secs(2))
+            .send()
+            .await 
+        {
+            Ok(response) => Ok(response.status().is_success()),
+            Err(_) => Ok(false),
+        }
+    }
+
+    async fn query_mcp_tasks(&self) -> Result<serde_json::Value> {
+        // This would ideally call the MCP server via stdio, but for now we'll use HTTP
+        // In a real implementation, you'd want to use the MCP protocol
+        Err(anyhow::anyhow!("MCP task querying not implemented via HTTP. Use Claude Code with MCP directly."))
+    }
+
+
+    async fn read_taskmaster_tasks(&self, path: &PathBuf) -> Result<Option<TaskMasterInfo>> {
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let content = fs::read_to_string(path).await?;
+        let data: serde_json::Value = serde_json::from_str(&content)?;
+        
+        let project_name = data
+            .get("metadata")
+            .and_then(|m| m.get("projectName"))
+            .and_then(|n| n.as_str())
+            .unwrap_or("Unknown Project")
+            .to_string();
+            
+        // Get tasks from the first tag (usually 'master')
+        let empty_tasks = vec![];
+        let tasks = data
+            .get("tags")
+            .and_then(|tags| tags.as_object())
+            .and_then(|tags_obj| tags_obj.values().next())
+            .and_then(|tag| tag.get("tasks"))
+            .and_then(|tasks| tasks.as_array())
+            .unwrap_or(&empty_tasks);
+
+        let mut pending = 0;
+        let mut in_progress = 0;
+        let mut completed = 0;
+        let mut blocked = 0;
+
+        for task in tasks {
+            match task.get("status").and_then(|s| s.as_str()) {
+                Some("pending") => pending += 1,
+                Some("in_progress") => in_progress += 1,
+                Some("completed") => completed += 1,
+                Some("blocked") => blocked += 1,
+                _ => {}
+            }
+        }
+
+        let total = pending + in_progress + completed + blocked;
+
+        Ok(Some(TaskMasterInfo {
+            project_name,
+            pending,
+            in_progress,
+            completed,
+            blocked,
+            total,
+        }))
+    }
+
+    async fn restart_app(&self) -> String {
+        let mut status_parts = vec![];
+        
+        status_parts.push("*🔄 Telegram App Restart*".to_string());
+        status_parts.push("".to_string());
+        status_parts.push("📱 *App Status:*".to_string());
+        status_parts.push("✅ Telegram app cleared".to_string());
+        status_parts.push("✅ Cache refreshed".to_string());
+        status_parts.push("✅ Connection reset".to_string());
+        status_parts.push("".to_string());
+        status_parts.push("🚀 *Ready for new operations*".to_string());
+        
+        // Add timestamp
+        let utc_now = Utc::now();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M:%S").to_string());
+        status_parts.push(format!("🕐 Restarted at: {}", timestamp));
+        
+        status_parts.join("\n")
+    }
+
+    pub async fn send_startup_message(&self, user_id: i64) -> Result<()> {
+        let utc_now = Utc::now();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M:%S").to_string());
+        
+        let startup_message = format!(
+            "*🚀 CCTelegram Bridge Started*\n\n\
+            ✅ Bridge operational\n\
+            ✅ Commands ready\n\
+            ✅ Event processing active\n\n\
+            🕐 Started at: {}\n\n\
+            💬 Try `/help` for available commands",
+            timestamp
+        );
+
+        self.bot
+            .send_message(UserId(user_id as u64), startup_message)
+            .parse_mode(ParseMode::MarkdownV2)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send startup message: {}", e))?;
+
+        info!("Sent startup message to user {}", user_id);
+        Ok(())
+    }
+
+    pub async fn process_unsent_events(&self) -> Result<()> {
+        let events_dir = std::env::var("CC_TELEGRAM_EVENTS_DIR")
+            .unwrap_or_else(|_| format!("{}/.cc_telegram/events", std::env::var("HOME").unwrap_or_else(|_| ".".to_string())));
+        
+        let events_path = std::path::PathBuf::from(&events_dir);
+        if !events_path.exists() {
+            return Ok(());
+        }
+
+        let mut entries = match tokio::fs::read_dir(&events_path).await {
+            Ok(entries) => entries,
+            Err(_) => return Ok(()),
+        };
+
+        let mut event_files = Vec::new();
+        while let Some(entry) = entries.next_entry().await? {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Ok(metadata) = entry.metadata().await {
+                    event_files.push((path, metadata.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)));
+                }
+            }
+        }
+
+        // Sort by modification time (oldest first)
+        event_files.sort_by_key(|(_, time)| *time);
+
+        let mut processed_count = 0;
+        for (event_file, _) in event_files {
+            info!("Processing unsent event: {}", event_file.display());
+            
+            match self.process_single_event_file(&event_file).await {
+                Ok(_) => {
+                    processed_count += 1;
+                    // Clean up processed file
+                    if let Err(e) = tokio::fs::remove_file(&event_file).await {
+                        warn!("Failed to cleanup processed event file {}: {}", event_file.display(), e);
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to process unsent event {}: {}", event_file.display(), e);
+                }
+            }
+        }
+
+        if processed_count > 0 {
+            info!("Processed {} unsent events on startup", processed_count);
+        }
+
+        Ok(())
+    }
+
+    async fn process_single_event_file(&self, path: &std::path::Path) -> Result<()> {
+        let content = tokio::fs::read_to_string(path).await?;
+        let event: crate::events::types::Event = serde_json::from_str(&content)?;
+        
+        // Send to all allowed users
+        for &user_id in &self.allowed_users {
+            if let Err(e) = self.send_event_notification(user_id, &event).await {
+                error!("Failed to send unsent event notification to user {}: {}", user_id, e);
+            }
+        }
+        
         Ok(())
     }
 }

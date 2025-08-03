@@ -1,6 +1,6 @@
 [package]
 name = "cctelegram-bridge"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 authors = ["Enrique <@co8>"]
 description = "A Rust-based bridge between Claude Code/VSCode and Telegram for remote monitoring and interaction"
@@ -69,6 +69,9 @@ prometheus = "0.13"
 
 # HTTP server for metrics
 warp = "0.3"
+
+# HTTP client for MCP server communication
+reqwest = { version = "0.12", features = ["json"] }
 
 # Atomic metrics
 arc-swap = "1.7"

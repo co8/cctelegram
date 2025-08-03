@@ -28,7 +28,7 @@ const client = new CCTelegramBridgeClient();
 
 const server = new Server({
   name: 'cctelegram-mcp-server',
-  version: '1.2.0',
+  version: '1.4.0',
 }, {
   capabilities: {
     tools: {},
@@ -280,6 +280,35 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: 'object',
           properties: {}
+        }
+      },
+      {
+        name: 'get_task_status',
+        description: 'Get current task status and list from both Claude Code session tasks and TaskMaster project tasks',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            project_root: {
+              type: 'string',
+              description: 'Path to project root (defaults to current directory)'
+            },
+            task_system: {
+              type: 'string',
+              enum: ['claude-code', 'taskmaster', 'both'],
+              description: 'Which task system to query (default: both)',
+              default: 'both'
+            },
+            status_filter: {
+              type: 'string',
+              enum: ['pending', 'in_progress', 'completed', 'blocked'],
+              description: 'Filter tasks by status'
+            },
+            summary_only: {
+              type: 'boolean',
+              description: 'Return only summary statistics (default: false)',
+              default: false
+            }
+          }
         }
       }
     ]
@@ -750,6 +779,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }, {
           toolName: name,
           clientId: securityContext.clientId
+        });
+      }
+
+      case 'get_task_status': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'getTaskStatus');
+          const { project_root, task_system = 'both', status_filter, summary_only = false } = validatedArgs;
+          const taskStatus = await client.getTaskStatus(project_root, task_system, status_filter, summary_only);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify(taskStatus, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'getTaskStatus'
         });
       }
 

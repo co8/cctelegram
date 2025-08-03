@@ -252,6 +252,13 @@ export const inputSchemas = {
   
   listEventTypes: Joi.object({
     category: Joi.string().max(100).optional()
+  }),
+  
+  getTaskStatus: Joi.object({
+    project_root: Joi.string().max(500).optional(),
+    task_system: Joi.string().valid('claude-code', 'taskmaster', 'both').default('both'),
+    status_filter: Joi.string().valid('pending', 'in_progress', 'completed', 'blocked').optional(),
+    summary_only: Joi.boolean().default(false)
   })
 };
 

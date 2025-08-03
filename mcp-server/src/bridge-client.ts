@@ -954,4 +954,175 @@ export class CCTelegramBridgeClient {
       { type: 'progress_update', category: 'Notifications', description: 'Progress status update' },
     ];
   }
+
+  /**
+   * Get task status from Claude Code session tasks and/or TaskMaster project tasks
+   */
+  async getTaskStatus(
+    projectRoot?: string, 
+    taskSystem: 'claude-code' | 'taskmaster' | 'both' = 'both',
+    statusFilter?: string,
+    summaryOnly: boolean = false
+  ): Promise<any> {
+    try {
+      const result: any = {
+        timestamp: new Date().toISOString(),
+        task_system: taskSystem,
+        status_filter: statusFilter || 'all',
+        summary_only: summaryOnly
+      };
+
+      // Determine project root
+      const projectPath = projectRoot || process.cwd();
+      
+      // Get Claude Code session tasks (if available through environment or files)
+      if (taskSystem === 'claude-code' || taskSystem === 'both') {
+        try {
+          // Check for Claude Code todo files in common locations
+          const possibleTodoPaths = [
+            path.join(projectPath, '.claude', 'todos.json'),
+            path.join(process.env.HOME || '/tmp', '.claude', 'todos.json'),
+            path.join(projectPath, '.cc_todos.json')
+          ];
+
+          let claudeTasks = null;
+          for (const todoPath of possibleTodoPaths) {
+            if (await fs.pathExists(todoPath)) {
+              try {
+                claudeTasks = await fs.readJSON(todoPath);
+                break;
+              } catch (error) {
+                // Continue to next path
+              }
+            }
+          }
+
+          if (claudeTasks) {
+            let filteredTasks = claudeTasks;
+            if (statusFilter) {
+              filteredTasks = claudeTasks.filter((task: any) => task.status === statusFilter);
+            }
+
+            result.claude_code_tasks = {
+              available: true,
+              source: 'session_todos',
+              total_count: claudeTasks.length,
+              filtered_count: filteredTasks.length,
+              summary: {
+                pending: claudeTasks.filter((t: any) => t.status === 'pending').length,
+                in_progress: claudeTasks.filter((t: any) => t.status === 'in_progress').length,
+                completed: claudeTasks.filter((t: any) => t.status === 'completed').length,
+                blocked: claudeTasks.filter((t: any) => t.status === 'blocked').length
+              }
+            };
+
+            if (!summaryOnly) {
+              result.claude_code_tasks.tasks = filteredTasks;
+            }
+          } else {
+            result.claude_code_tasks = {
+              available: false,
+              message: 'No Claude Code session tasks found. Tasks may be managed in-memory or not yet persisted.'
+            };
+          }
+        } catch (error) {
+          result.claude_code_tasks = {
+            available: false,
+            error: error instanceof Error ? error.message : 'Unknown error accessing Claude Code tasks'
+          };
+        }
+      }
+
+      // Get TaskMaster project tasks
+      if (taskSystem === 'taskmaster' || taskSystem === 'both') {
+        try {
+          const tasksJsonPath = path.join(projectPath, '.taskmaster', 'tasks', 'tasks.json');
+          
+          if (await fs.pathExists(tasksJsonPath)) {
+            const tasksData = await fs.readJSON(tasksJsonPath);
+            
+            // Extract tasks from the current tag (usually 'master')
+            const currentTag = Object.keys(tasksData.tags)[0] || 'master';
+            const allTasks = tasksData.tags[currentTag]?.tasks || [];
+            
+            let filteredTasks = allTasks;
+            if (statusFilter) {
+              filteredTasks = allTasks.filter((task: any) => task.status === statusFilter);
+            }
+
+            result.taskmaster_tasks = {
+              available: true,
+              source: tasksJsonPath,
+              current_tag: currentTag,
+              project_name: tasksData.metadata?.projectName || 'Unknown',
+              total_count: allTasks.length,
+              filtered_count: filteredTasks.length,
+              summary: {
+                pending: allTasks.filter((t: any) => t.status === 'pending').length,
+                in_progress: allTasks.filter((t: any) => t.status === 'in_progress').length,
+                completed: allTasks.filter((t: any) => t.status === 'completed').length,
+                blocked: allTasks.filter((t: any) => t.status === 'blocked').length
+              }
+            };
+
+            if (!summaryOnly) {
+              result.taskmaster_tasks.tasks = filteredTasks.map((task: any) => ({
+                id: task.id,
+                title: task.title,
+                description: task.description,
+                status: task.status,
+                priority: task.priority,
+                estimated_hours: task.estimatedHours,
+                tags: task.tags,
+                dependencies: task.dependencies
+              }));
+            }
+          } else {
+            result.taskmaster_tasks = {
+              available: false,
+              message: 'No TaskMaster tasks found. Project may not be initialized with TaskMaster.',
+              expected_path: tasksJsonPath
+            };
+          }
+        } catch (error) {
+          result.taskmaster_tasks = {
+            available: false,
+            error: error instanceof Error ? error.message : 'Unknown error accessing TaskMaster tasks'
+          };
+        }
+      }
+
+      // Generate combined summary if both systems are queried
+      if (taskSystem === 'both') {
+        const claudeSummary = result.claude_code_tasks?.summary || { pending: 0, in_progress: 0, completed: 0, blocked: 0 };
+        const taskmasterSummary = result.taskmaster_tasks?.summary || { pending: 0, in_progress: 0, completed: 0, blocked: 0 };
+        
+        result.combined_summary = {
+          total_pending: claudeSummary.pending + taskmasterSummary.pending,
+          total_in_progress: claudeSummary.in_progress + taskmasterSummary.in_progress,
+          total_completed: claudeSummary.completed + taskmasterSummary.completed,
+          total_blocked: claudeSummary.blocked + taskmasterSummary.blocked,
+          grand_total: (claudeSummary.pending + claudeSummary.in_progress + claudeSummary.completed + claudeSummary.blocked) +
+                      (taskmasterSummary.pending + taskmasterSummary.in_progress + taskmasterSummary.completed + taskmasterSummary.blocked)
+        };
+      }
+
+      secureLog('info', 'Task status retrieved', {
+        task_system: taskSystem,
+        project_path: sanitizeForLogging(projectPath),
+        has_claude_tasks: result.claude_code_tasks?.available || false,
+        has_taskmaster_tasks: result.taskmaster_tasks?.available || false
+      });
+
+      return result;
+    } catch (error) {
+      secureLog('error', 'Failed to get task status', {
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        task_system: taskSystem,
+        project_root: sanitizeForLogging(projectRoot || process.cwd())
+      });
+      
+      throw error;
+    }
+  }
 }

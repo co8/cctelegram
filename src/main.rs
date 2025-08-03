@@ -85,6 +85,18 @@ async fn main() -> Result<()> {
         message_style,
     ));
 
+    // Process any unsent events from previous sessions
+    if let Err(e) = telegram_bot.process_unsent_events().await {
+        warn!("Failed to process unsent events: {}", e);
+    }
+
+    // Send startup message to all allowed users
+    for &user_id in &config.telegram.telegram_allowed_users {
+        if let Err(e) = telegram_bot.send_startup_message(user_id).await {
+            warn!("Failed to send startup message to user {}: {}", user_id, e);
+        }
+    }
+
     // Initialize file watcher
     let mut event_watcher = EventWatcher::new(&config.paths.events_dir)?;
     info!("File watcher initialized for: {}", config.paths.events_dir.display());
