@@ -14,35 +14,26 @@ CCTelegram sends your development activity to [Telegram](https://telegram.org/).
 - Create bot with [@BotFather](https://t.me/botfather): `/newbot`
 - Get your user ID from [@userinfobot](https://t.me/userinfobot)
 
-### 2. Install & Run
+### 2. Install MCP Server
 ```bash
-# Download the binary
-curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
-chmod +x cctelegram-bridge
+# Navigate to MCP server and install
+cd mcp-server
+./install.sh
 
-# Configure (replace with your values)
+# Configure your tokens in Claude Code config
+# (installer guides you through this)
 export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USERS="your_user_id_here"
-
-# Run
-./cctelegram-bridge
 ```
 
-### 3. Test It Works
+### 3. Test with [Claude Code](https://github.com/anthropics/claude-code)
 ```bash
-# Send a test notification
-mkdir -p ~/.cc_telegram/events
-echo '{
-  "type": "task_completion",
-  "source": "test",
-  "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-  "task_id": "welcome",
-  "title": "🎉 CCTelegram Working!",
-  "description": "Your bridge is ready for development notifications"
-}' > ~/.cc_telegram/events/test.json
+# Restart Claude Code, then test with MCP tools:
+@cctelegram send_telegram_message "🎉 CCTelegram MCP Server Working!"
 ```
 
-**🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**
+**🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**  
+*The bridge runs automatically in the background - no manual management needed.*
 
 ---
 
@@ -103,18 +94,28 @@ echo '{
 
 ## ⚙️ Alternative Installation
 
+**Manual Bridge Setup (Advanced Users):**
+```bash
+# Download and run bridge directly
+curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
+chmod +x cctelegram-bridge
+
+# Configure and run
+export TELEGRAM_BOT_TOKEN="your_bot_token_here"
+export TELEGRAM_ALLOWED_USERS="your_user_id_here"
+./cctelegram-bridge
+
+# Test with file creation
+mkdir -p ~/.cc_telegram/events
+echo '{"type": "task_completion", "title": "Bridge Test", "description": "Manual setup working"}' > ~/.cc_telegram/events/test.json
+```
+
 **Build from Source:**
 ```bash
 git clone https://github.com/co8/cctelegram.git
 cd cctelegram  
 cargo build --release
 ./target/release/cctelegram-bridge
-```
-
-**MCP Server (for [Claude Code](https://github.com/anthropics/claude-code)):**
-```bash
-cd mcp-server
-./install.sh  # Auto-configures Claude Code
 ```
 
 ---
