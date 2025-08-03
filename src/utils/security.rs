@@ -1,19 +1,30 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
-use ring::digest;
+use ring::{digest, hmac};
 use base64::{Engine as _, engine::general_purpose};
 
 pub struct SecurityManager {
     allowed_users: std::collections::HashSet<i64>,
     rate_limiter: RateLimiter,
+    hmac_key: Option<hmac::Key>,
 }
 
 impl SecurityManager {
     pub fn new(allowed_users: Vec<i64>, rate_limit_requests: u32, rate_limit_window_secs: u64) -> Self {
+        // Try to get HMAC key from environment
+        let hmac_key = std::env::var("CC_TELEGRAM_HMAC_KEY").ok()
+            .map(|key| hmac::Key::new(hmac::HMAC_SHA256, key.as_bytes()));
+        
+        if hmac_key.is_none() {
+            warn!("CC_TELEGRAM_HMAC_KEY not set - event integrity checks disabled");
+            info!("Set CC_TELEGRAM_HMAC_KEY environment variable to enable HMAC integrity verification");
+        }
+        
         Self {
             allowed_users: allowed_users.into_iter().collect(),
             rate_limiter: RateLimiter::new(rate_limit_requests, Duration::from_secs(rate_limit_window_secs)),
+            hmac_key,
         }
     }
 
@@ -64,6 +75,78 @@ impl SecurityManager {
             .filter(|c| c.is_alphanumeric() || c.is_whitespace() || "._-:@".contains(*c))
             .take(1000) // Limit to 1000 characters
             .collect()
+    }
+    
+    /// Generate HMAC signature for data integrity
+    pub fn generate_hmac(&self, data: &[u8]) -> Option<String> {
+        self.hmac_key.as_ref().map(|key| {
+            let signature = hmac::sign(key, data);
+            general_purpose::STANDARD.encode(signature.as_ref())
+        })
+    }
+    
+    /// Verify HMAC signature
+    pub fn verify_hmac(&self, data: &[u8], signature: &str) -> bool {
+        let Some(key) = &self.hmac_key else {
+            // If no key is configured, skip verification
+            return true;
+        };
+        
+        let Ok(signature_bytes) = general_purpose::STANDARD.decode(signature) else {
+            warn!("Invalid HMAC signature format");
+            return false;
+        };
+        
+        hmac::verify(key, data, &signature_bytes).is_ok()
+    }
+    
+    /// Generate integrity metadata for an event
+    pub fn generate_event_integrity(&self, event_json: &str) -> HashMap<String, String> {
+        let mut metadata = HashMap::new();
+        
+        // Add timestamp
+        metadata.insert(
+            "integrity_timestamp".to_string(),
+            chrono::Utc::now().to_rfc3339(),
+        );
+        
+        // Add HMAC if key is configured
+        if let Some(hmac) = self.generate_hmac(event_json.as_bytes()) {
+            metadata.insert("hmac_sha256".to_string(), hmac);
+        }
+        
+        // Add content hash for additional verification
+        let digest = digest::digest(&digest::SHA256, event_json.as_bytes());
+        metadata.insert(
+            "content_sha256".to_string(),
+            general_purpose::STANDARD.encode(digest.as_ref()),
+        );
+        
+        metadata
+    }
+    
+    /// Verify event integrity
+    pub fn verify_event_integrity(&self, event_json: &str, metadata: &HashMap<String, String>) -> bool {
+        // Verify content hash
+        if let Some(expected_hash) = metadata.get("content_sha256") {
+            let digest = digest::digest(&digest::SHA256, event_json.as_bytes());
+            let actual_hash = general_purpose::STANDARD.encode(digest.as_ref());
+            
+            if actual_hash != *expected_hash {
+                warn!("Event content hash mismatch");
+                return false;
+            }
+        }
+        
+        // Verify HMAC if present
+        if let Some(hmac_signature) = metadata.get("hmac_sha256") {
+            if !self.verify_hmac(event_json.as_bytes(), hmac_signature) {
+                warn!("Event HMAC verification failed");
+                return false;
+            }
+        }
+        
+        true
     }
 }
 
