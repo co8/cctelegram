@@ -15,7 +15,7 @@ Model Context Protocol (MCP) server that serves as the main interface for [Claud
 - **Smart Discovery**: Automatically locates bridge executable across installation paths
 
 ### 📤 MCP Tools Available
-- **🔔 Event Notifications** - 44+ event types with rich formatting
+- **🔔 Event Notifications** - [44+ event types](../@docs/reference/EVENT_SYSTEM.md) with rich formatting
 - **✅ Task Completion** - Detailed task notifications with results
 - **⚠️ Performance Alerts** - Threshold-based monitoring alerts
 - **📝 Approval Workflows** - Interactive approval requests
