@@ -1,16 +1,19 @@
-# CC Telegram MCP Server
+# CC Telegram MCP Server v1.1.1
 
-Model Context Protocol (MCP) server for seamless integration between Claude Code and the CC Telegram Bridge. This server provides a set of tools that allow Claude Code to send notifications, monitor responses, and interact with Telegram users remotely.
+Model Context Protocol (MCP) server for seamless integration between Claude Code and the CC Telegram Bridge. This server provides a comprehensive set of tools that allow Claude Code to send notifications, monitor responses, process approvals intelligently, and interact with Telegram users remotely for effective remote development workflows.
 
 ## Features
 
-- **📤 Event Sending**: Send structured events for all development activities
-- **💬 Simple Messaging**: Send quick text messages to Telegram
-- **📋 Task Tracking**: Specialized task completion notifications
-- **⚡ Performance Monitoring**: Send performance alerts and system status
-- **🔄 Interactive Messaging**: Request approvals and get user responses
-- **📊 Bridge Monitoring**: Check bridge health and status
+- **📤 Event Sending**: Send structured events for all development activities with rich formatting
+- **💬 Simple Messaging**: Send quick text messages to Telegram with local timezone stamps
+- **📋 Task Tracking**: Specialized task completion notifications with duration and file tracking
+- **⚡ Performance Monitoring**: Send performance alerts and system status with thresholds
+- **🔄 Interactive Messaging**: Request approvals and get user responses with clean formatting
+- **🧠 Intelligent Response Processing**: **NEW** Automated processing of pending approvals/denials
+- **📊 Bridge Monitoring**: Check bridge health and status with detailed metrics
 - **🎯 Event Templates**: Pre-configured templates for common use cases
+- **🌍 Local Timezone Support**: All timestamps display in Europe/Berlin timezone (UTC+2/CEST)
+- **🛠️ Bridge Management**: Automated start/stop/restart bridge process management
 
 ## Quick Installation
 
@@ -115,6 +118,11 @@ Add to your `~/.claude/claude_desktop_config.json`:
 @cctelegram get_telegram_responses {"limit": 5}
 ```
 
+### Process Pending Responses (NEW)
+```
+@cctelegram process_pending_responses {"since_minutes": 10}
+```
+
 ## Available Tools
 
 | Tool | Description | Example Use Case |
@@ -125,9 +133,15 @@ Add to your `~/.claude/claude_desktop_config.json`:
 | `send_performance_alert` | Performance threshold alerts | Memory/CPU warnings |
 | `send_approval_request` | Request user approval | Deployment confirmations |
 | `get_telegram_responses` | Get user responses | Check approval status |
+| `process_pending_responses` | **NEW** Process and analyze pending approvals/denials | Automated approval handling |
 | `get_bridge_status` | Bridge health check | Monitor system status |
 | `list_event_types` | List available event types | Discover notification options |
 | `clear_old_responses` | Clean up old responses | Maintenance operations |
+| `start_bridge` | Start the bridge process | Ensure bridge is running |
+| `stop_bridge` | Stop the bridge process | Maintenance operations |
+| `restart_bridge` | Restart the bridge process | Recovery operations |
+| `ensure_bridge_running` | Start bridge if not running | Automated management |
+| `check_bridge_process` | Check if bridge process is running | Process monitoring |
 
 ## Event Types
 
@@ -242,9 +256,19 @@ async function deployToProduction() {
     ["Deploy", "Cancel"]
   );
   
-  // Check for response...
-  const responses = await mcpClient.getTelegramResponses();
-  // ... handle approval logic ...
+  // Process pending responses with intelligence
+  const pendingResponses = await mcpClient.processPendingResponses({
+    since_minutes: 10
+  });
+  
+  // Handle approval logic based on processed responses
+  if (pendingResponses.actionable_responses.length > 0) {
+    const latestResponse = pendingResponses.actionable_responses[0];
+    if (latestResponse.type === "approval" && latestResponse.action === "approved") {
+      console.log("Deployment approved, proceeding...");
+      // ... deploy logic ...
+    }
+  }
 }
 ```
 

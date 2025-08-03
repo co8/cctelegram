@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](#-comprehensive-event-system) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](#-testing)
 
-A high-performance, secure Rust-based bridge between Claude Code/VSCode and Telegram for comprehensive development monitoring and interaction. Features a complete 44+ event type system covering the entire development lifecycle from code generation to deployment.
+A high-performance, secure Rust-based bridge between Claude Code/VSCode and Telegram for comprehensive development monitoring and remote interaction. Features a complete 44+ event type system, MCP server integration for automated management, and intelligent response processing with local timezone support.
 
 ## 🚀 Features
 
@@ -14,9 +14,11 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 
 ### 🤖 Intelligent Telegram Integration
 - **Real-time Notifications**: Instant notifications for all development events with rich formatting and emojis
-- **Professional Message Design**: Bold headers, clean timestamps (2/Aug/25 23:42), and consistent layout
+- **Professional Message Design**: Bold headers, local timezone timestamps (2025-08-03 17:30:45 CEST), and consistent layout
 - **Interactive Messaging**: Approve actions, respond to prompts, and get status updates through inline keyboards
-- **Smart Message Formatting**: Context-aware message formatting with appropriate emojis for each event type
+- **Smart Response Processing**: Automated detection and handling of user approvals/denials with clean formatting
+- **Local Timezone Support**: All timestamps automatically display in Europe/Berlin timezone (UTC+2/CEST)
+- **Clean Approval Responses**: Professional "Request Approved/Denied" messages without technical IDs
 - **Fallback Support**: Generic notification system handles unknown event types gracefully
 
 ### 🔒 Enterprise Security & Authentication
@@ -37,21 +39,36 @@ A high-performance, secure Rust-based bridge between Claude Code/VSCode and Tele
 - **Deployment Tools**: Performance monitoring scripts, health checks, and deployment validation
 - **Scalable Architecture**: Modular design supporting high-throughput event processing
 
-### 🎛️ Automated Bridge Management (New in v0.2.0)
-- **Process Management**: Start, stop, and restart the bridge automatically via MCP server
+### 🎛️ Model Context Protocol (MCP) Integration (v1.1.1)
+- **Complete Claude Code Integration**: Native MCP server for seamless Claude Code workflow integration
+- **Automated Bridge Management**: Start, stop, and restart the bridge automatically via MCP tools
+- **Intelligent Response Processing**: Process pending approvals/denials with actionable insights
 - **Health Monitoring**: Automatic health checks and process status verification  
 - **Smart Discovery**: Automatically finds bridge executable in multiple locations
-- **Environment Handling**: Seamless environment variable management and validation
-- **Background Operation**: Detached process spawning for hands-free operation
+- **Background Operation**: Detached process spawning for hands-free remote development
 
 **Available MCP Tools:**
-- `start_bridge` - Start the bridge if not running
-- `stop_bridge` - Stop the bridge process gracefully
-- `restart_bridge` - Restart the bridge process  
+- `send_telegram_message` - Send simple notifications
+- `send_telegram_event` - Send structured events with rich data
+- `send_task_completion` - Send task completion notifications with results
+- `send_approval_request` - Request approvals with interactive buttons
+- `send_performance_alert` - Send performance alerts with thresholds
+- `get_telegram_responses` - Retrieve user responses and interactions
+- `process_pending_responses` - **NEW** Process and analyze pending approvals/denials
+- `get_bridge_status` - Check bridge health and metrics
+- `start_bridge/stop_bridge/restart_bridge` - Bridge process management
 - `ensure_bridge_running` - Ensure bridge is running, start if needed
-- `check_bridge_process` - Check if bridge process is running
+- `clear_old_responses` - Clean up old response files
 
-**Benefits:** No more manual terminal management! The MCP server can automatically start and manage the bridge process, eliminating the need to run it in a separate terminal window.
+**Benefits:** Complete remote development workflow with automated management, intelligent response processing, and hands-free operation. Perfect for remote work scenarios!
+
+### 🆕 Latest Improvements (v0.4.3)
+- **Enhanced Message Formatting**: Clean approval responses without technical IDs for better UX
+- **Local Timezone Support**: All timestamps display in Europe/Berlin timezone (UTC+2/CEST) 
+- **Intelligent Response Processing**: New `process_pending_responses` tool for automated approval handling
+- **Professional Approval Flow**: "Request Approved/Denied" messages with local timestamps
+- **Improved Bridge Management**: More reliable process management and health monitoring
+- **Enhanced MCP Integration**: Expanded tool suite with better error handling and status reporting
 
 ## 📋 Prerequisites
 
@@ -257,10 +274,13 @@ health_endpoint = "/health"
 
 ```bash
 # Production mode
-./target/release/cc-telegram-bridge
+./target/release/cctelegram-bridge
 
 # Development mode with detailed logging
 RUST_LOG=info cargo run
+
+# Via MCP server (recommended for Claude Code users)
+# No manual startup needed - bridge starts automatically when needed
 ```
 
 ### Event Processing
