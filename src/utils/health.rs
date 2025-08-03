@@ -2,7 +2,14 @@ use std::sync::Arc;
 use warp::{Filter, Rejection, Reply, http::StatusCode};
 use serde_json::json;
 use crate::utils::performance::{PerformanceMonitor, HealthStatus};
-use tracing::{info, error};
+use tracing::{info, error, warn};
+use std::env;
+
+/// Custom rejection for unauthorized access
+#[derive(Debug)]
+struct Unauthorized;
+
+impl warp::reject::Reject for Unauthorized {}
 
 /// Health check and metrics HTTP server
 pub struct HealthServer {
@@ -23,9 +30,40 @@ impl HealthServer {
     pub async fn start(self) -> anyhow::Result<()> {
         info!("Starting health check server on port {}", self.port);
         
+        // Get authentication token from environment
+        let auth_token = env::var("CC_TELEGRAM_METRICS_TOKEN").ok();
+        if auth_token.is_none() {
+            warn!("CC_TELEGRAM_METRICS_TOKEN not set - metrics endpoints will require no authentication");
+            warn!("Set CC_TELEGRAM_METRICS_TOKEN environment variable to secure metrics endpoints");
+        }
+        
         let monitor = self.performance_monitor.clone();
         
-        // Health check endpoint
+        // Authentication filter
+        let auth = warp::header::optional::<String>("authorization")
+            .and_then(move |auth_header: Option<String>| {
+                let token = auth_token.clone();
+                async move {
+                    // If no token is configured, allow access (for backward compatibility)
+                    if token.is_none() {
+                        return Ok::<(), Rejection>(());
+                    }
+                    
+                    // If token is configured, require authentication
+                    let configured_token = token.unwrap();
+                    match auth_header {
+                        Some(header) if header == format!("Bearer {}", configured_token) => {
+                            Ok(())
+                        }
+                        _ => {
+                            warn!("Unauthorized metrics access attempt");
+                            Err(warp::reject::custom(Unauthorized))
+                        }
+                    }
+                }
+            });
+        
+        // Health check endpoint (public for Kubernetes/Docker health checks)
         let health = warp::path("health")
             .and(warp::get())
             .and_then({
@@ -38,12 +76,13 @@ impl HealthServer {
                 }
             });
         
-        // Metrics endpoint (Prometheus format)
+        // Metrics endpoint (Prometheus format) - requires auth
         let metrics = warp::path("metrics")
             .and(warp::get())
+            .and(auth.clone())
             .and_then({
                 let monitor = monitor.clone();
-                move || {
+                move |_auth| {
                     let monitor = monitor.clone();
                     async move {
                         handle_metrics(monitor).await
@@ -51,12 +90,13 @@ impl HealthServer {
                 }
             });
         
-        // Performance report endpoint (JSON format)
+        // Performance report endpoint (JSON format) - requires auth
         let report = warp::path("report")
             .and(warp::get())
+            .and(auth.clone())
             .and_then({
                 let monitor = monitor.clone();
-                move || {
+                move |_auth| {
                     let monitor = monitor.clone();
                     async move {
                         handle_performance_report(monitor).await
@@ -190,6 +230,9 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, std::convert::In
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
         message = "Not Found";
+    } else if err.find::<Unauthorized>().is_some() {
+        code = StatusCode::UNAUTHORIZED;
+        message = "Authentication required";
     } else if err.find::<warp::filters::body::BodyDeserializeError>().is_some() {
         code = StatusCode::BAD_REQUEST;
         message = "Invalid Body";

@@ -1,32 +1,59 @@
 use crate::events::types::ResponseEvent;
+use crate::utils::security::SecurityManager;
 use chrono::{Utc, TimeZone};
 use chrono_tz::Tz;
 use std::collections::HashMap;
-use anyhow::Result;
-use tracing::info;
+use anyhow::{Result, Context};
+use tracing::{info, warn};
 
 #[allow(dead_code)]
 pub struct CallbackHandler {
     responses_dir: std::path::PathBuf,
     timezone: Tz,
+    security_manager: SecurityManager,
 }
 
 #[allow(dead_code)]
 impl CallbackHandler {
     pub fn new(responses_dir: std::path::PathBuf, timezone: Tz) -> Self {
-        Self { responses_dir, timezone }
+        // Initialize with default security settings
+        let security_manager = SecurityManager::new(vec![], 30, 60);
+        Self { responses_dir, timezone, security_manager }
+    }
+
+    pub fn new_with_security(
+        responses_dir: std::path::PathBuf, 
+        timezone: Tz,
+        allowed_users: Vec<i64>,
+        rate_limit_requests: u32,
+        rate_limit_window: u64,
+    ) -> Self {
+        let security_manager = SecurityManager::new(allowed_users, rate_limit_requests, rate_limit_window);
+        Self { responses_dir, timezone, security_manager }
     }
 
     pub async fn handle_callback(&self, callback_data: &str, user_id: i64) -> Result<String> {
-        info!("Processing callback: {} from user: {}", callback_data, user_id);
+        // Sanitize input first
+        let sanitized_callback = self.security_manager.sanitize_input(callback_data);
+        
+        info!("Processing sanitized callback from user: {}", user_id);
 
-        let parts: Vec<&str> = callback_data.split('_').collect();
+        let parts: Vec<&str> = sanitized_callback.split('_').collect();
         if parts.len() < 2 {
+            warn!("Invalid callback format received from user {}", user_id);
             return Ok("Invalid callback data".to_string());
         }
 
         let action = parts[0];
-        let task_id = parts[1..].join("_");
+        let raw_task_id = parts[1..].join("_");
+        
+        // Validate task ID
+        if !self.security_manager.validate_task_id(&raw_task_id) {
+            warn!("Invalid task ID format: {} from user {}", raw_task_id, user_id);
+            return Ok("Invalid task ID format".to_string());
+        }
+        
+        let task_id = raw_task_id;
 
         match action {
             "approve" => self.handle_approval(&task_id, user_id, "approve").await,
@@ -102,15 +129,39 @@ impl CallbackHandler {
     }
 
     async fn write_response_file(&self, response: &ResponseEvent) -> Result<()> {
+        use tokio::fs::OpenOptions;
+        use std::os::unix::fs::PermissionsExt;
+        
         tokio::fs::create_dir_all(&self.responses_dir).await?;
         
-        let filename = format!("{}_{}.json", response.response, response.event_id);
+        // Sanitize the filename components
+        let sanitized_response = self.security_manager.sanitize_input(&response.response);
+        let sanitized_event_id = self.security_manager.sanitize_input(&response.event_id);
+        let filename = format!("{}_{}.json", sanitized_response, sanitized_event_id);
         let file_path = self.responses_dir.join(filename);
         
         let json_content = serde_json::to_string_pretty(response)?;
-        tokio::fs::write(&file_path, json_content).await?;
         
-        info!("Response written to: {}", file_path.display());
+        // Write file with restrictive permissions (0600)
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&file_path)
+            .await
+            .context("Failed to create response file")?;
+        
+        // Set restrictive permissions (owner read/write only)
+        let metadata = file.metadata().await?;
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(0o600);
+        tokio::fs::set_permissions(&file_path, permissions).await?;
+        
+        // Write content
+        use tokio::io::AsyncWriteExt;
+        file.write_all(json_content.as_bytes()).await?;
+        
+        info!("Response written securely to: {}", file_path.display());
         Ok(())
     }
 }

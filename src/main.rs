@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
                                             Err(e) => {
                                                 // Record error
                                                 monitor_clone.record_error("telegram_notification");
-                                                error!("Failed to send notification to user {}: {}", user_id, e);
+                                                error!("Failed to send notification: {}", e);
                                             }
                                         }
                                     }
