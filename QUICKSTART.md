@@ -4,10 +4,10 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 
 ## 📋 Pre-flight Checklist
 
-- [ ] **Rust installed** (1.70+) - [rustup.rs](https://rustup.rs/)
 - [ ] **Telegram account** with mobile app
-- [ ] **10 minutes** of your time
+- [ ] **5-10 minutes** of your time
 - [ ] **Terminal access** on macOS, Linux, or WSL
+- [ ] **Optional**: Rust installed (1.70+) if building from source - [rustup.rs](https://rustup.rs/)
 
 ## 🎯 Step 1: Create Your Telegram Bot
 
@@ -33,20 +33,31 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 ✅ Example ID: 123456789
 ```
 
-## 🛠️ Step 2: Setup the Application
+## 🛠️ Step 2: Install the Application
 
-### 2.1 Clone and Build
+### Option A: Download Pre-built Binary (Recommended - 30 seconds)
+
+```bash
+# Download the latest release
+curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
+chmod +x cctelegram-bridge
+
+# Verify the download
+ls -la cctelegram-bridge
+```
+
+### Option B: Build from Source (2 minutes)
 
 ```bash
 # Clone the repository
-git clone https://github.com/co8/cc-telegram.git
+git clone https://github.com/co8/cctelegram.git
 cd cc-telegram
 
-# Build the optimized version (takes ~2 minutes)
+# Build the optimized version
 cargo build --release
 ```
 
-### 2.2 Quick Configuration
+### 2.3 Quick Configuration
 
 ```bash
 # Set your bot credentials (replace with your actual values)
@@ -63,8 +74,10 @@ echo "User ID: $TELEGRAM_ALLOWED_USERS"
 ### 3.1 Start the Bridge
 
 ```bash
-# Start the application
-./target/release/cctelegram-bridge
+# Start the application (use appropriate path based on installation method)
+./cctelegram-bridge                    # If downloaded pre-built binary
+# OR
+./target/release/cctelegram-bridge     # If built from source
 ```
 
 You should see:
@@ -228,7 +241,7 @@ User=$USER
 WorkingDirectory=$(pwd)
 Environment=TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 Environment=TELEGRAM_ALLOWED_USERS=$TELEGRAM_ALLOWED_USERS
-ExecStart=$(pwd)/target/release/cctelegram-bridge
+ExecStart=$(pwd)/cctelegram-bridge
 Restart=always
 RestartSec=10
 
@@ -245,8 +258,10 @@ sudo systemctl start cctelegram-bridge
 ### 7.3 Background Mode (macOS/Manual)
 
 ```bash
-# Run in background with logging
-nohup ./target/release/cctelegram-bridge > cc-bridge.log 2>&1 &
+# Run in background with logging (adjust path based on installation method)
+nohup ./cctelegram-bridge > cc-bridge.log 2>&1 &                    # If downloaded pre-built binary
+# OR
+# nohup ./target/release/cctelegram-bridge > cc-bridge.log 2>&1 &   # If built from source
 
 # Check it's running
 ps aux | grep cctelegram-bridge
@@ -301,7 +316,7 @@ sudo journalctl -u cctelegram-bridge -f
 ```bash
 # Auto-restart if crashed
 while true; do
-  ./target/release/cctelegram-bridge
+  ./cctelegram-bridge     # Adjust path based on installation method
   echo "Bridge crashed, restarting in 5 seconds..."
   sleep 5
 done
@@ -339,7 +354,7 @@ cat ~/.cc_telegram/events/test_event.json | jq
 ./performance_monitor.sh monitor
 
 # Enable debug logging
-RUST_LOG=debug ./target/release/cctelegram-bridge
+RUST_LOG=debug ./cctelegram-bridge     # Adjust path based on installation method
 ```
 
 ### Port Already in Use

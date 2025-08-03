@@ -1,8 +1,8 @@
 # CCTelegram MCP Server v1.1.1
 
-**Primary Interface for Telegram Development Notifications**
+**Primary Interface for [Telegram](https://telegram.org/) Development Notifications**
 
-Model Context Protocol (MCP) server that serves as the main interface for Claude Code users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for sending Telegram notifications about development activities, processing approval workflows, and monitoring development status. This is a notification and monitoring system - users interact exclusively with MCP tools for sending notifications, not executing commands.
+Model Context Protocol (MCP) server that serves as the main interface for [Claude Code](https://github.com/anthropics/claude-code) users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for sending [Telegram](https://telegram.org/) notifications about development activities, processing approval workflows, and monitoring development status. This is a notification and monitoring system - users interact exclusively with MCP tools for sending notifications, not executing commands.
 
 ## Features
 
@@ -47,8 +47,8 @@ The script will:
 ### Prerequisites
 
 - Node.js 18+
-- CCTelegram Bridge built (but not running - MCP manages it)
-- Claude Code installed
+- CCTelegram Bridge installed (download from [releases](https://github.com/co8/cctelegram/releases/latest) or build from source - MCP manages it automatically)
+- [Claude Code](https://github.com/anthropics/claude-code) installed
 
 ### Setup Steps
 
@@ -62,7 +62,7 @@ npm install
 npm run build
 ```
 
-3. **Configure Claude Code:**
+3. **Configure [Claude Code](https://github.com/anthropics/claude-code):**
 Add to your `~/.claude/claude_desktop_config.json`:
 ```json
 {
@@ -82,7 +82,7 @@ Add to your `~/.claude/claude_desktop_config.json`:
 }
 ```
 
-4. **Restart Claude Code**
+4. **Restart [Claude Code](https://github.com/anthropics/claude-code)**
 
 The MCP server will automatically manage the bridge process - no manual startup required!
 

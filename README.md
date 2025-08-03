@@ -2,7 +2,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/co8/cc-telegram) [![Event System](https://img.shields.io/badge/events-44%2B%20types-blue.svg)](#-comprehensive-event-system) [![Tests](https://img.shields.io/badge/tests-38%20passing-green.svg)](#-testing) [![MCP](https://img.shields.io/badge/MCP-v1.1.1-purple.svg)](#-mcp-integration)
 
-**Model Context Protocol (MCP) server for seamless Telegram integration with Claude Code.** The primary interface for developers - automatically manages the CCTelegram Bridge as a background process while providing comprehensive development activity monitoring, real-time notifications, and approval workflows through Telegram. This is a notification and monitoring system, not a command execution platform.
+**Model Context Protocol (MCP) server for seamless [Telegram](https://telegram.org/) integration with [Claude Code](https://github.com/anthropics/claude-code).** The primary interface for developers - automatically manages the CCTelegram Bridge as a background process while providing comprehensive development activity monitoring, real-time notifications, and approval workflows through [Telegram](https://telegram.org/). This is a notification and monitoring system, not a command execution platform.
 
 ## 🚀 Features
 
@@ -41,7 +41,7 @@
 - **Scalable Architecture**: Modular design supporting high-throughput event processing
 
 ### 🎛️ Model Context Protocol (MCP) Server (v1.1.1) - Primary Interface
-- **Claude Code Native Integration**: Primary interface for developers - MCP server manages everything automatically
+- **[Claude Code](https://github.com/anthropics/claude-code) Native Integration**: Primary interface for developers - MCP server manages everything automatically
 - **Automated Bridge Management**: Automatically starts, monitors, and manages the CCTelegram Bridge process
 - **Hands-Free Operation**: Users interact only with MCP tools - bridge runs transparently in background
 - **Intelligent Response Processing**: Process pending approvals/denials with actionable insights
@@ -76,8 +76,8 @@
 ## 📋 Prerequisites
 
 - **Rust 1.70+** - [Install Rust](https://rustup.rs/)
-- **Telegram Bot Token** - Create via [@BotFather](https://t.me/botfather)
-- **Your Telegram User ID** - Get from [@userinfobot](https://t.me/userinfobot)
+- **[Telegram](https://telegram.org/) Bot Token** - Create via [@BotFather](https://t.me/botfather)
+- **Your [Telegram](https://telegram.org/) User ID** - Get from [@userinfobot](https://t.me/userinfobot)
 
 ### System Dependencies
 
@@ -96,17 +96,29 @@ sudo yum install curl jq bc
 
 **🚀 Get up and running in under 10 minutes!** See the complete [QUICKSTART.md](QUICKSTART.md) guide for detailed step-by-step instructions.
 
-### 1. Setup Telegram Bot
+### 1. Setup [Telegram](https://telegram.org/) Bot
 
 1. Create bot with [@BotFather](https://t.me/botfather): `/newbot`
 2. Get your user ID from [@userinfobot](https://t.me/userinfobot)
 3. Save both tokens for the next step
 
-### 2. Build and Configure
+### 2. Install and Configure
 
+**Option A: Download Pre-built Binary (Recommended - 30 seconds)**
 ```bash
-# Clone and build (takes ~2 minutes)
-git clone https://github.com/co8/cc-telegram.git
+# Download the latest release
+curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
+chmod +x cctelegram-bridge
+
+# Configure credentials (replace with your actual values)
+export TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+export TELEGRAM_ALLOWED_USERS="123456789"
+```
+
+**Option B: Build from Source (2 minutes)**
+```bash
+# Clone and build
+git clone https://github.com/co8/cctelegram.git
 cd cc-telegram
 cargo build --release
 
@@ -118,8 +130,10 @@ export TELEGRAM_ALLOWED_USERS="123456789"
 ### 3. Start and Test
 
 ```bash
-# Start the bridge
-./target/release/cctelegram-bridge
+# Start the bridge (use appropriate path based on installation method)
+./cctelegram-bridge                    # If downloaded pre-built binary
+# OR
+./target/release/cctelegram-bridge     # If built from source
 
 # In another terminal, send a test event
 mkdir -p ~/.cc_telegram/events
@@ -139,7 +153,7 @@ cat > ~/.cc_telegram/events/test.json << 'EOF'
 EOF
 ```
 
-**🎉 You should receive a Telegram notification within seconds!**
+**🎉 You should receive a [Telegram](https://telegram.org/) notification within seconds!**
 
 ### 4. Monitor and Deploy
 
@@ -282,8 +296,10 @@ health_endpoint = "/health"
 ### Starting the Bridge
 
 ```bash
-# Production mode
-./target/release/cctelegram-bridge
+# Production mode (adjust path based on installation method)
+./cctelegram-bridge                    # If downloaded pre-built binary
+# OR
+./target/release/cctelegram-bridge     # If built from source
 
 # Development mode with detailed logging
 RUST_LOG=info cargo run
@@ -366,7 +382,7 @@ The system monitors for **44+ event types** across 10 categories. External syste
 
 | Category | Events | Example Monitoring Use Cases |
 |----------|--------|-------------------|
-| 📋 **Task Management** | 5 types | Claude Code task lifecycle status notifications |
+| 📋 **Task Management** | 5 types | [Claude Code](https://github.com/anthropics/claude-code) task lifecycle status notifications |
 | 🔨 **Code Operations** | 6 types | Code generation results, analysis completion alerts |
 | 📁 **File System** | 5 types | File/directory change monitoring and notifications |
 | 🔨 **Build & Development** | 8 types | Build outcome reports, test result notifications |
