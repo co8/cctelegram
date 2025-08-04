@@ -162,12 +162,21 @@ impl MessageFormatter {
         let concise_title = self.truncate_title(&event.title, 80);
         let concise_desc = self.truncate_description(&event.description, 200);
         
-        format!(
-            "*🔄 {}* {}\n⏰ {}\n{}",
-            Self::escape_markdown_v2(&concise_title),
-            Self::escape_markdown_v2(&progress_info),
-            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+        // Combine progress info with description for concise format
+        let combined_content = if progress_info.is_empty() {
             Self::process_markdown_content(&concise_desc)
+        } else {
+            format!("{}\n{}", 
+                Self::escape_markdown_v2(&progress_info),
+                Self::process_markdown_content(&concise_desc)
+            )
+        };
+        
+        format!(
+            "*🔄 {}*\n⏰ {}\n{}",
+            Self::escape_markdown_v2(&concise_title),
+            Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
+            combined_content
         )
     }
 
