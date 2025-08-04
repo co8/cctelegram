@@ -56,7 +56,11 @@ impl TelegramBot {
     fn escape_markdown_v2(text: &str) -> String {
         text.chars()
             .map(|c| match c {
-                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' => {
+                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' | '\\' => {
+                    format!("\\{}", c)
+                }
+                // Handle bullet points and other special Unicode characters
+                '•' | '◦' | '▪' | '▫' | '‣' | '⁃' => {
                     format!("\\{}", c)
                 }
                 _ => c.to_string(),

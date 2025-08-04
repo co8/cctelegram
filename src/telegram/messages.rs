@@ -42,7 +42,11 @@ impl MessageFormatter {
     fn escape_markdown_v2(text: &str) -> String {
         text.chars()
             .map(|c| match c {
-                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' => {
+                '_' | '*' | '[' | ']' | '(' | ')' | '~' | '`' | '>' | '#' | '+' | '-' | '=' | '|' | '{' | '}' | '.' | '!' | '\\' => {
+                    format!("\\{}", c)
+                }
+                // Handle bullet points and other special Unicode characters
+                '•' | '◦' | '▪' | '▫' | '‣' | '⁃' => {
                     format!("\\{}", c)
                 }
                 _ => c.to_string(),
@@ -181,7 +185,7 @@ impl MessageFormatter {
     }
 
     pub fn format_generic_message(&self, event: &Event) -> String {
-        let (emoji, event_name) = self.get_event_display_info(&event.event_type);
+        let (emoji, _event_name) = self.get_event_display_info(&event.event_type);
         let concise_title = self.truncate_title(&event.title, 80);
         let concise_desc = self.truncate_description(&event.description, 200);
         
@@ -266,6 +270,9 @@ impl MessageFormatter {
             TaskCompletion => ("✅", "Task Completion"),
             ApprovalRequest => ("🔐", "Approval Request"),
             ProgressUpdate => ("🔄", "Progress Update"),
+            
+            // Unknown event type for forward compatibility
+            Unknown => ("❓", "Unknown Event"),
         }
     }
 

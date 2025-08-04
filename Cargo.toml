@@ -47,6 +47,9 @@ anyhow = "1.0"
 chrono = { version = "0.4", features = ["serde", "clock"] }
 chrono-tz = "0.10"
 
+# UUID generation for event deduplication
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
 # Cross-platform paths and utilities
 dirs = "5.0"
 

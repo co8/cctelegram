@@ -148,6 +148,9 @@ impl EventProcessor {
             
             // Custom Events
             CustomEvent => "custom_event",
+            
+            // Unknown event type for forward compatibility
+            Unknown => "unknown_event",
         }
     }
 

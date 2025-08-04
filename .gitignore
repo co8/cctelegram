@@ -35,3 +35,7 @@ performance_monitor.log
 ~/.cc_telegram/
 config.toml
 target/.rustc_info.json
+
+# Task files
+# tasks.json
+# tasks/ 
