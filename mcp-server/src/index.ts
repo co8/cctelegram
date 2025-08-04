@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import dotenv from 'dotenv';
+import fs from 'fs-extra';
+import path from 'path';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -19,6 +22,36 @@ import {
   secureLog,
   SecurityError
 } from './security.js';
+
+// Load environment variables from .env files before initializing security
+const loadEnvFiles = () => {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+  const envFilePaths = [
+    // Project directory
+    path.join(process.cwd(), '..', '.env'),
+    path.join(process.cwd(), '.env'),
+    // User's .cc_telegram directory
+    path.join(homeDir, '.cc_telegram', '.env')
+  ];
+
+  for (const envPath of envFilePaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        console.error(`[MCP-ENV] Loading .env file: ${envPath}`);
+        const result = dotenv.config({ path: envPath });
+        if (result.parsed) {
+          console.error(`[MCP-ENV] Loaded ${Object.keys(result.parsed).length} variables from ${envPath}`);
+          console.error(`[MCP-ENV] MCP_ENABLE_AUTH=${process.env.MCP_ENABLE_AUTH}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[MCP-ENV] Failed to load .env file ${envPath}:`, error);
+    }
+  }
+};
+
+// Load environment variables first
+loadEnvFiles();
 
 // Initialize security system
 const securityConfig = loadSecurityConfig();
