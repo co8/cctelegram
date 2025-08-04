@@ -1,6 +1,6 @@
 [package]
 name = "cctelegram-bridge"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2021"
 authors = ["Enrique <@co8>"]
 description = "A Rust-based bridge between Claude Code/VSCode and Telegram for remote monitoring and interaction"
