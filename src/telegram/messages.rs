@@ -114,7 +114,7 @@ impl MessageFormatter {
         let concise_results = self.truncate_description(results, 200);
 
         format!(
-            "*{} {}*\n⏰ {}\n{}",
+            "*{} {}*\n⏰ {}\n\n{}",
             status_emoji,
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
@@ -150,7 +150,7 @@ impl MessageFormatter {
         };
 
         format!(
-            "*🔐 {}*\n⏰ {}\n{}",
+            "*🔐 {}*\n⏰ {}\n\n{}",
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             summary
@@ -173,7 +173,7 @@ impl MessageFormatter {
         };
         
         format!(
-            "*🔄 {}*\n⏰ {}\n{}",
+            "*🔄 {}*\n⏰ {}\n\n{}",
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
             combined_content
@@ -186,7 +186,7 @@ impl MessageFormatter {
         let concise_desc = self.truncate_description(&event.description, 200);
         
         format!(
-            "*{} {}*\n⏰ {}\n{}",
+            "*{} {}*\n⏰ {}\n\n{}",
             emoji,
             Self::escape_markdown_v2(&concise_title),
             Self::escape_markdown_v2(&self.format_timestamp(&event.timestamp)),
