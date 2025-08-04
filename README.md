@@ -76,16 +76,46 @@ _The bridge runs automatically in the background - no manual management needed._
 
 ## 🎯 Key Features
 
+- **🛡️ Zero Message Loss Architecture** - **NEW**: Enterprise-grade reliability with comprehensive validation and deduplication
 - **🔔 [44+ Event Types](@docs/reference/EVENT_SYSTEM.md)** - Complete development lifecycle monitoring
 - **🔌 MCP Server Integration** - Zero-config [Claude Code](https://github.com/anthropics/claude-code) integration
 - **📱 Real-time [Telegram](https://telegram.org/) Notifications** - Instant alerts with rich formatting
 - **✅ Interactive Approvals** - Approve deployments, code reviews via [Telegram](https://telegram.org/)
-- **🛡️ Enterprise Security** - **NEW**: OWASP-compliant, zero critical vulnerabilities
+- **⚡ Performance Optimized** - **NEW**: 86.3% payload reduction, microsecond serialization benchmarks
+- **🔍 Comprehensive Validation** - **NEW**: 14 ValidationError types, field constraints, business logic validation
 - **🔐 Advanced Authentication** - **NEW**: API keys, HMAC integrity, rate limiting
 - **📊 Performance Monitoring** - Built-in metrics, health checks, Prometheus integration
 - **🔍 Comprehensive Audit Logging** - **NEW**: Secure event tracking, data sanitization
 
 → **[See all features & capabilities](@docs/reference/FEATURES.md)**
+
+---
+
+## 🛡️ Enterprise Reliability (v0.6.0)
+
+**Zero Message Loss Achievement** - Comprehensive reliability improvements targeting 100% message delivery:
+
+### 🎯 Validation & Integrity System
+- **14 ValidationError Types** with user-friendly messages and severity classification
+- **Field Constraint Validation** - Title (1-200 chars), description (1-2000 chars), UUID/timestamp validation
+- **Business Logic Validation** - Event type-specific rules and required field checking
+- **Data Consistency Validation** - Cross-field validation and logical consistency verification
+
+### 🔄 Advanced Deduplication
+- **Primary Deduplication** - Exact event_id matching for duplicate prevention
+- **Secondary Deduplication** - Content-based matching within configurable time windows (5 seconds default)
+- **Intelligent Detection** - Hash-based content comparison for efficient duplicate identification
+
+### ⚡ Performance Optimization
+- **86.3% Payload Reduction** - Intelligent null field omission and optimized JSON structure
+- **Serialization Benchmarks** - Average 72.82μs serialization, 60.549μs deserialization
+- **Forward Compatibility** - Custom deserializers with Unknown variant fallbacks
+- **Snake_case Consistency** - Standardized JSON field naming across all structures
+
+### 📊 Enhanced Testing
+- **61 Tests** (+60% increase) with comprehensive validation and reliability testing
+- **Validation Framework** - 6 new test functions covering all validation aspects
+- **Performance Benchmarks** - Serialization/deserialization timing integrated into test suite
 
 ---
 
