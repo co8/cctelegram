@@ -799,7 +799,7 @@
         "description": "Remove 30+ Rust compiler warnings and extensive dead code in events/types.rs (1400+ lines unused), plus unused struct fields and methods across multiple modules to improve code maintainability and compilation performance.",
         "details": "Begin by running `cargo check --all-targets --all-features` and `cargo clippy --all-targets --all-features` to catalog all warnings and dead code issues. Use `cargo +nightly udeps` to identify unused dependencies. Focus on events/types.rs file which contains 1400+ lines of unused code - analyze git history to understand original purpose and safely remove obsolete event definitions, type aliases, and struct implementations. Remove unused struct fields across modules by checking field usage with `rg` or `grep` patterns. Eliminate dead methods by searching for call sites and ensuring no dynamic dispatch or reflection usage. Use `#[allow(dead_code)]` sparingly only for intentionally unused code like future API compatibility. Update Cargo.toml to remove unused dependencies identified by udeps. Configure clippy.toml with appropriate lints: `unused_self`, `dead_code`, `unused_imports`, `unused_variables`. Implement `#[warn(unused)]` and `#[deny(unused_must_use)]` attributes where appropriate. Use `cargo machete` to find unused dependencies and `cargo-unused-features` for feature cleanup. Consider breaking large modules into smaller, focused modules to improve maintainability.",
         "testStrategy": "Execute `cargo check` and `cargo clippy` to verify zero warnings and errors after cleanup. Run `cargo test --all-features` to ensure no functionality was accidentally removed. Use `cargo +nightly udeps` to confirm all dependencies are actually used. Perform compilation time benchmarking before and after cleanup using `cargo clean && time cargo build --release` to measure performance improvements. Run integration tests to validate that removed code wasn't used by external interfaces. Execute `cargo doc --no-deps` to ensure documentation builds without warnings. Use `cargo-bloat` to verify binary size reduction after dead code removal. Implement automated CI check with `cargo clippy -- -D warnings` to prevent future warning accumulation.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           22
         ],
@@ -811,7 +811,7 @@
             "description": "Run comprehensive Rust compilation analysis to identify all warnings, dead code, and unused dependencies across the entire codebase",
             "dependencies": [],
             "details": "Execute `cargo check --all-targets --all-features` and `cargo clippy --all-targets --all-features` to generate complete warning reports. Run `cargo +nightly udeps` to identify unused dependencies. Use `cargo machete` to find additional unused dependencies and `cargo-unused-features` for feature analysis. Document all findings in structured format categorizing by severity and module location.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify all analysis tools run successfully and generate comprehensive reports. Validate that baseline measurements are captured for comparison after cleanup."
           },
           {
@@ -822,7 +822,7 @@
               "24.1"
             ],
             "details": "Analyze git history of events/types.rs using `git log --follow --patch` to understand original purpose of unused code. Use `rg` patterns to search for usage across entire codebase. Identify safe-to-remove obsolete event definitions, type aliases, and struct implementations. Remove dead code while preserving any code needed for future API compatibility with appropriate `#[allow(dead_code)]` annotations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `cargo check` after each removal to ensure no compilation errors. Execute full test suite with `cargo test --all-features` to verify no functionality was broken."
           },
           {
@@ -833,7 +833,7 @@
               "24.1"
             ],
             "details": "Use `rg` and `grep` patterns to search for field and method usage across all modules. Check for dynamic dispatch, reflection, or serialization usage that might require seemingly unused fields. Remove unused struct fields and methods, being careful with traits and implementations. Update related documentation and comments that reference removed items.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Compile after each batch of removals using `cargo check`. Run unit tests for affected modules to ensure no functionality was accidentally removed. Verify serialization/deserialization still works correctly."
           },
           {
@@ -845,7 +845,7 @@
               "24.3"
             ],
             "details": "Create clippy.toml configuration with lints for `unused_self`, `dead_code`, `unused_imports`, `unused_variables`. Implement `#[warn(unused)]` and `#[deny(unused_must_use)]` attributes at appropriate module levels. Configure CI to fail on clippy warnings. Add pre-commit hooks to catch issues early in development workflow.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run `cargo clippy --all-targets --all-features` to verify all new linting rules are properly configured. Test that CI pipeline correctly fails on introduced warnings."
           },
           {
@@ -857,7 +857,7 @@
               "24.4"
             ],
             "details": "Update Cargo.toml to remove unused dependencies identified by udeps and machete. Run final compilation checks and performance benchmarking to measure compilation time improvements. Verify zero warnings remain with `cargo check` and `cargo clippy`. Update documentation to reflect changes and establish maintenance procedures for preventing future dead code accumulation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute complete test suite with `cargo test --all-features` to ensure all functionality remains intact. Run compilation time benchmarking to measure and document performance improvements. Verify `cargo +nightly udeps` shows no unused dependencies."
           }
         ]
@@ -927,7 +927,7 @@
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-05T20:02:47.636Z",
+      "updated": "2025-08-05T20:53:19.524Z",
       "description": "Tasks for master context"
     }
   }
