@@ -38,6 +38,11 @@ export default {
     '<rootDir>/tests/setup/jest.setup.ts'
   ],
   
+  // TypeScript configuration for Jest
+  testEnvironmentOptions: {
+    customExportConditions: ["node", "node-addons"]
+  },
+  
   // Coverage configuration
   collectCoverage: true,
   collectCoverageFrom: [

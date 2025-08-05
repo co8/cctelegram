@@ -123,28 +123,28 @@ describe('MCP Server Integration Tests', () => {
     // Default successful responses
     mockBridgeClient.sendEvent.mockResolvedValue({
       success: true,
-      event_id: '123e4567-e89b-12d3-a456-426614174000',
+      event_id: '123e4567-e89b-4d3a-8456-426614174000',
       file_path: '/test/events/test.json'
     });
 
     mockBridgeClient.sendMessage.mockResolvedValue({
       success: true,
-      event_id: '123e4567-e89b-12d3-a456-426614174000'
+      event_id: '123e4567-e89b-4d3a-8456-426614174000'
     });
 
     mockBridgeClient.sendTaskCompletion.mockResolvedValue({
       success: true,
-      event_id: '123e4567-e89b-12d3-a456-426614174000'
+      event_id: '123e4567-e89b-4d3a-8456-426614174000'
     });
 
     mockBridgeClient.sendPerformanceAlert.mockResolvedValue({
       success: true,
-      event_id: '123e4567-e89b-12d3-a456-426614174000'
+      event_id: '123e4567-e89b-4d3a-8456-426614174000'
     });
 
     mockBridgeClient.sendApprovalRequest.mockResolvedValue({
       success: true,
-      event_id: '123e4567-e89b-12d3-a456-426614174000'
+      event_id: '123e4567-e89b-4d3a-8456-426614174000'
     });
 
     mockBridgeClient.getBridgeStatus.mockResolvedValue({
@@ -669,7 +669,7 @@ describe('MCP Server Integration Tests', () => {
     describe('send_task_completion', () => {
       it('should send task completion successfully', async () => {
         const taskData = {
-          task_id: '123e4567-e89b-12d3-a456-426614174000',
+          task_id: '123e4567-e89b-4d3a-8456-426614174000',
           title: 'Integration Test Task',
           results: 'Task completed successfully',
           files_affected: ['src/test.ts', 'src/integration.ts'],
@@ -1135,7 +1135,7 @@ describe('MCP Server Integration Tests', () => {
             type: 'task_started',
             title: 'Integration Test Task',
             description: 'Starting integration test workflow',
-            task_id: '123e4567-e89b-12d3-a456-426614174000'
+            task_id: '123e4567-e89b-4d3a-8456-426614174000'
           }
         }
       }, CallToolRequestSchema);
@@ -1149,7 +1149,7 @@ describe('MCP Server Integration Tests', () => {
         params: {
           name: 'send_task_completion',
           arguments: {
-            task_id: '123e4567-e89b-12d3-a456-426614174000',
+            task_id: '123e4567-e89b-4d3a-8456-426614174000',
             title: 'Integration Test Task',
             results: 'Task completed successfully',
             duration_ms: 5000

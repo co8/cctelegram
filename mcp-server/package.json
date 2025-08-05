@@ -32,7 +32,15 @@
     "docker:build": "docker build -t cctelegram-mcp-server .",
     "docker:run": "docker run -p 3000:3000 cctelegram-mcp-server",
     "docker:security": "docker build --target security -t cctelegram-mcp-security .",
-    "benchmark": "node -e \"console.log('Running benchmarks...'); process.exit(0)\"",
+    "benchmark": "tsx src/benchmark/benchmark-runner.ts",
+    "benchmark:quick": "tsx src/benchmark/benchmark-runner.ts --output benchmark-results.json --quiet",
+    "benchmark:full": "tsx src/benchmark/benchmark-runner.ts --output benchmark-results.json --format json --save-baseline",
+    "benchmark:html": "tsx src/benchmark/benchmark-runner.ts --output benchmark-report.html --format html",
+    "benchmark:csv": "tsx src/benchmark/benchmark-runner.ts --output benchmark-data.csv --format csv",
+    "benchmark:md": "tsx src/benchmark/benchmark-runner.ts --output benchmark-report.md --format markdown",
+    "benchmark:ci": "tsx src/benchmark/benchmark-runner.ts --baseline benchmark-baseline.json --threshold 10 --quiet --output benchmark-ci-results.json",
+    "benchmark:regression": "tsx src/benchmark/benchmark-runner.ts --baseline benchmark-baseline.json --threshold 5 --output benchmark-regression.json",
+    "test:benchmark": "jest --testPathPattern=benchmark --testTimeout=300000",
     "validate": "npm run type-check && npm run lint:check && npm run format:check && npm run test:ci"
   },
   "keywords": [
@@ -65,7 +73,8 @@
     "rate-limiter-flexible": "^7.2.0",
     "uuid": "^9.0.1",
     "winston": "^3.13.0",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "memwatch-next": "^0.3.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.2",
@@ -76,6 +85,7 @@
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",
+    "@types/memwatch-next": "^0.3.3",
     "autocannon": "^7.15.0",
     "benchmark": "^2.1.4",
     "@types/benchmark": "^2.1.5",

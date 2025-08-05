@@ -115,6 +115,41 @@ export interface EscalationRule {
   delay: number; // in ms
 }
 
+export interface FileCleanupConfig {
+  enabled: boolean;
+  directories: {
+    [directory: string]: {
+      policy: {
+        filePatterns: string[];
+        maxAge?: {
+          enabled: boolean;
+          thresholdMs: number;
+          deleteOlderThan: number;
+        };
+        maxSize?: {
+          enabled: boolean;
+          thresholdBytes: number;
+          targetSizeBytes: number;
+        };
+        maxCount?: {
+          enabled: boolean;
+          maxFiles: number;
+          targetCount: number;
+        };
+        batchSize: number;
+        dryRun: boolean;
+        preserveMostRecent: number;
+      };
+      schedule?: {
+        enabled: boolean;
+        intervalMs: number;
+        runOnStart: boolean;
+        maxConcurrentRuns: number;
+      };
+    };
+  };
+}
+
 export interface PerformanceMonitoringConfig {
   enabled: boolean;
   slaTargets: {
@@ -135,12 +170,13 @@ export interface PerformanceMonitoringConfig {
     duration: number; // in ms
     heapSnapshots: boolean;
     cpuProfile: boolean;
-  };
+  };  
   optimization: {
     enabled: boolean;
     autoTuning: boolean;
     recommendationEngine: boolean;
   };
+  cleanup: FileCleanupConfig;
 }
 
 export interface AlertingConfig {
@@ -447,6 +483,88 @@ export function createDefaultObservabilityConfig(): ObservabilityConfig {
         enabled: true,
         autoTuning: false,
         recommendationEngine: true
+      },
+      cleanup: {
+        enabled: true,
+        directories: {
+          './responses': {
+            policy: {
+              filePatterns: ['*.json', 'response_*.json'],
+              maxAge: {
+                enabled: true,
+                thresholdMs: 24 * 60 * 60 * 1000, // 24 hours
+                deleteOlderThan: 1
+              },
+              maxSize: {
+                enabled: true,
+                thresholdBytes: 100 * 1024 * 1024, // 100MB
+                targetSizeBytes: 50 * 1024 * 1024  // 50MB
+              },
+              maxCount: {
+                enabled: true,
+                maxFiles: 1000,
+                targetCount: 500
+              },
+              batchSize: 50,
+              dryRun: false,
+              preserveMostRecent: 10
+            },
+            schedule: {
+              enabled: true,
+              intervalMs: 60 * 60 * 1000, // 1 hour
+              runOnStart: true,
+              maxConcurrentRuns: 1
+            }
+          },
+          './events': {
+            policy: {
+              filePatterns: ['*.json', 'event_*.json'],
+              maxAge: {
+                enabled: true,
+                thresholdMs: 24 * 60 * 60 * 1000, // 24 hours
+                deleteOlderThan: 1
+              },
+              maxSize: {
+                enabled: true,
+                thresholdBytes: 50 * 1024 * 1024, // 50MB
+                targetSizeBytes: 25 * 1024 * 1024  // 25MB
+              },
+              batchSize: 50,
+              dryRun: false,
+              preserveMostRecent: 5
+            },
+            schedule: {
+              enabled: true,
+              intervalMs: 60 * 60 * 1000, // 1 hour
+              runOnStart: false,
+              maxConcurrentRuns: 1
+            }
+          },
+          './logs': {
+            policy: {
+              filePatterns: ['*.log', '*.log.*'],
+              maxAge: {
+                enabled: true,
+                thresholdMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+                deleteOlderThan: 7
+              },
+              maxSize: {
+                enabled: true,
+                thresholdBytes: 500 * 1024 * 1024, // 500MB
+                targetSizeBytes: 200 * 1024 * 1024  // 200MB
+              },
+              batchSize: 100,
+              dryRun: false,
+              preserveMostRecent: 5
+            },
+            schedule: {
+              enabled: true,
+              intervalMs: 24 * 60 * 60 * 1000, // 24 hours
+              runOnStart: false,
+              maxConcurrentRuns: 1
+            }
+          }
+        }
       }
     },
     

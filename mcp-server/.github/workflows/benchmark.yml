@@ -1,0 +1,277 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      baseline_ref:
+        description: 'Git ref to use as baseline (default: main)'
+        required: false
+        default: 'main'
+      regression_threshold:
+        description: 'Performance regression threshold percentage'
+        required: false
+        default: '10'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Need full history for baseline comparison
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+    
+    - name: Build project
+      working-directory: mcp-server
+      run: npm run build
+    
+    - name: Create benchmark directories
+      working-directory: mcp-server
+      run: |
+        mkdir -p benchmark-results
+        mkdir -p benchmark-temp
+    
+    # Run baseline benchmarks from main branch (for comparison)
+    - name: Checkout baseline code
+      if: github.event_name == 'pull_request' || github.event.inputs.baseline_ref
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.baseline_ref || 'main' }}
+        path: baseline-code
+    
+    - name: Setup baseline environment
+      if: github.event_name == 'pull_request' || github.event.inputs.baseline_ref
+      working-directory: baseline-code/mcp-server
+      run: |
+        npm ci
+        npm run build
+    
+    - name: Run baseline benchmarks
+      if: github.event_name == 'pull_request' || github.event.inputs.baseline_ref
+      working-directory: baseline-code/mcp-server
+      run: |
+        npm run benchmark:quick --output baseline-results.json
+        cp baseline-results.json ../../mcp-server/benchmark-baseline.json
+      continue-on-error: true
+    
+    # Run current benchmarks
+    - name: Run performance benchmarks
+      working-directory: mcp-server
+      run: |
+        # Run with baseline comparison if available
+        if [ -f "benchmark-baseline.json" ]; then
+          npm run benchmark:ci -- --threshold ${{ github.event.inputs.regression_threshold || '10' }}
+        else
+          npm run benchmark:quick
+        fi
+      env:
+        NODE_ENV: test
+        MCP_ENABLE_AUTH: false
+        MCP_ENABLE_RATE_LIMIT: false
+        MCP_LOG_LEVEL: error
+    
+    - name: Generate HTML report
+      working-directory: mcp-server
+      run: npm run benchmark:html
+      continue-on-error: true
+    
+    - name: Generate CSV data
+      working-directory: mcp-server  
+      run: npm run benchmark:csv
+      continue-on-error: true
+    
+    - name: Generate Markdown report
+      working-directory: mcp-server
+      run: npm run benchmark:md
+      continue-on-error: true
+    
+    # Upload results as artifacts
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-node-${{ matrix.node-version }}
+        path: |
+          mcp-server/benchmark-*.json
+          mcp-server/benchmark-*.html
+          mcp-server/benchmark-*.csv
+          mcp-server/benchmark-*.md
+        retention-days: 30
+    
+    # Comment on PR with results (only for PRs)
+    - name: Extract benchmark summary
+      if: github.event_name == 'pull_request'
+      working-directory: mcp-server
+      id: benchmark_summary
+      run: |
+        if [ -f "benchmark-results.json" ]; then
+          # Extract key metrics from JSON results
+          TOTAL_TESTS=$(jq -r '.total_tests' benchmark-results.json)
+          PASSED=$(jq -r '.passed' benchmark-results.json)
+          FAILED=$(jq -r '.failed' benchmark-results.json)
+          DURATION=$(jq -r '.duration_ms' benchmark-results.json)
+          BUDGET_VIOLATIONS=$(jq -r '.analysis.budget_violations | length' benchmark-results.json)
+          
+          # Get fastest and slowest operations
+          FASTEST=$(jq -r '.analysis.fastest_operation.name' benchmark-results.json)
+          FASTEST_OPS=$(jq -r '.analysis.fastest_operation.hz' benchmark-results.json)
+          SLOWEST=$(jq -r '.analysis.slowest_operation.name' benchmark-results.json)
+          SLOWEST_OPS=$(jq -r '.analysis.slowest_operation.hz' benchmark-results.json)
+          
+          # Check for regressions/improvements
+          IMPROVEMENT=""
+          REGRESSION=""
+          if [ -f "benchmark-baseline.json" ]; then
+            IMPROVEMENT=$(jq -r '.analysis.biggest_improvement.comparison.improvement_percent // 0' benchmark-results.json)
+            REGRESSION=$(jq -r '.analysis.biggest_regression.comparison.regression_percent // 0' benchmark-results.json)
+          fi
+          
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "passed=$PASSED" >> $GITHUB_OUTPUT
+          echo "failed=$FAILED" >> $GITHUB_OUTPUT
+          echo "duration_seconds=$((DURATION / 1000))" >> $GITHUB_OUTPUT
+          echo "budget_violations=$BUDGET_VIOLATIONS" >> $GITHUB_OUTPUT
+          echo "fastest_name=$FASTEST" >> $GITHUB_OUTPUT
+          echo "fastest_ops=$(printf '%.0f' $FASTEST_OPS)" >> $GITHUB_OUTPUT
+          echo "slowest_name=$SLOWEST" >> $GITHUB_OUTPUT
+          echo "slowest_ops=$(printf '%.0f' $SLOWEST_OPS)" >> $GITHUB_OUTPUT
+          echo "improvement=$IMPROVEMENT" >> $GITHUB_OUTPUT
+          echo "regression=$REGRESSION" >> $GITHUB_OUTPUT
+        else
+          echo "total_tests=0" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Comment PR with benchmark results
+      if: github.event_name == 'pull_request' && steps.benchmark_summary.outputs.total_tests != '0'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read the markdown report if available
+          let markdownReport = '';
+          const reportPath = path.join('mcp-server', 'benchmark-report.md');
+          if (fs.existsSync(reportPath)) {
+            markdownReport = fs.readFileSync(reportPath, 'utf8');
+            // Truncate if too long for comment
+            if (markdownReport.length > 60000) {
+              markdownReport = markdownReport.substring(0, 60000) + '\n\n... (truncated)';
+            }
+          }
+          
+          const output = `## 📊 Performance Benchmark Results (Node.js ${{ matrix.node-version }})
+          
+          **Summary:**
+          - **Total Tests:** ${{ steps.benchmark_summary.outputs.total_tests }}
+          - **Passed:** ${{ steps.benchmark_summary.outputs.passed }} ✅
+          - **Failed:** ${{ steps.benchmark_summary.outputs.failed }} ❌
+          - **Duration:** ${{ steps.benchmark_summary.outputs.duration_seconds }}s
+          - **Budget Violations:** ${{ steps.benchmark_summary.outputs.budget_violations }} ⚠️
+          
+          **Performance Highlights:**
+          - **Fastest:** ${{ steps.benchmark_summary.outputs.fastest_name }} (${{ steps.benchmark_summary.outputs.fastest_ops }} ops/sec)
+          - **Slowest:** ${{ steps.benchmark_summary.outputs.slowest_name }} (${{ steps.benchmark_summary.outputs.slowest_ops }} ops/sec)
+          
+          ${parseFloat('${{ steps.benchmark_summary.outputs.improvement }}') > 0 ? 
+            `**🚀 Best Improvement:** +${{ steps.benchmark_summary.outputs.improvement }}%` : ''}
+          ${parseFloat('${{ steps.benchmark_summary.outputs.regression }}') > 0 ? 
+            `**⚠️ Biggest Regression:** -${{ steps.benchmark_summary.outputs.regression }}%` : ''}
+          
+          ${markdownReport ? `
+          <details>
+          <summary>📋 Detailed Results</summary>
+          
+          ${markdownReport}
+          
+          </details>` : ''}
+          
+          ---
+          *Benchmark artifacts are available in the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).*`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: output
+          });
+    
+    # Fail the job if performance regression is detected
+    - name: Check for performance regression
+      if: steps.benchmark_summary.outputs.regression != '' && parseFloat(steps.benchmark_summary.outputs.regression) > parseFloat(github.event.inputs.regression_threshold || '10')
+      run: |
+        echo "❌ Performance regression detected: -${{ steps.benchmark_summary.outputs.regression }}%"
+        echo "This exceeds the threshold of ${{ github.event.inputs.regression_threshold || '10' }}%"
+        exit 1
+    
+    - name: Success summary
+      run: |
+        echo "✅ Performance benchmarks completed successfully"
+        echo "Results available in artifacts and PR comments"
+
+  # Consolidate results from multiple Node.js versions
+  consolidate:
+    needs: benchmark
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all benchmark results
+      uses: actions/download-artifact@v4
+      with:
+        path: all-results
+    
+    - name: Consolidate benchmark data
+      run: |
+        echo "# Multi-Node Performance Summary" > consolidated-summary.md
+        echo "" >> consolidated-summary.md
+        echo "| Node Version | Status | Duration | Budget Violations |" >> consolidated-summary.md
+        echo "|-------------|--------|----------|-------------------|" >> consolidated-summary.md
+        
+        for dir in all-results/*/; do
+          if [ -f "$dir/benchmark-results.json" ]; then
+            NODE_VERSION=$(basename "$dir" | sed 's/benchmark-results-node-//')
+            DURATION=$(jq -r '.duration_ms' "$dir/benchmark-results.json")
+            VIOLATIONS=$(jq -r '.analysis.budget_violations | length' "$dir/benchmark-results.json")
+            STATUS="✅ Pass"
+            
+            if [ "$VIOLATIONS" -gt 0 ]; then
+              STATUS="⚠️ Budget Violations"
+            fi
+            
+            echo "| $NODE_VERSION | $STATUS | ${DURATION}ms | $VIOLATIONS |" >> consolidated-summary.md
+          fi
+        done
+        
+        echo "" >> consolidated-summary.md
+        echo "*Generated at $(date)*" >> consolidated-summary.md
+    
+    - name: Upload consolidated summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: consolidated-benchmark-summary
+        path: consolidated-summary.md
+        retention-days: 30

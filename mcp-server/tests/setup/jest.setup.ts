@@ -11,80 +11,21 @@ import path from 'path';
 // Get __dirname equivalent for Jest
 const setupDir = __filename ? path.dirname(__filename) : path.join(process.cwd(), 'tests', 'setup');
 
-// Extend Jest matchers
-expect.extend({
-  toBeValidUUID(received: string) {
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    const pass = typeof received === 'string' && uuidV4Regex.test(received);
-    
-    return {
-      message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid UUIDv4`,
-      pass
-    };
-  },
-  
-  toBeValidISO8601(received: string) {
-    const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
-    const pass = typeof received === 'string' && iso8601Regex.test(received) && !isNaN(Date.parse(received));
-    
-    return {
-      message: () => `expected ${received} ${pass ? 'not ' : ''}to be a valid ISO8601 timestamp`,
-      pass
-    };
-  },
-  
-  toHaveSecurityHeaders(received: any) {
-    const requiredHeaders = ['client_id', 'authenticated', 'timestamp'];
-    const hasHeaders = requiredHeaders.every(header => header in received);
-    
-    return {
-      message: () => `expected object ${hasHeaders ? 'not ' : ''}to have security headers: ${requiredHeaders.join(', ')}`,
-      pass: hasHeaders
-    };
-  },
+// Helper functions for validation (avoiding Jest extensions for now)
+global.isValidUUID = (uuid: string): boolean => {
+  const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return typeof uuid === 'string' && uuidV4Regex.test(uuid);
+};
 
-  toMatchEventStructure(received: any) {
-    const requiredFields = ['type', 'title', 'description', 'source', 'timestamp'];
-    const missingFields = requiredFields.filter(field => !(field in received));
-    const pass = missingFields.length === 0;
-    
-    return {
-      message: () =>
-        pass
-          ? `Expected object not to have event structure`
-          : `Expected object to have event structure. Missing fields: ${missingFields.join(', ')}`,
-      pass
-    };
-  },
+global.isValidISO8601 = (timestamp: string): boolean => {
+  const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?$/;
+  return typeof timestamp === 'string' && iso8601Regex.test(timestamp) && !isNaN(Date.parse(timestamp));
+};
 
-  toMatchResponseStructure(received: any) {
-    const requiredFields = ['id', 'user_id', 'message', 'timestamp'];
-    const missingFields = requiredFields.filter(field => !(field in received));
-    const pass = missingFields.length === 0;
-    
-    return {
-      message: () =>
-        pass
-          ? `Expected object not to have response structure`
-          : `Expected object to have response structure. Missing fields: ${missingFields.join(', ')}`,
-      pass
-    };
-  },
-
-  toMatchBridgeStatusStructure(received: any) {
-    const requiredFields = ['success', 'status', 'version'];
-    const missingFields = requiredFields.filter(field => !(field in received));
-    const pass = missingFields.length === 0;
-    
-    return {
-      message: () =>
-        pass
-          ? `Expected object not to have bridge status structure`
-          : `Expected object to have bridge status structure. Missing fields: ${missingFields.join(', ')}`,
-      pass
-    };
-  }
-});
+global.hasSecurityHeaders = (obj: any): boolean => {
+  const requiredHeaders = ['client_id', 'authenticated', 'timestamp'];
+  return requiredHeaders.every(header => header in obj);
+};
 
 // Global test configuration
 beforeAll(async () => {
@@ -148,14 +89,7 @@ process.on('unhandledRejection', (reason, promise) => {
 jest.setTimeout(30000);
 
 declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeValidUUID(): R;
-      toBeValidISO8601(): R;
-      toHaveSecurityHeaders(): R;
-      toMatchEventStructure(): R;
-      toMatchResponseStructure(): R;
-      toMatchBridgeStatusStructure(): R;
-    }
-  }
+  function isValidUUID(uuid: string): boolean;
+  function isValidISO8601(timestamp: string): boolean;
+  function hasSecurityHeaders(obj: any): boolean;
 }

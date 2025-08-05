@@ -218,7 +218,7 @@ describe('CCTelegramBridgeClient', () => {
   describe('sendTaskCompletion', () => {
     it('should send task completion successfully', async () => {
       mockChildProcess.setBridgeProcessRunning(true);
-      const taskId = '123e4567-e89b-12d3-a456-426614174000';
+      const taskId = '123e4567-e89b-4d3a-8456-426614174000';
       const title = 'Test Task';
       const results = 'Task completed successfully';
       const filesAffected = ['src/test.ts', 'src/utils.ts'];
@@ -248,7 +248,7 @@ describe('CCTelegramBridgeClient', () => {
 
     it('should handle minimal task completion', async () => {
       mockChildProcess.setBridgeProcessRunning(true);
-      const taskId = '123e4567-e89b-12d3-a456-426614174000';
+      const taskId = '123e4567-e89b-4d3a-8456-426614174000';
       const title = 'Minimal Task';
 
       const result = await client.sendTaskCompletion(taskId, title);
@@ -550,7 +550,7 @@ describe('CCTelegramBridgeClient', () => {
 
   describe('processPendingResponses', () => {
     it('should process approval responses', async () => {
-      const taskId = '123e4567-e89b-12d3-a456-426614174000';
+      const taskId = '123e4567-e89b-4d3a-8456-426614174000';
       const approvalResponse = ResponseFixtures.createApprovalCallbackResponse(taskId, true);
       const denialResponse = ResponseFixtures.createApprovalCallbackResponse(taskId, false);
 
@@ -574,7 +574,7 @@ describe('CCTelegramBridgeClient', () => {
     });
 
     it('should filter by time window', async () => {
-      const taskId = '123e4567-e89b-12d3-a456-426614174000';
+      const taskId = '123e4567-e89b-4d3a-8456-426614174000';
       const oldResponse = ResponseFixtures.createApprovalCallbackResponse(taskId, true);
       oldResponse.timestamp = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // 30 minutes ago
 

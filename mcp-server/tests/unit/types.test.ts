@@ -23,7 +23,7 @@ describe('Types Module', () => {
         type: 'task_completion',
         source: 'claude-code',
         timestamp: '2023-12-01T10:00:00.000Z',
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Test Event',
         description: 'This is a test event',
         data: {
@@ -34,8 +34,8 @@ describe('Types Module', () => {
 
       expect(event.type).toBe('task_completion');
       expect(event.source).toBe('claude-code');
-      expect(event.timestamp).toBeValidISO8601();
-      expect(event.task_id).toBeValidUUID();
+      expect(isValidISO8601(event.timestamp)).toBe(true);
+      expect(isValidUUID(event.task_id)).toBe(true);
       expect(event.title).toBe('Test Event');
       expect(event.description).toBe('This is a test event');
       expect(event.data).toMatchObject({
@@ -79,7 +79,7 @@ describe('Types Module', () => {
         type: 'test_suite_run',
         source: 'test-runner',
         timestamp: new Date().toISOString(),
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Test Suite Completed',
         description: 'All tests have been executed',
         data: {
@@ -199,7 +199,7 @@ describe('Types Module', () => {
       expect(status.running).toBe(true);
       expect(status.health).toBe('healthy');
       expect(status.metrics.uptime_seconds).toBe(3600);
-      expect(status.last_event_time).toBeValidISO8601();
+      expect(isValidISO8601(status.last_event_time!)).toBe(true);
     });
 
     it('should accept all valid health states', () => {
@@ -250,38 +250,38 @@ describe('Types Module', () => {
   describe('TelegramResponse Interface', () => {
     it('should accept valid response structure', () => {
       const response: TelegramResponse = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
+        id: '123e4567-e89b-4d3a-8456-426614174000',
         user_id: 123456789,
         message: 'Test response message',
         timestamp: '2023-12-01T10:00:00.000Z'
       };
 
-      expect(response.id).toBeValidUUID();
+      expect(isValidUUID(response.id)).toBe(true);
       expect(response.user_id).toBe(123456789);
       expect(response.message).toBe('Test response message');
-      expect(response.timestamp).toBeValidISO8601();
+      expect(isValidISO8601(response.timestamp)).toBe(true);
     });
 
     it('should make optional fields optional', () => {
       const minimalResponse: TelegramResponse = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
+        id: '123e4567-e89b-4d3a-8456-426614174000',
         user_id: 123456789,
         message: 'Minimal response',
         timestamp: new Date().toISOString()
       };
 
       const fullResponse: TelegramResponse = {
-        id: '123e4567-e89b-12d3-a456-426614174000',
+        id: '123e4567-e89b-4d3a-8456-426614174000',
         user_id: 123456789,
         message: 'Full response',
         timestamp: new Date().toISOString(),
-        event_id: '456e7890-e89b-12d3-a456-426614174000',
+        event_id: '456e7890-e89b-4d3a-8456-426614174000',
         action: 'approve'
       };
 
       expect(minimalResponse.event_id).toBeUndefined();
       expect(minimalResponse.action).toBeUndefined();
-      expect(fullResponse.event_id).toBeValidUUID();
+      expect(isValidUUID(fullResponse.event_id!)).toBe(true);
       expect(fullResponse.action).toBe('approve');
     });
 
@@ -378,7 +378,7 @@ describe('Types Module', () => {
         type: 'test_suite_run',
         source: 'jest',
         timestamp: new Date().toISOString(),
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Jest Test Suite',
         description: 'Complete test suite execution',
         data: {
@@ -420,7 +420,7 @@ describe('Types Module', () => {
         type: 'performance_alert',
         source: 'monitoring',
         timestamp: new Date().toISOString(),
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Edge Case Performance Alert',
         description: 'Testing edge cases in performance metrics',
         data: {

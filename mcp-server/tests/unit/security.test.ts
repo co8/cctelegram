@@ -236,7 +236,7 @@ describe('Security Module', () => {
 
     it('should validate file paths in arrays', () => {
       const inputWithMaliciousPaths = {
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Valid title',
         files_affected: ['../../../etc/passwd', 'valid/file.ts']
       };
@@ -249,7 +249,7 @@ describe('Security Module', () => {
 
     it('should reject excessive array sizes', () => {
       const inputWithLargeArray = {
-        task_id: '123e4567-e89b-12d3-a456-426614174000',
+        task_id: '123e4567-e89b-4d3a-8456-426614174000',
         title: 'Valid title',
         files_affected: new Array(100).fill('file.ts') // Exceeds 50 item limit
       };
