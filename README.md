@@ -26,6 +26,10 @@
 ### 2. Install MCP Server
 
 ```bash
+# Download Bridge and MCP
+git clone https://github.com/co8/cctelegram.git
+cd cctelegram
+
 # Navigate to MCP server and install
 cd mcp-server
 ./install.sh
@@ -96,23 +100,27 @@ _The bridge runs automatically in the background - no manual management needed._
 **Zero Message Loss Achievement** - Comprehensive reliability improvements targeting 100% message delivery:
 
 ### 🎯 Validation & Integrity System
+
 - **14 ValidationError Types** with user-friendly messages and severity classification
 - **Field Constraint Validation** - Title (1-200 chars), description (1-2000 chars), UUID/timestamp validation
 - **Business Logic Validation** - Event type-specific rules and required field checking
 - **Data Consistency Validation** - Cross-field validation and logical consistency verification
 
 ### 🔄 Advanced Deduplication
+
 - **Primary Deduplication** - Exact event_id matching for duplicate prevention
 - **Secondary Deduplication** - Content-based matching within configurable time windows (5 seconds default)
 - **Intelligent Detection** - Hash-based content comparison for efficient duplicate identification
 
 ### ⚡ Performance Optimization
+
 - **86.3% Payload Reduction** - Intelligent null field omission and optimized JSON structure
 - **Serialization Benchmarks** - Average 72.82μs serialization, 60.549μs deserialization
 - **Forward Compatibility** - Custom deserializers with Unknown variant fallbacks
 - **Snake_case Consistency** - Standardized JSON field naming across all structures
 
 ### 📊 Enhanced Testing
+
 - **61 Tests** (+60% increase) with comprehensive validation and reliability testing
 - **Validation Framework** - 6 new test functions covering all validation aspects
 - **Performance Benchmarks** - Serialization/deserialization timing integrated into test suite
