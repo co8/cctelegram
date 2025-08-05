@@ -26,7 +26,7 @@ pub struct ResponsePayload {
     pub correlation_id: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessingResult {
     pub success: bool,
     pub action: String,
@@ -65,6 +65,7 @@ impl ActionType {
     }
 }
 
+#[derive(Debug)]
 pub struct InternalProcessor {
     config: Arc<Config>,
     telegram_bot: Arc<Bot>,

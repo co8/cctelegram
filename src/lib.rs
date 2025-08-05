@@ -4,6 +4,7 @@ pub mod telegram;
 pub mod storage;
 pub mod utils;
 pub mod internal_processor;
+pub mod tier_orchestrator;
 
 pub use config::Config;
 pub use events::{EventWatcher, EventProcessor, types};
@@ -17,3 +18,4 @@ pub use utils::errors::BridgeError;
 pub use utils::performance::{PerformanceMonitor, PerformanceConfig};
 pub use utils::{setup_logging, HealthServer};
 pub use internal_processor::{InternalProcessor, ResponsePayload, ProcessingResult};
+pub use tier_orchestrator::{TierOrchestrator, TierType, TierHealth, TierSelection, TierFailoverEvent, CircuitBreakerState};

@@ -40,3 +40,41 @@ health_check_port = 8080
 enable_metrics_server = true
 metrics_endpoint = "/metrics"
 health_endpoint = "/health"
+
+# Timeout configuration for all tiers and system components
+[timeouts]
+# Tier-specific timeouts in milliseconds (as per Task 21.8 requirements)
+webhook_timeout_ms = 100              # MCP webhook tier timeout
+bridge_processing_timeout_ms = 500    # Bridge internal processing timeout  
+file_watcher_timeout_ms = 5000       # File watcher tier timeout
+file_watcher_debounce_ms = 500       # File watcher debounce interval
+overall_system_timeout_ms = 10000    # Overall system timeout
+
+# Grace periods and intervals
+degradation_grace_period_ms = 1000         # Grace period before degradation
+health_check_interval_ms = 30000           # Health check interval
+config_reload_interval_ms = 5000           # Configuration hot-reload check interval
+circuit_breaker_recovery_timeout_ms = 30000 # Circuit breaker recovery timeout
+
+# Tier configuration and graceful degradation settings
+[tier_configuration]
+# Performance-based tier selection thresholds
+performance_degradation_threshold = 0.8    # Success rate threshold (0.0-1.0)
+response_time_degradation_ms = 2000        # Response time threshold in milliseconds
+error_rate_threshold_percent = 15.0        # Error rate threshold (0.0-100.0)
+max_consecutive_failures = 3               # Max consecutive failures before circuit breaker opens
+
+# Tier priority configuration (lower = higher priority)
+[tier_configuration.tier_priorities]
+mcp_webhook = 1      # Highest priority
+bridge_internal = 2  # Medium priority  
+file_watcher = 3     # Lowest priority (fallback)
+
+# Enable/disable individual tiers
+mcp_webhook_enabled = true
+bridge_internal_enabled = true
+file_watcher_enabled = true
+
+# Graceful degradation settings
+enable_auto_recovery = true                # Enable automatic tier recovery
+enable_performance_based_selection = true # Enable performance-based tier selection

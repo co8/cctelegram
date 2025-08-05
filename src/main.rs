@@ -10,6 +10,7 @@ mod telegram;
 mod storage;
 mod utils;
 mod internal_processor;
+mod tier_orchestrator;
 
 use config::Config;
 use events::{EventWatcher, EventProcessor};
@@ -18,6 +19,7 @@ use telegram::messages::MessageStyle;
 use storage::FileStore;
 use utils::{PerformanceMonitor, HealthServer};
 use internal_processor::InternalProcessor;
+use tier_orchestrator::TierOrchestrator;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -87,6 +89,24 @@ async fn main() -> Result<()> {
     // Initialize Tier 2 Internal Processor (Bridge fallback)
     let internal_processor = Arc::new(InternalProcessor::new(Arc::new(config.clone())));
     info!("🔧 Internal Processor (Tier 2) initialized for port 3001");
+
+    // Initialize Tier Orchestrator (Circuit Breaker and Failover Logic)
+    let tier_orchestrator = Arc::new(TierOrchestrator::new(
+        Arc::new(config.clone()),
+        internal_processor.clone(),
+    ));
+    info!("🎯 Tier Orchestrator initialized with 3-tier cascading system");
+
+    // Start periodic health checks for tier monitoring
+    let orchestrator_clone = tier_orchestrator.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        loop {
+            interval.tick().await;
+            orchestrator_clone.perform_health_checks().await;
+        }
+    });
+    info!("🔍 Tier health monitoring started (30s intervals)");
 
     // Initialize storage
     let file_store = FileStore::new(&Config::get_config_dir());
