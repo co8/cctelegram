@@ -19,6 +19,22 @@
 				"AZURE_OPENAI_API_KEY": "YOUR_AZURE_KEY_HERE",
 				"OLLAMA_API_KEY": "YOUR_OLLAMA_API_KEY_HERE"
 			}
+		},
+		"cctelegram": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"tsx",
+				"src/index.ts"
+			],
+			"cwd": "./mcp-server",
+			"env": {
+				"MCP_ENABLE_AUTH": "false",
+				"MCP_ENABLE_RATE_LIMIT": "false",
+				"MCP_ENABLE_INPUT_VALIDATION": "true",
+				"MCP_ENABLE_SECURE_LOGGING": "true",
+				"MCP_LOG_LEVEL": "warn"
+			}
 		}
 	}
 }

@@ -12,7 +12,7 @@
  */
 
 import { EventEmitter } from 'events';
-import * as memwatch from 'memwatch-next';
+// import * as memwatch from 'memwatch-next'; // Temporarily disabled for Node.js compatibility
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { performance } from 'perf_hooks';

@@ -76,8 +76,7 @@
     "rate-limiter-flexible": "^7.2.0",
     "uuid": "^9.0.1",
     "winston": "^3.13.0",
-    "ws": "^8.16.0",
-    "memwatch-next": "^0.3.0"
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.4.2",
@@ -88,7 +87,6 @@
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^9.0.7",
     "@types/ws": "^8.5.10",
-    "@types/memwatch-next": "^0.3.3",
     "autocannon": "^7.15.0",
     "benchmark": "^2.1.4",
     "@types/benchmark": "^2.1.5",

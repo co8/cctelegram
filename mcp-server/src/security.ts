@@ -427,7 +427,17 @@ export function sanitizePath(inputPath: string): string {
  * Secure logging function that removes sensitive data
  */
 export function secureLog(level: 'error' | 'warn' | 'info' | 'debug', message: string, data?: any): void {
-  const config = loadSecurityConfig();
+  // Avoid circular dependency during config loading
+  let config: SecurityConfig;
+  try {
+    config = configCache?.config || DEFAULT_CONFIG;
+    // Only call loadSecurityConfig if we don't have a cached config
+    if (!configCache) {
+      config = DEFAULT_CONFIG; // Use default during initial load
+    }
+  } catch (error) {
+    config = DEFAULT_CONFIG;
+  }
   
   if (!config.enableSecureLogging) {
     return;
