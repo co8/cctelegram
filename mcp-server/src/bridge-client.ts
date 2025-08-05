@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import dotenv from 'dotenv';
 import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './types.js';
 import { secureLog, sanitizeForLogging, sanitizePath } from './security.js';
+import { getBridgeAxiosConfig, getHttpPool } from './http-pool.js';
 
 const execAsync = promisify(exec);
 
@@ -48,6 +49,9 @@ export class CCTelegramBridgeClient {
     // Ensure directories exist
     this.ensureDirectories();
     
+    // Initialize HTTP connection pool
+    this.initializeHttpPool();
+    
     // Initialize bridge in background (non-blocking)
     this.initializeBridge();
   }
@@ -55,6 +59,26 @@ export class CCTelegramBridgeClient {
   private async ensureDirectories(): Promise<void> {
     await fs.ensureDir(this.eventsDir);
     await fs.ensureDir(this.responsesDir);
+  }
+
+  /**
+   * Initialize HTTP connection pool with optimal settings
+   */
+  private initializeHttpPool(): void {
+    try {
+      // Initialize the global HTTP pool with default settings
+      const pool = getHttpPool();
+      secureLog('info', 'HTTP connection pool initialized for bridge communications', {
+        pool_types: ['health', 'status', 'polling', 'default'],
+        health_endpoint: this.healthEndpoint,
+        metrics_endpoint: this.metricsEndpoint
+      });
+    } catch (error) {
+      secureLog('error', 'Failed to initialize HTTP connection pool', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      // Continue without connection pooling if initialization fails
+    }
   }
 
   /**
@@ -277,8 +301,11 @@ export class CCTelegramBridgeClient {
    */
   async getBridgeStatus(): Promise<BridgeStatus> {
     try {
-      const healthResponse = await axios.get(this.healthEndpoint, { timeout: 5000 });
-      const metricsResponse = await axios.get(this.metricsEndpoint, { timeout: 5000 });
+      const healthConfig = getBridgeAxiosConfig('health', this.healthEndpoint);
+      const metricsConfig = getBridgeAxiosConfig('health', this.metricsEndpoint);
+      
+      const healthResponse = await axios.get(this.healthEndpoint, healthConfig);
+      const metricsResponse = await axios.get(this.metricsEndpoint, metricsConfig);
       
       const healthData = healthResponse.data;
       const metricsText = metricsResponse.data;
@@ -304,6 +331,10 @@ export class CCTelegramBridgeClient {
         last_event_time: healthData.last_event_time
       };
     } catch (error) {
+      // Record error in connection pool for metrics
+      const pool = getHttpPool();
+      pool.recordError('health');
+      
       return {
         running: false,
         health: 'unhealthy',
@@ -469,9 +500,14 @@ export class CCTelegramBridgeClient {
   async isBridgeRunning(): Promise<boolean> {
     try {
       // First try health endpoint
-      const healthResponse = await axios.get(this.healthEndpoint, { timeout: 2000 });
+      const statusConfig = getBridgeAxiosConfig('status', this.healthEndpoint);
+      const healthResponse = await axios.get(this.healthEndpoint, statusConfig);
       return healthResponse.status === 200;
     } catch (error) {
+      // Record error in connection pool for metrics
+      const pool = getHttpPool();
+      pool.recordError('status');
+      
       // If health endpoint fails, check for process
       try {
         const { stdout } = await execAsync('pgrep -f cctelegram-bridge');
@@ -520,12 +556,17 @@ export class CCTelegramBridgeClient {
     
     while (Date.now() - startTime < maxWaitMs) {
       try {
-        const healthResponse = await axios.get(this.healthEndpoint, { timeout: 1000 });
+        const pollingConfig = getBridgeAxiosConfig('polling', this.healthEndpoint);
+        const healthResponse = await axios.get(this.healthEndpoint, pollingConfig);
         if (healthResponse.status === 200) {
           secureLog('info', 'Bridge is ready');
           return true;
         }
       } catch (error) {
+        // Record error in connection pool for metrics
+        const pool = getHttpPool();
+        pool.recordError('polling');
+        
         // Bridge not ready yet, continue waiting
       }
       
@@ -953,6 +994,21 @@ export class CCTelegramBridgeClient {
       { type: 'alert_notification', category: 'Notifications', description: 'Alert or warning message' },
       { type: 'progress_update', category: 'Notifications', description: 'Progress status update' },
     ];
+  }
+
+  /**
+   * Get HTTP connection pool statistics
+   */
+  getHttpPoolStats() {
+    try {
+      const pool = getHttpPool();
+      return pool.getStats();
+    } catch (error) {
+      secureLog('error', 'Failed to get HTTP pool statistics', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return null;
+    }
   }
 
   /**
