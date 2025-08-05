@@ -17,12 +17,19 @@ path = "src/lib.rs"
 name = "cctelegram-bridge"
 path = "src/main.rs"
 
+[[bin]]
+name = "test_tier2"
+path = "test_tier2.rs"
+
 [dependencies]
 # Tokio for async runtime
 tokio = { version = "1.45.1", features = ["full"] }
 
 # Telegram bot framework
 teloxide = { version = "0.13", features = ["macros"] }
+
+# HTTP server for internal processing fallback
+actix-web = "4.8"
 
 # File system watching
 notify = "6.1"

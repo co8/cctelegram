@@ -9,6 +9,7 @@ mod events;
 mod telegram;
 mod storage;
 mod utils;
+mod internal_processor;
 
 use config::Config;
 use events::{EventWatcher, EventProcessor};
@@ -16,6 +17,7 @@ use telegram::TelegramBot;
 use telegram::messages::MessageStyle;
 use storage::FileStore;
 use utils::{PerformanceMonitor, HealthServer};
+use internal_processor::InternalProcessor;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -81,6 +83,10 @@ async fn main() -> Result<()> {
         });
         info!("Health check server started on port {}", config.monitoring.health_check_port);
     }
+
+    // Initialize Tier 2 Internal Processor (Bridge fallback)
+    let internal_processor = Arc::new(InternalProcessor::new(Arc::new(config.clone())));
+    info!("🔧 Internal Processor (Tier 2) initialized for port 3001");
 
     // Initialize storage
     let file_store = FileStore::new(&Config::get_config_dir());

@@ -3,6 +3,7 @@ pub mod events;
 pub mod telegram;
 pub mod storage;
 pub mod utils;
+pub mod internal_processor;
 
 pub use config::Config;
 pub use events::{EventWatcher, EventProcessor, types};
@@ -15,3 +16,4 @@ pub use utils::security::{SecurityManager, RateLimiter};
 pub use utils::errors::BridgeError;
 pub use utils::performance::{PerformanceMonitor, PerformanceConfig};
 pub use utils::{setup_logging, HealthServer};
+pub use internal_processor::{InternalProcessor, ResponsePayload, ProcessingResult};

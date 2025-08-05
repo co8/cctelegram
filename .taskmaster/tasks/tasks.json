@@ -551,11 +551,112 @@
         ],
         "status": "done",
         "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "3-Tier Cascading Response Monitoring System Implementation",
+        "description": "Design and implement a comprehensive real-time response monitoring system with three cascading fallback layers: MCP Real-Time Webhook (0-100ms), Bridge Internal Processing (100-500ms), and File Watcher System (1-5s) to ensure 100% response reliability.",
+        "details": "Implement Tier 1 MCP Real-Time Webhook System using Node.js HTTP server with Express.js for instant Bridge notifications within 0-100ms response time. Create webhook endpoint '/webhook/bridge-response' with JSON payload validation using joi schema. Implement immediate response processing with async/await pattern and acknowledgment system using UUID correlation IDs. Integrate with existing MCP server architecture using @modelcontextprotocol/sdk for real-time Claude Code session notifications. Implement Tier 2 Bridge Internal Processing as fallback layer using Rust actix-web framework for 100-500ms response handling. Create direct Telegram acknowledgments using teloxide crate with automatic retry mechanism and exponential backoff (initial: 100ms, max: 2s). Implement self-contained response handling with tokio async runtime for concurrent processing. Add circuit breaker pattern using failsafe crate to detect webhook failures and trigger fallback. Implement Tier 3 File Watcher System using notify crate in Rust for 1-5 seconds guaranteed response processing. Create debounced file operations using tokio::time::sleep with 500ms debounce window to prevent duplicate processing. Implement file-based response queue with JSON serialization and atomic file operations using tempfile crate. Add comprehensive logging using tracing crate with structured logs including correlation IDs, processing tier, response times, and failure reasons. Implement configurable timeout mechanisms: webhook timeout (100ms), bridge processing timeout (500ms), file watcher debounce (500ms), and overall system timeout (10s). Create monitoring dashboard integration with Prometheus metrics for tier-specific success rates, response times, and failover events. Implement health check endpoints for each tier with detailed status reporting. Add graceful degradation with automatic tier selection based on availability and performance metrics.",
+        "testStrategy": "Create comprehensive test suite using Jest for MCP webhook testing with supertest for HTTP endpoint validation and mock Telegram Bot API responses. Implement Rust unit tests using tokio-test for async processing validation and integration tests with actual file system operations. Test cascading fallback behavior by systematically disabling each tier and verifying automatic failover to next available tier. Implement load testing using k6 to validate response time requirements: Tier 1 < 100ms, Tier 2 < 500ms, Tier 3 < 5s under concurrent load of 100 requests/second. Create chaos engineering tests using toxiproxy to simulate network failures, database unavailability, and partial system outages. Test response reliability with 10,000 consecutive requests ensuring 100% processing success across all failure scenarios. Implement monitoring validation by creating synthetic test responses and verifying metrics collection, alerting triggers, and dashboard updates. Test configuration changes and system reconfiguration without service interruption. Validate audit trail completeness by tracking correlation IDs through all three tiers and ensuring complete logging coverage.",
+        "status": "pending",
+        "dependencies": [
+          17,
+          20
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Tier 1 MCP Real-Time Webhook Foundation",
+            "description": "Set up the Node.js HTTP server foundation with Express.js framework for the MCP Real-Time Webhook system, including basic routing, middleware configuration, and server initialization with proper error handling.",
+            "dependencies": [],
+            "details": "Create Express.js server with middleware for JSON parsing, CORS handling, and request logging. Implement basic server configuration with configurable port and graceful shutdown handling. Set up project structure with proper TypeScript configuration and development dependencies.",
+            "status": "done",
+            "testStrategy": "Unit tests for server initialization, middleware configuration, and graceful shutdown. Integration tests for basic HTTP connectivity and error handling scenarios."
+          },
+          {
+            "id": 2,
+            "title": "Create Webhook Endpoint with Payload Validation",
+            "description": "Implement the '/webhook/bridge-response' endpoint with comprehensive JSON payload validation using joi schema and proper HTTP status code responses.",
+            "dependencies": [
+              "21.1"
+            ],
+            "details": "Create webhook endpoint route handler with joi schema validation for expected payload structure. Implement proper error responses for malformed requests, missing fields, and invalid data types. Add request correlation ID generation and validation middleware.",
+            "status": "pending",
+            "testStrategy": "Test payload validation with valid and invalid JSON structures. Verify proper HTTP status codes and error messages. Test correlation ID generation and uniqueness."
+          },
+          {
+            "id": 3,
+            "title": "Implement MCP Server Integration and Response Processing",
+            "description": "Integrate with existing MCP server architecture using @modelcontextprotocol/sdk for real-time Claude Code session notifications with async/await pattern and acknowledgment system.",
+            "dependencies": [
+              "21.2"
+            ],
+            "details": "Implement MCP SDK integration for real-time notifications to Claude Code sessions. Create async response processing pipeline with proper error handling and timeout mechanisms. Implement UUID-based correlation system for request tracking and acknowledgment responses.",
+            "status": "done",
+            "testStrategy": "Mock MCP server interactions for unit testing. Integration tests with actual MCP server communication. Test correlation ID tracking and acknowledgment system reliability."
+          },
+          {
+            "id": 4,
+            "title": "Implement Tier 2 Bridge Internal Processing with Rust",
+            "description": "Create the fallback layer using Rust actix-web framework for 100-500ms response handling with direct Telegram acknowledgments using teloxide crate.",
+            "dependencies": [
+              "21.3"
+            ],
+            "details": "Set up Rust actix-web server with teloxide integration for direct Telegram Bot API communication. Implement automatic retry mechanism with exponential backoff (initial: 100ms, max: 2s). Create self-contained response handling with tokio async runtime for concurrent processing.",
+            "status": "in-progress",
+            "testStrategy": "Unit tests for actix-web endpoints and teloxide integration. Test retry mechanism with mock Telegram API failures. Validate exponential backoff timing and concurrent processing capabilities."
+          },
+          {
+            "id": 5,
+            "title": "Implement Circuit Breaker and Tier Fallback Logic",
+            "description": "Add circuit breaker pattern using failsafe crate to detect webhook failures and automatically trigger fallback to Bridge Internal Processing tier.",
+            "dependencies": [
+              "21.4"
+            ],
+            "details": "Implement circuit breaker with configurable failure thresholds and recovery mechanisms. Create tier selection logic that automatically routes requests to available tiers based on health status. Add monitoring for tier availability and automatic failover events.",
+            "status": "pending",
+            "testStrategy": "Test circuit breaker state transitions with controlled failures. Verify automatic failover behavior and recovery mechanisms. Test tier selection logic under various failure scenarios."
+          },
+          {
+            "id": 6,
+            "title": "Implement Tier 3 File Watcher System",
+            "description": "Create the final fallback layer using notify crate in Rust for 1-5 seconds guaranteed response processing with debounced file operations and atomic file handling.",
+            "dependencies": [
+              "21.5"
+            ],
+            "details": "Implement file watcher system using notify crate with 500ms debounce window using tokio::time::sleep. Create file-based response queue with JSON serialization and atomic file operations using tempfile crate. Implement guaranteed processing with persistent storage and recovery mechanisms.",
+            "status": "pending",
+            "testStrategy": "Test file watcher responsiveness and debounce behavior. Verify atomic file operations and JSON serialization reliability. Test system recovery after crashes and file corruption scenarios."
+          },
+          {
+            "id": 7,
+            "title": "Implement Comprehensive Logging and Monitoring",
+            "description": "Add structured logging using tracing crate and create monitoring dashboard integration with Prometheus metrics for tier-specific performance tracking.",
+            "dependencies": [
+              "21.6"
+            ],
+            "details": "Implement tracing-based structured logging with correlation IDs, processing tier identification, response times, and failure reasons. Create Prometheus metrics for tier-specific success rates, response times, and failover events. Implement health check endpoints for each tier with detailed status reporting.",
+            "status": "pending",
+            "testStrategy": "Verify log structure and correlation ID propagation across tiers. Test Prometheus metrics collection and accuracy. Validate health check endpoint responses under various system states."
+          },
+          {
+            "id": 8,
+            "title": "Implement Timeout Configuration and Graceful Degradation",
+            "description": "Create configurable timeout mechanisms for all tiers and implement graceful degradation with automatic tier selection based on availability and performance metrics.",
+            "dependencies": [
+              "21.7"
+            ],
+            "details": "Implement configurable timeouts: webhook (100ms), bridge processing (500ms), file watcher debounce (500ms), and overall system (10s). Create graceful degradation logic with automatic tier selection based on performance metrics and availability. Add configuration management for timeout values and tier priorities.",
+            "status": "pending",
+            "testStrategy": "Test timeout enforcement across all tiers with controlled delays. Verify graceful degradation behavior under various failure combinations. Test configuration management and runtime parameter updates."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-05T13:29:17.051Z",
+      "updated": "2025-08-05T15:03:39.972Z",
       "description": "Tasks for master context"
     }
   }
