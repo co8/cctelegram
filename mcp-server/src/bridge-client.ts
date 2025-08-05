@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import { readdir, readFile } from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
@@ -366,12 +367,37 @@ export class CCTelegramBridgeClient {
     try {
       await this.ensureDirectories();
       
-      const fsOptimizer = getFsOptimizer();
-      const { responses } = await fsOptimizer.getResponseFiles(this.responsesDir, {
-        sortByTime: true
-      });
+      // DEBUG: Log the directory being accessed
+      console.log('DEBUG: Reading responses from:', this.responsesDir);
       
-      return responses as TelegramResponse[];
+      // Direct file reading using Node.js built-in fs/promises
+      const files = await readdir(this.responsesDir);
+      console.log('DEBUG: Found files:', files.length);
+      
+      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      console.log('DEBUG: JSON files:', jsonFiles.length);
+      
+      const responses: TelegramResponse[] = [];
+      for (const file of jsonFiles) {
+        try {
+          const filePath = path.join(this.responsesDir, file);
+          const content = await readFile(filePath, 'utf8');
+          const data = JSON.parse(content);
+          responses.push(data);
+          console.log('DEBUG: Loaded response from:', file);
+        } catch (error) {
+          console.log('DEBUG: Skip invalid file:', file, error);
+          continue;
+        }
+      }
+      
+      // Sort by timestamp (newest first)
+      responses.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      console.log('DEBUG: Returning', responses.length, 'responses');
+      return responses;
     } catch (error) {
       console.warn('Failed to read responses:', error);
       return [];
