@@ -508,10 +508,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   return await withResilienceAndSecurity(async () => {
     const { name, arguments: args } = request.params;
     
+    // Ensure args is defined
+    if (!args) {
+      throw createResilienceError('VALIDATION_ERROR', 'Missing arguments for tool call', { tool_name: name });
+    }
+    
     secureLog('info', 'Tool call received', {
       tool_name: name,
       has_args: !!args,
-      arg_keys: args ? Object.keys(args) : []
+      arg_keys: Object.keys(args)
     });
 
     try {
@@ -553,8 +558,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           const event: CCTelegramEvent = {
             type: 'info_notification',
             title: 'Message',
-            description: args.message,
-            source: args.source || 'claude-code',
+            description: String(args.message || ''),
+            source: String(args.source || 'claude-code'),
             data: {}
           };
           
@@ -568,7 +573,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 event_id: result.event_id,
                 message: 'Message sent successfully',
                 details: {
-                  text: args.message,
+                  text: String(args.message || ''),
                   source: event.source
                 }
               }, null, 2)
@@ -581,14 +586,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           
           const event: CCTelegramEvent = {
             type: 'task_completion',
-            title: args.title,
-            description: args.results || 'Task completed successfully',
-            task_id: args.task_id,
+            title: String(args.title || ''),
+            description: String(args.results || 'Task completed successfully'),
+            task_id: String(args.task_id || ''),
             source: 'claude-code',
             data: {
-              results: args.results,
-              duration_ms: args.duration_ms,
-              files_affected: args.files_affected || []
+              results: String(args.results || ''),
+              duration_ms: Number(args.duration_ms || 0),
+              files_affected: Array.isArray(args.files_affected) ? args.files_affected : []
             }
           };
           
@@ -602,9 +607,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 event_id: result.event_id,
                 message: 'Task completion notification sent',
                 details: {
-                  task_id: args.task_id,
-                  title: args.title,
-                  duration_ms: args.duration_ms
+                  task_id: String(args.task_id || ''),
+                  title: String(args.title || ''),
+                  duration_ms: Number(args.duration_ms || 0)
                 }
               }, null, 2)
             }]
@@ -617,12 +622,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           const event: CCTelegramEvent = {
             type: 'performance_alert',
             title: args.title,
-            description: `Performance threshold exceeded: ${args.current_value} > ${args.threshold}`,
+            description: `Performance threshold exceeded: ${Number(args.current_value || 0)} > ${Number(args.threshold || 0)}`,
             source: 'claude-code',
             data: {
-              current_value: args.current_value,
-              threshold: args.threshold,
-              severity: args.severity || 'medium'
+              current_value: Number(args.current_value || 0),
+              threshold: Number(args.threshold || 0),
+              severity: String(args.severity || 'medium') as 'low' | 'medium' | 'high' | 'critical'
             }
           };
           
@@ -636,10 +641,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 event_id: result.event_id,
                 message: 'Performance alert sent',
                 details: {
-                  title: args.title,
-                  current_value: args.current_value,
-                  threshold: args.threshold,
-                  severity: args.severity
+                  title: String(args.title || ''),
+                  current_value: Number(args.current_value || 0),
+                  threshold: Number(args.threshold || 0),
+                  severity: String(args.severity || 'medium')
                 }
               }, null, 2)
             }]
@@ -651,11 +656,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           
           const event: CCTelegramEvent = {
             type: 'approval_request',
-            title: args.title,
-            description: args.description,
+            title: String(args.title || ''),
+            description: String(args.description || ''),
             source: 'claude-code',
             data: {
-              options: args.options || ['Approve', 'Deny']
+              options: Array.isArray(args.options) ? args.options : ['Approve', 'Deny']
             }
           };
           
@@ -669,8 +674,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 event_id: result.event_id,
                 message: 'Approval request sent',
                 details: {
-                  title: args.title,
-                  options: args.options || ['Approve', 'Deny']
+                  title: String(args.title || ''),
+                  options: Array.isArray(args.options) ? args.options : ['Approve', 'Deny']
                 }
               }, null, 2)
             }]

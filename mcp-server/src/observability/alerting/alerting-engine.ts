@@ -738,7 +738,7 @@ export class AlertingEngine extends EventEmitter {
       if (nextEscalationLevel < this.config.escalation.levels.length) {
         const escalationLevel = this.config.escalation.levels[nextEscalationLevel];
         
-        if (timesinceCreated >= escalationLevel.delay) {
+        if (escalationLevel && timesinceCreated >= escalationLevel.delay) {
           await this.escalateAlert(alert, escalationLevel);
         }
       }
@@ -1063,6 +1063,65 @@ export class AlertingEngine extends EventEmitter {
     }
 
     secureLog('info', 'Alerting configuration updated');
+  }
+
+  /**
+   * Process alert escalation
+   */
+  private async processEscalateAlert(alertId: string): Promise<void> {
+    const alert = this.alerts.get(alertId);
+    if (!alert || alert.status !== 'firing') return;
+
+    // Escalate alert to higher severity level
+    if (alert.escalationLevel < 3) {
+      alert.escalationLevel++;
+      alert.updatedAt = Date.now();
+      
+      // Update severity based on escalation level
+      const severityLevels: ('low' | 'medium' | 'high' | 'critical')[] = ['low', 'medium', 'high', 'critical'];
+      if (alert.escalationLevel < severityLevels.length) {
+        const newSeverity = severityLevels[alert.escalationLevel];
+        if (newSeverity) {
+          alert.severity = newSeverity;
+        }
+      }
+
+      secureLog('info', 'Alert escalated', {
+        alertId: alert.id,
+        newLevel: alert.escalationLevel,
+        newSeverity: alert.severity
+      });
+
+      // Send escalation notifications
+      await this.sendAlert(alert);
+    }
+  }
+
+  /**
+   * Process alert resolution
+   */
+  private async processResolveAlert(alertId: string): Promise<void> {
+    const alert = this.alerts.get(alertId);
+    if (!alert) return;
+
+    // Mark alert as resolved
+    alert.status = 'resolved';
+    alert.resolvedAt = Date.now();
+    alert.updatedAt = Date.now();
+
+    secureLog('info', 'Alert resolved', {
+      alertId: alert.id,
+      duration: alert.resolvedAt - alert.createdAt
+    });
+
+    // Update statistics and clean up
+    this.updateStatistics(alert, 'resolved');
+    
+    // Clean up notifications
+    this.notifications.delete(alertId);
+    
+    // Emit resolved event
+    this.emit('alert_resolved', alert);
   }
 
   /**

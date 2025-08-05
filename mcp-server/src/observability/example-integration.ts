@@ -7,11 +7,14 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { 
-  createObservabilityIntegration, 
+  createObservabilityIntegration
+} from './integration.js';
+import {
   ObservabilityConfig,
   getDefaultObservabilityConfig 
-} from './integration.js';
+} from './index.js';
 import { secureLog } from '../security.js';
 
 /**
@@ -473,7 +476,7 @@ export class ObservableMCPServer {
    */
   private setupMCPHandlers(): void {
     // Wrap tool handlers with observability
-    this.server.setRequestHandler('tools/call', async (request) => {
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const startTime = Date.now();
       const toolName = request.params.name;
 
@@ -494,7 +497,7 @@ export class ObservableMCPServer {
         });
 
         // Execute tool (placeholder - implement actual tool logic)
-        const result = await this.executeTool(toolName, request.params.arguments);
+        const result = await this.executeTool(toolName, request.params.arguments || {});
 
         const duration = Date.now() - startTime;
 
@@ -522,7 +525,7 @@ export class ObservableMCPServer {
         this.observability.manager.getLogger()?.info('Tool call completed', {
           tool: toolName,
           duration,
-          arguments: request.params.arguments,
+          arguments: request.params.arguments || {},
           trace_id: this.observability.manager.getTracing()?.getCurrentTraceId()
         });
 
@@ -547,14 +550,14 @@ export class ObservableMCPServer {
         this.observability.manager.getLogger()?.error('Tool call failed', error as Error, {
           tool: toolName,
           duration,
-          arguments: request.params.arguments
+          arguments: request.params.arguments || {}
         });
 
         // Call error hook
         this.observability.hooks.onError(error as Error, {
           tool: toolName,
           duration,
-          arguments: request.params.arguments
+          arguments: request.params.arguments || {}
         });
 
         throw error;
@@ -567,7 +570,7 @@ export class ObservableMCPServer {
   /**
    * Execute tool with observability (placeholder implementation)
    */
-  private async executeTool(toolName: string, arguments: any): Promise<any> {
+  private async executeTool(toolName: string, toolArguments: any): Promise<any> {
     // Simulate tool execution
     await new Promise(resolve => setTimeout(resolve, Math.random() * 100));
     
@@ -575,7 +578,7 @@ export class ObservableMCPServer {
       content: [
         {
           type: 'text',
-          text: `Tool ${toolName} executed successfully with arguments: ${JSON.stringify(arguments)}`
+          text: `Tool ${toolName} executed successfully with arguments: ${JSON.stringify(toolArguments)}`
         }
       ]
     };

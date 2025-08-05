@@ -293,13 +293,16 @@ export interface ObservabilityConfig {
 }
 
 export interface HealthCheck {
+  id: string;
   name: string;
-  type: 'http' | 'tcp' | 'command' | 'custom';
-  target: string;
+  type: 'http' | 'tcp' | 'command' | 'custom' | 'system';
+  target?: string;
   interval: number; // in ms
   timeout: number; // in ms
-  retries: number;
+  retryCount: number;
+  enabled: boolean;
   critical: boolean;
+  thresholds?: { warning: number; critical: number };
 }
 
 // Default configuration factory
@@ -347,7 +350,8 @@ export function createDefaultObservabilityConfig(): ObservabilityConfig {
         {
           type: 'console',
           enabled: true,
-          level: 'info'
+          level: 'info',
+          options: { colorize: true, timestamp: true }
         },
         {
           type: 'file',
@@ -396,7 +400,8 @@ export function createDefaultObservabilityConfig(): ObservabilityConfig {
         },
         {
           type: 'console',
-          enabled: environment === 'development'
+          enabled: environment === 'development',
+          options: { colorize: true, timestamp: true }
         }
       ],
       instrumentation: {
@@ -731,21 +736,25 @@ export function createDefaultObservabilityConfig(): ObservabilityConfig {
       timeout: 5000, // 5 seconds
       checks: [
         {
+          id: 'bridge_connectivity',
           name: 'bridge_connectivity',
           type: 'http',
           target: 'http://localhost:8080/health',
           interval: 30000, // 30 seconds
           timeout: 5000, // 5 seconds
-          retries: 3,
+          retryCount: 3,
+          enabled: true,
           critical: true
         },
         {
+          id: 'filesystem_write',
           name: 'filesystem_write',
           type: 'custom',
           target: 'filesystem_check',
           interval: 60000, // 1 minute
           timeout: 5000, // 5 seconds
-          retries: 2,
+          retryCount: 2,
+          enabled: true,
           critical: false
         }
       ]
