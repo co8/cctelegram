@@ -73,7 +73,7 @@ pub struct InternalProcessor {
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
-struct ProcessingStats {
+pub struct ProcessingStats {
     total_processed: u64,
     successful_responses: u64,
     failed_responses: u64,

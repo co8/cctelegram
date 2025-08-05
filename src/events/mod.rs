@@ -5,4 +5,5 @@ pub mod file_tier;
 
 pub use watcher::EventWatcher;
 pub use processor::EventProcessor;
-pub use file_tier::{FileTierProcessor, FileQueueEntry, FileQueueStatus, FileWatcherMetrics};
+// Unused file tier exports removed - these are part of inactive Tier 3 architecture
+// pub use file_tier::{FileTierProcessor, FileQueueEntry, FileQueueStatus, FileWatcherMetrics};
