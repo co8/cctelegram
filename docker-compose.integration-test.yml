@@ -1,0 +1,304 @@
+# Docker Compose for 3-Tier Cascading System Integration Testing
+# Isolated test environment for comprehensive tier testing
+
+version: '3.8'
+
+services:
+  # ===== Integration Test Environment =====
+  integration-test:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+      target: testing
+    image: cctelegram-integration-test:latest
+    container_name: cctelegram-integration-test
+    
+    environment:
+      - NODE_ENV=test
+      - CI=true
+      - MCP_ENABLE_AUTH=false
+      - MCP_ENABLE_RATE_LIMIT=false
+      - MCP_LOG_LEVEL=error
+      - CC_TELEGRAM_EVENTS_DIR=/test/events
+      - CC_TELEGRAM_RESPONSES_DIR=/test/responses
+      - TIER_TEST_BASE_DIR=/test/tier-test
+      - JEST_TIMEOUT=60000
+      - INTEGRATION_TEST_MODE=true
+    
+    volumes:
+      - integration-test-data:/test
+      - integration-coverage:/app/coverage
+      - ./mcp-server/tests:/app/tests:ro
+      - ./mcp-server/src:/app/src:ro
+    
+    command: ["npm", "run", "test:integration", "--", "--testPathPattern=tier-cascading-system"]
+    
+    networks:
+      - integration-network
+    
+    depends_on:
+      - tier1-webhook-mock
+      - tier2-bridge-mock
+      - tier3-file-mock
+      - redis-cache
+      - postgres-test
+
+  # ===== Mock Tier 1: MCP Webhook Server =====
+  tier1-webhook-mock:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.tier-mocks
+      target: tier1-webhook
+    image: cctelegram-tier1-mock:latest
+    container_name: tier1-webhook-mock
+    
+    environment:
+      - NODE_ENV=test
+      - TIER1_PORT=3001
+      - TIER1_LATENCY_MS=50
+      - TIER1_FAILURE_RATE=0
+      - TIER1_SLA_LIMIT_MS=100
+    
+    ports:
+      - "3001:3001"
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    
+    networks:
+      - integration-network
+
+  # ===== Mock Tier 2: Bridge Processor =====
+  tier2-bridge-mock:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.tier-mocks
+      target: tier2-bridge
+    image: cctelegram-tier2-mock:latest
+    container_name: tier2-bridge-mock
+    
+    environment:
+      - NODE_ENV=test
+      - TIER2_LATENCY_MS=200
+      - TIER2_FAILURE_RATE=0
+      - TIER2_SLA_MIN_MS=100
+      - TIER2_SLA_MAX_MS=500
+    
+    networks:
+      - integration-network
+
+  # ===== Mock Tier 3: File Watcher =====
+  tier3-file-mock:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.tier-mocks
+      target: tier3-file
+    image: cctelegram-tier3-mock:latest
+    container_name: tier3-file-mock
+    
+    environment:
+      - NODE_ENV=test
+      - TIER3_BASE_DIR=/test/file-watcher
+      - TIER3_LATENCY_MS=2000
+      - TIER3_FAILURE_RATE=0
+      - TIER3_SLA_MIN_MS=1000
+      - TIER3_SLA_MAX_MS=5000
+    
+    volumes:
+      - tier3-file-data:/test/file-watcher
+    
+    networks:
+      - integration-network
+
+  # ===== Test Infrastructure Services =====
+  
+  # Redis for caching and coordination
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-integration-test
+    
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    
+    ports:
+      - "6379:6379"
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    
+    networks:
+      - integration-network
+
+  # PostgreSQL for test data
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: postgres-integration-test
+    
+    environment:
+      - POSTGRES_DB=integration_test
+      - POSTGRES_USER=test_user
+      - POSTGRES_PASSWORD=test_password
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    
+    ports:
+      - "5432:5432"
+    
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+      - ./mcp-server/tests/fixtures/test-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d integration_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    networks:
+      - integration-network
+
+  # ===== Monitoring and Observability for Tests =====
+  
+  # Prometheus for metrics collection during tests
+  prometheus-test:
+    image: prom/prometheus:v2.47.0
+    container_name: prometheus-integration-test
+    profiles: ["monitoring"]
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1h'
+      - '--web.enable-lifecycle'
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./monitoring/prometheus-test.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-test-data:/prometheus
+    
+    networks:
+      - integration-network
+
+  # Jaeger for distributed tracing during tests
+  jaeger-test:
+    image: jaegertracing/all-in-one:1.49
+    container_name: jaeger-integration-test
+    profiles: ["monitoring"]
+    
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+    
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    
+    networks:
+      - integration-network
+
+  # ===== Performance Testing Service =====
+  performance-test:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.performance-test
+    image: cctelegram-performance-test:latest
+    container_name: performance-integration-test
+    profiles: ["performance"]
+    
+    environment:
+      - NODE_ENV=test
+      - PERFORMANCE_TEST_DURATION=60
+      - PERFORMANCE_TEST_CONCURRENCY=10
+      - TARGET_TIER1_URL=http://tier1-webhook-mock:3001
+    
+    volumes:
+      - performance-results:/app/results
+    
+    networks:
+      - integration-network
+    
+    depends_on:
+      - tier1-webhook-mock
+      - tier2-bridge-mock
+      - tier3-file-mock
+
+  # ===== Test Result Collection Service =====
+  test-collector:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile.test-collector
+    image: cctelegram-test-collector:latest
+    container_name: test-result-collector
+    
+    environment:
+      - COLLECTION_INTERVAL=30
+      - RESULTS_RETENTION_HOURS=24
+    
+    volumes:
+      - integration-coverage:/app/coverage:ro
+      - performance-results:/app/performance:ro
+      - test-reports:/app/reports
+    
+    networks:
+      - integration-network
+
+# ===== Volumes =====
+volumes:
+  integration-test-data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=500m,uid=1001,gid=1001
+
+  integration-coverage:
+    driver: local
+
+  tier3-file-data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=100m,uid=1001,gid=1001
+
+  postgres-test-data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=200m,uid=999,gid=999
+
+  prometheus-test-data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=50m
+
+  performance-results:
+    driver: local
+
+  test-reports:
+    driver: local
+
+# ===== Networks =====
+networks:
+  integration-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+        
+# ===== Profiles =====
+# Usage:
+# docker-compose -f docker-compose.integration-test.yml up                    # Basic integration tests
+# docker-compose -f docker-compose.integration-test.yml --profile monitoring up  # With monitoring
+# docker-compose -f docker-compose.integration-test.yml --profile performance up # With performance tests

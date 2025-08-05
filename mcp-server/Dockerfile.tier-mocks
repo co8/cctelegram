@@ -1,0 +1,471 @@
+# Multi-stage Docker build for 3-Tier Mock Services
+# Used for isolated integration testing of the cascading system
+
+# ===== Base Stage =====
+FROM node:20-alpine AS base
+
+# Install basic dependencies
+RUN apk add --no-cache curl ca-certificates
+
+# Create non-root user
+RUN addgroup -g 1001 -S test && \
+    adduser -S mock -u 1001 -G test
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# ===== Tier 1: MCP Webhook Mock =====
+FROM base AS tier1-webhook
+
+# Copy Tier 1 mock implementation
+COPY tests/mocks/tier1-webhook-mock.ts ./tier1-mock.ts
+
+# Create startup script
+RUN cat > start-tier1.js << 'EOF'
+const express = require('express');
+const app = express();
+const port = process.env.TIER1_PORT || 3001;
+
+app.use(express.json());
+
+let simulatedLatency = parseInt(process.env.TIER1_LATENCY_MS) || 50;
+let failureRate = parseFloat(process.env.TIER1_FAILURE_RATE) || 0;
+let isHealthy = true;
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  if (isHealthy) {
+    res.json({ 
+      status: 'healthy', 
+      tier: 'webhook', 
+      timestamp: new Date().toISOString(),
+      latency_ms: simulatedLatency,
+      failure_rate: failureRate
+    });
+  } else {
+    res.status(503).json({ status: 'unhealthy', tier: 'webhook' });
+  }
+});
+
+// Configuration endpoint
+app.post('/config', (req, res) => {
+  const { latency, failureRate: newFailureRate, healthy } = req.body;
+  
+  if (latency !== undefined) simulatedLatency = Math.max(0, Math.min(latency, 100));
+  if (newFailureRate !== undefined) failureRate = Math.max(0, Math.min(newFailureRate, 1));
+  if (healthy !== undefined) isHealthy = healthy;
+  
+  res.json({ 
+    latency_ms: simulatedLatency, 
+    failure_rate: failureRate, 
+    healthy: isHealthy 
+  });
+});
+
+// Processing endpoint
+app.post('/process', async (req, res) => {
+  const startTime = Date.now();
+  const correlationId = req.body.correlation_id || `webhook-${Date.now()}`;
+
+  try {
+    // Simulate failure rate
+    if (Math.random() < failureRate) {
+      throw new Error('Simulated webhook failure');
+    }
+
+    // Simulate processing time within SLA (0-100ms)
+    await new Promise(resolve => setTimeout(resolve, simulatedLatency));
+
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+
+    res.json({
+      success: true,
+      tier: 'mcp_webhook',
+      processing_time_ms: processingTime,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      sla_compliant: processingTime <= 100
+    });
+  } catch (error) {
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+
+    res.status(500).json({
+      success: false,
+      tier: 'mcp_webhook',
+      processing_time_ms: processingTime,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Metrics endpoint for monitoring
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send(`
+# HELP tier1_latency_ms Simulated latency in milliseconds
+# TYPE tier1_latency_ms gauge
+tier1_latency_ms ${simulatedLatency}
+
+# HELP tier1_failure_rate Simulated failure rate (0-1)
+# TYPE tier1_failure_rate gauge
+tier1_failure_rate ${failureRate}
+
+# HELP tier1_healthy Health status (1=healthy, 0=unhealthy)
+# TYPE tier1_healthy gauge
+tier1_healthy ${isHealthy ? 1 : 0}
+  `.trim());
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Tier 1 Webhook Mock listening on port ${port}`);
+  console.log(`Latency: ${simulatedLatency}ms, Failure Rate: ${failureRate * 100}%`);
+});
+EOF
+
+USER mock
+EXPOSE 3001
+
+CMD ["node", "start-tier1.js"]
+
+# ===== Tier 2: Bridge Processor Mock =====
+FROM base AS tier2-bridge
+
+# Create Tier 2 mock service
+RUN cat > start-tier2.js << 'EOF'
+const express = require('express');
+const app = express();
+const port = process.env.TIER2_PORT || 3002;
+
+app.use(express.json());
+
+let simulatedLatency = parseInt(process.env.TIER2_LATENCY_MS) || 200;
+let failureRate = parseFloat(process.env.TIER2_FAILURE_RATE) || 0;
+let isHealthy = true;
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: isHealthy ? 'healthy' : 'unhealthy', 
+    tier: 'bridge_internal', 
+    timestamp: new Date().toISOString(),
+    latency_ms: simulatedLatency,
+    failure_rate: failureRate
+  });
+});
+
+// Configuration endpoint
+app.post('/config', (req, res) => {
+  const { latency, failureRate: newFailureRate, healthy } = req.body;
+  
+  if (latency !== undefined) simulatedLatency = Math.max(100, Math.min(latency, 500));
+  if (newFailureRate !== undefined) failureRate = Math.max(0, Math.min(newFailureRate, 1));
+  if (healthy !== undefined) isHealthy = healthy;
+  
+  res.json({ 
+    latency_ms: simulatedLatency, 
+    failure_rate: failureRate, 
+    healthy: isHealthy 
+  });
+});
+
+// Processing endpoint
+app.post('/process', async (req, res) => {
+  const startTime = Date.now();
+  const correlationId = req.body.correlation_id || `bridge-${Date.now()}`;
+
+  try {
+    if (!isHealthy || Math.random() < failureRate) {
+      throw new Error('Simulated bridge processing failure');
+    }
+
+    // Simulate processing time within SLA (100-500ms)
+    await new Promise(resolve => setTimeout(resolve, simulatedLatency));
+
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+
+    res.json({
+      success: true,
+      tier: 'bridge_internal',
+      processing_time_ms: processingTime,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      sla_compliant: processingTime >= 100 && processingTime <= 500
+    });
+  } catch (error) {
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+
+    res.status(500).json({
+      success: false,
+      tier: 'bridge_internal',
+      processing_time_ms: processingTime,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
+
+// Metrics endpoint
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send(`
+# HELP tier2_latency_ms Simulated latency in milliseconds
+# TYPE tier2_latency_ms gauge
+tier2_latency_ms ${simulatedLatency}
+
+# HELP tier2_failure_rate Simulated failure rate (0-1)
+# TYPE tier2_failure_rate gauge
+tier2_failure_rate ${failureRate}
+
+# HELP tier2_healthy Health status (1=healthy, 0=unhealthy)
+# TYPE tier2_healthy gauge
+tier2_healthy ${isHealthy ? 1 : 0}
+  `.trim());
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Tier 2 Bridge Mock listening on port ${port}`);
+  console.log(`Latency: ${simulatedLatency}ms, Failure Rate: ${failureRate * 100}%`);
+});
+EOF
+
+USER mock
+EXPOSE 3002
+
+CMD ["node", "start-tier2.js"]
+
+# ===== Tier 3: File Watcher Mock =====
+FROM base AS tier3-file
+
+# Install additional file system tools
+USER root
+RUN apk add --no-cache inotify-tools
+USER mock
+
+# Create directories
+RUN mkdir -p /test/file-watcher/events /test/file-watcher/responses
+
+# Create Tier 3 mock service
+RUN cat > start-tier3.js << 'EOF'
+const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
+const { EventEmitter } = require('events');
+
+const app = express();
+const port = process.env.TIER3_PORT || 3003;
+const baseDir = process.env.TIER3_BASE_DIR || '/test/file-watcher';
+
+app.use(express.json());
+
+let simulatedLatency = parseInt(process.env.TIER3_LATENCY_MS) || 2000;
+let failureRate = parseFloat(process.env.TIER3_FAILURE_RATE) || 0;
+let isHealthy = true;
+
+const eventsDir = path.join(baseDir, 'events');
+const responsesDir = path.join(baseDir, 'responses');
+const emitter = new EventEmitter();
+
+// Initialize directories
+async function initDirectories() {
+  try {
+    await fs.mkdir(eventsDir, { recursive: true });
+    await fs.mkdir(responsesDir, { recursive: true });
+    console.log(`File Watcher Mock initialized at ${baseDir}`);
+  } catch (error) {
+    console.error('Failed to initialize directories:', error);
+  }
+}
+
+// File watcher simulation
+async function startFileWatcher() {
+  setInterval(async () => {
+    try {
+      const files = await fs.readdir(eventsDir);
+      const eventFiles = files.filter(f => f.endsWith('.json') && !f.endsWith('.processed'));
+
+      for (const file of eventFiles) {
+        await processEventFile(file);
+      }
+    } catch (error) {
+      console.error('File watcher error:', error);
+    }
+  }, 100);
+}
+
+async function processEventFile(filename) {
+  const filePath = path.join(eventsDir, filename);
+  const processedPath = `${filePath}.processed`;
+
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const eventData = JSON.parse(content);
+    
+    const startTime = Date.now();
+    const correlationId = eventData.correlation_id || `file-${Date.now()}`;
+
+    if (!isHealthy || Math.random() < failureRate) {
+      throw new Error('Simulated file watcher failure');
+    }
+
+    // Simulate processing time within SLA (1-5s)
+    await new Promise(resolve => setTimeout(resolve, simulatedLatency));
+
+    const endTime = Date.now();
+    const processingTime = endTime - startTime;
+
+    const response = {
+      success: true,
+      tier: 'file_watcher',
+      processing_time_ms: processingTime,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      sla_compliant: processingTime >= 1000 && processingTime <= 5000
+    };
+
+    // Write response file
+    const responseFile = path.join(responsesDir, `${correlationId}.json`);
+    await fs.writeFile(responseFile, JSON.stringify(response, null, 2));
+
+    // Mark event as processed
+    await fs.rename(filePath, processedPath);
+
+    emitter.emit('processed', response);
+    console.log(`Processed event ${filename} in ${processingTime}ms`);
+
+  } catch (error) {
+    const correlationId = `file-error-${Date.now()}`;
+    const errorResponse = {
+      success: false,
+      tier: 'file_watcher',
+      processing_time_ms: 0,
+      correlation_id: correlationId,
+      timestamp: new Date().toISOString(),
+      error: error.message
+    };
+
+    const responseFile = path.join(responsesDir, `${correlationId}.json`);
+    await fs.writeFile(responseFile, JSON.stringify(errorResponse, null, 2));
+    console.error(`Error processing ${filename}:`, error.message);
+  }
+}
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: isHealthy ? 'healthy' : 'unhealthy', 
+    tier: 'file_watcher', 
+    timestamp: new Date().toISOString(),
+    latency_ms: simulatedLatency,
+    failure_rate: failureRate,
+    base_dir: baseDir
+  });
+});
+
+// Configuration endpoint
+app.post('/config', (req, res) => {
+  const { latency, failureRate: newFailureRate, healthy } = req.body;
+  
+  if (latency !== undefined) simulatedLatency = Math.max(1000, Math.min(latency, 5000));
+  if (newFailureRate !== undefined) failureRate = Math.max(0, Math.min(newFailureRate, 1));
+  if (healthy !== undefined) isHealthy = healthy;
+  
+  res.json({ 
+    latency_ms: simulatedLatency, 
+    failure_rate: failureRate, 
+    healthy: isHealthy 
+  });
+});
+
+// Queue event endpoint
+app.post('/queue', async (req, res) => {
+  try {
+    const correlationId = req.body.correlation_id || `file-${Date.now()}`;
+    const eventFile = path.join(eventsDir, `${correlationId}.json`);
+    
+    await fs.writeFile(eventFile, JSON.stringify({
+      ...req.body,
+      correlation_id: correlationId,
+      queued_at: new Date().toISOString()
+    }, null, 2));
+
+    res.json({
+      success: true,
+      correlation_id: correlationId,
+      queued_at: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get response endpoint
+app.get('/response/:correlationId', async (req, res) => {
+  try {
+    const { correlationId } = req.params;
+    const responseFile = path.join(responsesDir, `${correlationId}.json`);
+    
+    const content = await fs.readFile(responseFile, 'utf-8');
+    const response = JSON.parse(content);
+    
+    res.json(response);
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      error: 'Response not found'
+    });
+  }
+});
+
+// Metrics endpoint
+app.get('/metrics', (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.send(`
+# HELP tier3_latency_ms Simulated latency in milliseconds
+# TYPE tier3_latency_ms gauge
+tier3_latency_ms ${simulatedLatency}
+
+# HELP tier3_failure_rate Simulated failure rate (0-1)
+# TYPE tier3_failure_rate gauge
+tier3_failure_rate ${failureRate}
+
+# HELP tier3_healthy Health status (1=healthy, 0=unhealthy)
+# TYPE tier3_healthy gauge
+tier3_healthy ${isHealthy ? 1 : 0}
+  `.trim());
+});
+
+// Initialize and start
+async function start() {
+  await initDirectories();
+  await startFileWatcher();
+  
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Tier 3 File Watcher Mock listening on port ${port}`);
+    console.log(`Base directory: ${baseDir}`);
+    console.log(`Latency: ${simulatedLatency}ms, Failure Rate: ${failureRate * 100}%`);
+  });
+}
+
+start().catch(console.error);
+EOF
+
+USER mock
+EXPOSE 3003
+
+CMD ["node", "start-tier3.js"]

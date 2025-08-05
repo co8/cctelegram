@@ -877,7 +877,94 @@
           21
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement 3-Tier Cascading System Integration Tests",
+            "description": "Create comprehensive integration tests for the 3-tier cascading monitoring system using Jest and supertest, validating webhook response times (0-100ms), bridge processing (100-500ms), and file watcher fallbacks (1-5s) with real-time latency measurements.",
+            "dependencies": [],
+            "details": "Set up Jest test environment with supertest for HTTP testing and mock implementations for each tier. Create test scenarios covering webhook receipt, bridge processing latency, and file watcher fallback mechanisms. Implement timing assertions for each tier with tolerance margins. Use Docker Compose for isolated test environment with Redis, file system mocks, and simulated Telegram API endpoints.",
+            "status": "pending",
+            "testStrategy": "Execute integration tests in isolated Docker environment with timing assertions for each cascading tier. Validate latency measurements using high-resolution timers and statistical analysis of response times across multiple test runs."
+          },
+          {
+            "id": 2,
+            "title": "Develop End-to-End Workflow Tests with Playwright",
+            "description": "Create comprehensive E2E workflow tests using Playwright to simulate complete user journeys from Telegram message receipt through Claude Code notifications, including error scenarios and recovery paths.",
+            "dependencies": [
+              "25.1"
+            ],
+            "details": "Set up Playwright test environment with headless browsers for Chrome, Firefox, and Safari. Implement complete user journey tests including Telegram bot interaction simulation, bridge processing validation, and Claude Code notification verification. Create error scenario tests for network failures, API timeouts, and recovery mechanisms. Implement visual regression testing for UI components and notification displays.",
+            "status": "pending",
+            "testStrategy": "Run E2E tests in parallel across multiple browser engines with screenshot comparison for visual regression detection. Simulate network conditions and error states to validate resilience and recovery mechanisms."
+          },
+          {
+            "id": 3,
+            "title": "Implement Performance Test Suite with k6 and Autocannon",
+            "description": "Create performance test suite using k6 and autocannon for load testing all components with configurable concurrency levels (10-1000 concurrent users), measuring response times, throughput, and resource utilization.",
+            "dependencies": [
+              "25.1"
+            ],
+            "details": "Set up k6 scripts for distributed load testing with configurable user loads from 10 to 1000 concurrent users. Implement autocannon for HTTP benchmarking of webhook endpoints and bridge communications. Create resource utilization monitoring using system metrics collection. Implement baseline performance measurements and regression detection with automated alerting for >10% performance degradation.",
+            "status": "pending",
+            "testStrategy": "Execute graduated load tests starting from baseline performance measurements through peak load scenarios. Monitor CPU, memory, and network utilization with performance regression alerts and comparative analysis against baseline metrics."
+          },
+          {
+            "id": 4,
+            "title": "Set Up Chaos Engineering Tests",
+            "description": "Implement chaos engineering tests using chaos-monkey-lambda and toxiproxy to simulate network failures, service outages, and resource constraints, validating system resilience and automatic recovery mechanisms.",
+            "dependencies": [
+              "25.2"
+            ],
+            "details": "Configure chaos-monkey-lambda for AWS Lambda function failures and toxiproxy for network-level fault injection. Create test scenarios for service outages, network partitions, high latency conditions, and resource exhaustion. Implement automatic recovery validation and system state monitoring during chaos tests. Set up monitoring dashboards for chaos test execution and recovery metrics.",
+            "status": "pending",
+            "testStrategy": "Execute controlled chaos scenarios with real-time monitoring of system recovery times and failure detection. Validate automatic failover mechanisms and measure Mean Time To Recovery (MTTR) for various failure scenarios."
+          },
+          {
+            "id": 5,
+            "title": "Create Test Data Factories and Fixtures",
+            "description": "Implement comprehensive test data factories using factory-bot pattern for consistent test scenarios across integration and E2E tests, ensuring reproducible test environments.",
+            "dependencies": [],
+            "details": "Design factory-bot pattern implementation for generating consistent test data including Telegram message payloads, bridge configurations, and system state scenarios. Create fixture management system for test environment setup and teardown. Implement data seeding utilities for integration tests and mock API responses. Ensure test data isolation and cleanup between test runs.",
+            "status": "pending",
+            "testStrategy": "Validate test data consistency across all test suites with automated fixture verification and data integrity checks. Implement test data versioning for reproducible test scenarios."
+          },
+          {
+            "id": 6,
+            "title": "Implement Code Coverage and Quality Metrics",
+            "description": "Set up comprehensive test coverage reporting with nyc/istanbul targeting 95% code coverage for critical paths, including mutation testing with Stryker.js to validate test quality and effectiveness.",
+            "dependencies": [
+              "25.1",
+              "25.2",
+              "25.5"
+            ],
+            "details": "Configure nyc/istanbul for comprehensive code coverage reporting with branch, function, and line coverage metrics. Implement Stryker.js mutation testing to validate test effectiveness and identify weak test cases. Set up coverage thresholds with CI/CD integration and automated reporting. Create coverage trend analysis and quality gates for pull request validation.",
+            "status": "pending",
+            "testStrategy": "Execute comprehensive coverage analysis with mutation testing validation. Implement automated quality gates requiring 95% coverage for critical paths and mutation score thresholds for test effectiveness validation."
+          },
+          {
+            "id": 7,
+            "title": "Set Up Performance Regression Testing",
+            "description": "Implement performance regression testing with baseline comparisons and automated alerts for performance degradation >10%, including visual regression testing for UI components.",
+            "dependencies": [
+              "25.3"
+            ],
+            "details": "Create performance baseline establishment system with automated benchmark collection and storage. Implement continuous performance monitoring with regression detection algorithms comparing current performance against historical baselines. Set up automated alerting for performance degradation exceeding 10% threshold. Integrate visual regression testing using percy.io or similar tools for UI component validation.",
+            "status": "pending",
+            "testStrategy": "Execute continuous performance monitoring with statistical analysis of performance trends and automated regression detection. Validate visual consistency across browser environments with pixel-perfect comparison algorithms."
+          },
+          {
+            "id": 8,
+            "title": "Implement Contract Testing and API Validation",
+            "description": "Set up contract testing using Pact for API validation between MCP server and bridge components, ensuring API compatibility and preventing integration failures.",
+            "dependencies": [
+              "25.5"
+            ],
+            "details": "Implement Pact contract testing framework for MCP server and bridge component API validation. Create consumer-driven contracts defining API specifications and expectations. Set up contract verification workflows in CI/CD pipeline with automated contract publishing and verification. Implement contract evolution tracking and breaking change detection.",
+            "status": "pending",
+            "testStrategy": "Execute contract testing with consumer-driven contract validation and provider verification workflows. Implement automated contract compatibility checks and breaking change detection in CI/CD pipeline."
+          }
+        ]
       },
       {
         "id": 26,
