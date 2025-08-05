@@ -13,7 +13,7 @@ export default {
   ],
   
   // Module resolution
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@tests/(.*)$': '<rootDir>/tests/$1'
@@ -24,7 +24,7 @@ export default {
     '^.+\\.tsx?$': ['ts-jest', {
       useESM: true,
       tsconfig: {
-        module: 'ESNext',
+        module: 'ES2022',
         target: 'ES2022',
         moduleResolution: 'node',
         allowSyntheticDefaultImports: true,
@@ -82,10 +82,8 @@ export default {
   detectOpenHandles: true,
   forceExit: true,
   
-  // Global variables for tests
-  globals: {
-    'ts-jest': {
-      useESM: true
-    }
-  }
+  // Transform ignore patterns for node_modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(@modelcontextprotocol)/)'
+  ]
 };

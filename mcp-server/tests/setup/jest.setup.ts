@@ -4,13 +4,12 @@
  */
 
 import { jest } from '@jest/globals';
+import '@testing-library/jest-dom';
 import fs from 'fs-extra';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Get __dirname equivalent for Jest
+const setupDir = __filename ? path.dirname(__filename) : path.join(process.cwd(), 'tests', 'setup');
 
 // Extend Jest matchers
 expect.extend({
@@ -55,7 +54,7 @@ beforeAll(async () => {
   process.env.MCP_LOG_LEVEL = 'error'; // Reduce noise in tests
   
   // Set up test directories
-  const testDataDir = path.join(__dirname, '..', 'fixtures', 'data');
+  const testDataDir = path.join(setupDir, '..', 'fixtures', 'data');
   process.env.CC_TELEGRAM_EVENTS_DIR = path.join(testDataDir, 'events');
   process.env.CC_TELEGRAM_RESPONSES_DIR = path.join(testDataDir, 'responses');
   
@@ -81,7 +80,7 @@ afterEach(async () => {
 // Global cleanup
 afterAll(async () => {
   // Clean up test directories
-  const testDataDir = path.join(__dirname, '..', 'fixtures', 'data');
+  const testDataDir = path.join(setupDir, '..', 'fixtures', 'data');
   if (await fs.pathExists(testDataDir)) {
     await fs.remove(testDataDir);
   }

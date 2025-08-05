@@ -18,6 +18,15 @@ export interface SecurityConfig {
   logLevel: 'error' | 'warn' | 'info' | 'debug';
 }
 
+// Security configuration cache
+interface SecurityConfigCache {
+  config: SecurityConfig;
+  timestamp: number;
+  ttl: number;
+}
+
+let configCache: SecurityConfigCache | null = null;
+
 // Default security configuration
 const DEFAULT_CONFIG: SecurityConfig = {
   enableAuth: true,
@@ -43,9 +52,26 @@ export interface SecurityContext {
 }
 
 /**
- * Load security configuration from environment and config files
+ * Load security configuration from environment and config files (with caching)
  */
-export function loadSecurityConfig(): SecurityConfig {
+export function loadSecurityConfig(forceFresh = false): SecurityConfig {
+  const now = Date.now();
+  const defaultTTL = parseInt(process.env.MCP_CONFIG_CACHE_TTL || '300000', 10); // 5 minutes default
+  
+  // Return cached config if valid and not forcing fresh load
+  if (!forceFresh && configCache && (now - configCache.timestamp) < configCache.ttl) {
+    secureLog('debug', 'Using cached security configuration', {
+      age_ms: now - configCache.timestamp,
+      ttl_ms: configCache.ttl
+    });
+    return configCache.config;
+  }
+  
+  secureLog('debug', 'Loading fresh security configuration', {
+    forced: forceFresh,
+    cache_expired: configCache ? (now - configCache.timestamp) >= configCache.ttl : true
+  });
+  
   const config = { ...DEFAULT_CONFIG };
   
   // Load from environment variables
@@ -75,7 +101,55 @@ export function loadSecurityConfig(): SecurityConfig {
     config.logLevel = process.env.MCP_LOG_LEVEL as 'error' | 'warn' | 'info' | 'debug';
   }
   
+  // Cache the configuration
+  configCache = {
+    config: { ...config },
+    timestamp: now,
+    ttl: defaultTTL
+  };
+  
+  secureLog('info', 'Security configuration loaded and cached', {
+    ttl_ms: defaultTTL,
+    auth_enabled: config.enableAuth,
+    rate_limit_enabled: config.enableRateLimit
+  });
+  
   return config;
+}
+
+/**
+ * Invalidate security configuration cache (force reload on next access)
+ */
+export function invalidateSecurityConfigCache(): void {
+  configCache = null;
+  secureLog('info', 'Security configuration cache invalidated');
+}
+
+/**
+ * Get cache statistics for monitoring
+ */
+export function getSecurityConfigCacheStats(): {
+  cached: boolean;
+  age_ms: number | null;
+  ttl_ms: number | null;
+  hit_ratio: number | null;
+} {
+  if (!configCache) {
+    return {
+      cached: false,
+      age_ms: null,
+      ttl_ms: null,
+      hit_ratio: null
+    };
+  }
+  
+  const now = Date.now();
+  return {
+    cached: true,
+    age_ms: now - configCache.timestamp,
+    ttl_ms: configCache.ttl,
+    hit_ratio: null // TODO: Implement hit/miss tracking
+  };
 }
 
 /**
@@ -89,6 +163,16 @@ function generateSecureSecret(): string {
  * Initialize security system
  */
 export function initializeSecurity(config: SecurityConfig): void {
+  // Initialize configuration file watcher if not already initialized
+  try {
+    const { initializeConfigWatcher } = require('./config-watcher.js');
+    initializeConfigWatcher();
+  } catch (error) {
+    secureLog('warn', 'Failed to initialize configuration file watcher', {
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+  
   // Initialize rate limiter
   if (config.enableRateLimit) {
     rateLimiter = new RateLimiterMemory({
