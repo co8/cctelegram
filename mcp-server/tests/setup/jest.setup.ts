@@ -41,6 +41,48 @@ expect.extend({
       message: () => `expected object ${hasHeaders ? 'not ' : ''}to have security headers: ${requiredHeaders.join(', ')}`,
       pass: hasHeaders
     };
+  },
+
+  toMatchEventStructure(received: any) {
+    const requiredFields = ['type', 'title', 'description', 'source', 'timestamp'];
+    const missingFields = requiredFields.filter(field => !(field in received));
+    const pass = missingFields.length === 0;
+    
+    return {
+      message: () =>
+        pass
+          ? `Expected object not to have event structure`
+          : `Expected object to have event structure. Missing fields: ${missingFields.join(', ')}`,
+      pass
+    };
+  },
+
+  toMatchResponseStructure(received: any) {
+    const requiredFields = ['id', 'user_id', 'message', 'timestamp'];
+    const missingFields = requiredFields.filter(field => !(field in received));
+    const pass = missingFields.length === 0;
+    
+    return {
+      message: () =>
+        pass
+          ? `Expected object not to have response structure`
+          : `Expected object to have response structure. Missing fields: ${missingFields.join(', ')}`,
+      pass
+    };
+  },
+
+  toMatchBridgeStatusStructure(received: any) {
+    const requiredFields = ['success', 'status', 'version'];
+    const missingFields = requiredFields.filter(field => !(field in received));
+    const pass = missingFields.length === 0;
+    
+    return {
+      message: () =>
+        pass
+          ? `Expected object not to have bridge status structure`
+          : `Expected object to have bridge status structure. Missing fields: ${missingFields.join(', ')}`,
+      pass
+    };
   }
 });
 
@@ -111,6 +153,9 @@ declare global {
       toBeValidUUID(): R;
       toBeValidISO8601(): R;
       toHaveSecurityHeaders(): R;
+      toMatchEventStructure(): R;
+      toMatchResponseStructure(): R;
+      toMatchBridgeStatusStructure(): R;
     }
   }
 }
