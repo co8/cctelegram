@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './types.js';
 import { secureLog, sanitizeForLogging, sanitizePath } from './security.js';
 import { getBridgeAxiosConfig, getHttpPool } from './http-pool.js';
+import { getFsOptimizer } from './utils/fs-optimizer.js';
 
 const execAsync = promisify(exec);
 
@@ -351,31 +352,18 @@ export class CCTelegramBridgeClient {
   }
 
   /**
-   * Get user responses from Telegram
+   * Get user responses from Telegram (optimized with batched file operations)
    */
   async getTelegramResponses(): Promise<TelegramResponse[]> {
     try {
       await this.ensureDirectories();
       
-      const files = await fs.readdir(this.responsesDir);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
+      const fsOptimizer = getFsOptimizer();
+      const { responses } = await fsOptimizer.getResponseFiles(this.responsesDir, {
+        sortByTime: true
+      });
       
-      const responses: TelegramResponse[] = [];
-      
-      for (const file of jsonFiles) {
-        try {
-          const filePath = path.join(this.responsesDir, file);
-          const response = await fs.readJSON(filePath);
-          responses.push(response);
-        } catch (error: any) {
-          console.warn(`Failed to read response file ${file}:`, error);
-        }
-      }
-      
-      // Sort by timestamp (most recent first)
-      return responses.sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      return responses as TelegramResponse[];
     } catch (error) {
       console.warn('Failed to read responses:', error);
       return [];
@@ -383,25 +371,25 @@ export class CCTelegramBridgeClient {
   }
 
   /**
-   * Clear old response files
+   * Clear old response files (optimized with batched file operations)
    */
   async clearOldResponses(olderThanHours = 24): Promise<number> {
     try {
-      const files = await fs.readdir(this.responsesDir);
+      const fsOptimizer = getFsOptimizer();
       const cutoffTime = Date.now() - (olderThanHours * 60 * 60 * 1000);
-      let deletedCount = 0;
+      
+      const { deleted, errors } = await fsOptimizer.batchFileCleanup(
+        this.responsesDir,
+        (file, stats) => stats.mtime.getTime() < cutoffTime
+      );
 
-      for (const file of files) {
-        const filePath = path.join(this.responsesDir, file);
-        const stats = await fs.stat(filePath);
-        
-        if (stats.mtime.getTime() < cutoffTime) {
-          await fs.remove(filePath);
-          deletedCount++;
-        }
+      // Log any errors but don't fail the operation
+      if (errors.length > 0) {
+        console.warn(`Failed to delete ${errors.length} files during cleanup:`, 
+          errors.map(e => e.file));
       }
 
-      return deletedCount;
+      return deleted.length;
     } catch (error) {
       console.warn('Failed to clear old responses:', error);
       return 0;
@@ -415,53 +403,37 @@ export class CCTelegramBridgeClient {
     try {
       await this.ensureDirectories();
       
-      const files = await fs.readdir(this.responsesDir);
-      const jsonFiles = files.filter(file => file.endsWith('.json'));
-      const cutoffTime = Date.now() - (sinceMinutes * 60 * 1000);
+      const fsOptimizer = getFsOptimizer();
+      const { responses, fileStats } = await fsOptimizer.getResponseFiles(this.responsesDir, {
+        sinceMinutes
+      });
       
-      const recentResponses = [];
       const actionableResponses = [];
       
-      for (const file of jsonFiles) {
-        try {
-          const filePath = path.join(this.responsesDir, file);
-          const stats = await fs.stat(filePath);
+      for (const response of responses) {
+        // Check if it's an actionable approval/denial response
+        if (response.response_type === 'callback_query' && response.callback_data) {
+          const callbackData = response.callback_data;
           
-          // Only process recent files
-          if (stats.mtime.getTime() < cutoffTime) {
-            continue;
-          }
-          
-          const response = await fs.readJSON(filePath);
-          recentResponses.push(response);
-          
-          // Check if it's an actionable approval/denial response
-          if (response.response_type === 'callback_query' && response.callback_data) {
-            const callbackData = response.callback_data;
+          if (callbackData.startsWith('approve_') || callbackData.startsWith('deny_')) {
+            const action = callbackData.startsWith('approve_') ? 'approve' : 'deny';
+            const taskId = callbackData.replace(/^(approve_|deny_)/, '');
             
-            if (callbackData.startsWith('approve_') || callbackData.startsWith('deny_')) {
-              const action = callbackData.startsWith('approve_') ? 'approve' : 'deny';
-              const taskId = callbackData.replace(/^(approve_|deny_)/, '');
-              
-              actionableResponses.push({
-                action,
-                task_id: taskId,
-                user_id: response.user_id,
-                username: response.username,
-                timestamp: response.timestamp,
-                file_path: filePath,
-                response_data: response
-              });
-            }
+            actionableResponses.push({
+              action,
+              task_id: taskId,
+              user_id: response.user_id,
+              username: response.username,
+              timestamp: response.timestamp,
+              response_data: response
+            });
           }
-        } catch (error: any) {
-          console.warn(`Failed to process response file ${file}:`, error);
         }
       }
       
       return {
         summary: {
-          total_recent_responses: recentResponses.length,
+          total_recent_responses: responses.length,
           actionable_responses: actionableResponses.length,
           pending_approvals: actionableResponses.filter(r => r.action === 'approve').length,
           pending_denials: actionableResponses.filter(r => r.action === 'deny').length,
@@ -1034,16 +1006,19 @@ export class CCTelegramBridgeClient {
       // Get Claude Code session tasks (if available through environment or files)
       if (taskSystem === 'claude-code' || taskSystem === 'both') {
         try {
-          // Check for Claude Code todo files in common locations
+          // Check for Claude Code todo files in common locations (optimized batch check)
           const possibleTodoPaths = [
             path.join(projectPath, '.claude', 'todos.json'),
             path.join(process.env.HOME || '/tmp', '.claude', 'todos.json'),
             path.join(projectPath, '.cc_todos.json')
           ];
 
+          const fsOptimizer = getFsOptimizer();
+          const pathExistsMap = await fsOptimizer.batchPathExists(possibleTodoPaths);
+          
           let claudeTasks = null;
           for (const todoPath of possibleTodoPaths) {
-            if (await fs.pathExists(todoPath)) {
+            if (pathExistsMap.get(todoPath)) {
               try {
                 claudeTasks = await fs.readJSON(todoPath);
                 break;
