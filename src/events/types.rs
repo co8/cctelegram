@@ -47,6 +47,7 @@ pub enum ValidationError {
     // Field constraint errors
     EmptyField { field: String },
     InvalidLength { field: String, current: usize, min: Option<usize>, max: Option<usize> },
+    #[allow(dead_code)]
     InvalidFormat { field: String, expected_format: String },
     InvalidTimestamp { reason: String },
     InvalidUuid { field: String },
@@ -60,10 +61,13 @@ pub enum ValidationError {
     
     // Event consistency and integrity errors
     DuplicateEvent { event_id: String, original_timestamp: DateTime<Utc> },
+    #[allow(dead_code)]
     InconsistentEventData { reason: String },
     
     // Schema and structure errors
+    #[allow(dead_code)]
     UnknownEventType { event_type: String },
+    #[allow(dead_code)]
     MissingEventData { required_data: String },
 }
 
