@@ -1,0 +1,102 @@
+# Dependabot configuration for automated vulnerability scanning and security updates
+# This configuration enables security-only updates with automatic PR creation
+
+version: 2
+updates:
+  # MCP Server Node.js dependencies
+  - package-ecosystem: "npm"
+    directory: "/mcp-server"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: "UTC"
+    # Security-focused configuration
+    open-pull-requests-limit: 5
+    reviewers:
+      - "enrique"  # Replace with actual GitHub username
+    assignees:
+      - "enrique"  # Replace with actual GitHub username
+    commit-message:
+      prefix: "security"
+      prefix-development: "security-dev"
+      include: "scope"
+    # Only create PRs for security updates and critical patches
+    allow:
+      - dependency-type: "all"
+    # Priority order: security > major > minor > patch
+    priority: 1
+    # Additional security-focused settings
+    insecure-external-code-execution: "deny"
+    # Custom labels for security tracking
+    labels:
+      - "security"
+      - "dependencies"
+      - "automated"
+    # Enable security updates for both direct and indirect dependencies
+    vulnerability-alerts:
+      enabled: true
+    # Automatically approve and merge security patches (commented out for safety)
+    # auto-merge: true
+    # auto-approve: true
+    
+  # Rust dependencies for Bridge component (if applicable)
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "enrique"
+    assignees:
+      - "enrique"
+    commit-message:
+      prefix: "security"
+      include: "scope"
+    allow:
+      - dependency-type: "all"
+    labels:
+      - "security"
+      - "rust-dependencies"
+      - "automated"
+    vulnerability-alerts:
+      enabled: true
+
+  # GitHub Actions workflow dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "enrique"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "ci-cd"
+      - "github-actions"
+      - "automated"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/mcp-server"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "04:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 2
+    reviewers:
+      - "enrique"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "docker"
+      - "security"
+      - "automated"

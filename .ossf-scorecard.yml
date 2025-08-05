@@ -1,0 +1,178 @@
+# OpenSSF Scorecard Configuration for CCTelegram
+# https://github.com/ossf/scorecard
+
+# Repository configuration
+repository:
+  owner: co8
+  name: cctelegram
+  branch: main
+
+# Scorecard checks configuration
+checks:
+  # Code review practices
+  code-review:
+    enabled: true
+    # Require at least 1 reviewer
+    min_reviewers: 1
+    # Check for review approval
+    require_approval: true
+
+  # Maintenance status
+  maintained:
+    enabled: true
+    # Project is considered maintained if there's activity in the last 90 days
+    max_days_inactive: 90
+
+  # CI/CD testing
+  ci-tests:
+    enabled: true
+    # Look for test workflows
+    test_workflows:
+      - ".github/workflows/ci-cd-pipeline.yml"
+      - ".github/workflows/security-enhanced.yml"
+      - ".github/workflows/quality-gates.yml"
+      - "mcp-server/.github/workflows/testing.yml"
+
+  # Fuzzing practices
+  fuzzing:
+    enabled: true
+    # Property-based testing and security fuzzing
+    fuzzing_tools:
+      - "cargo-fuzz"
+      - "property-based-testing"
+      - "QuickCheck"
+
+  # Static Application Security Testing
+  sast:
+    enabled: true
+    sast_tools:
+      - "CodeQL"
+      - "Semgrep"
+      - "clippy"  # Rust linter with security rules
+      - "eslint-plugin-security"  # Node.js security linting
+
+  # Dependency management
+  dependency-update-tool:
+    enabled: true
+    tools:
+      - "Dependabot"
+      - "cargo-audit"
+      - "npm audit"
+      - "Renovate"
+
+  # Vulnerability disclosure
+  vulnerabilities:
+    enabled: true
+    # Check for known vulnerabilities in dependencies
+    vulnerability_databases:
+      - "GitHub Security Advisory Database"
+      - "RustSec Advisory Database"
+      - "npm Security Advisory Database"
+
+  # Branch protection
+  branch-protection:
+    enabled: true
+    branch: main
+    protection_rules:
+      required_status_checks: true
+      required_reviews: true
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: false
+      restrictions: false
+
+  # Binary artifacts
+  binary-artifacts:
+    enabled: true
+    # Ensure no binary artifacts are checked into the repository
+    exclude_paths:
+      - "target/"
+      - "node_modules/"
+      - "dist/"
+      - "*.tar.gz"
+      - "*.zip"
+
+  # Dangerous workflows
+  dangerous-workflow:
+    enabled: true
+    # Check for potentially dangerous GitHub Actions workflows
+
+  # Token permissions
+  token-permissions:
+    enabled: true
+    # Ensure minimal token permissions in workflows
+
+  # Security policy
+  security-policy:
+    enabled: true
+    security_files:
+      - "SECURITY.md"
+      - ".github/SECURITY.md"
+
+  # Signed releases
+  signed-releases:
+    enabled: true
+    # Check for cryptographically signed releases
+
+  # Packaging practices
+  packaging:
+    enabled: true
+    # Check for secure packaging practices
+
+# Reporting configuration
+output:
+  format: json
+  file: ".scorecard-results.json"
+
+# Scoring configuration
+scoring:
+  # Weight for each check (default is equal weighting)
+  weights:
+    code-review: 1.0
+    maintained: 1.0
+    ci-tests: 1.0
+    fuzzing: 0.8  # Slightly lower weight as it's partial implementation
+    sast: 1.0
+    dependency-update-tool: 1.0
+    vulnerabilities: 1.2  # Higher weight for security
+    branch-protection: 1.0
+    binary-artifacts: 1.0
+    dangerous-workflow: 1.0
+    token-permissions: 1.0
+    security-policy: 1.0
+    signed-releases: 0.9  # Slightly lower until fully implemented
+    packaging: 0.8
+
+# Baseline configuration for comparison
+baseline:
+  file: ".scorecard-baseline.json"
+  update_on_improve: true
+
+# Integration settings
+integrations:
+  github_actions:
+    enabled: true
+    workflow_file: ".github/workflows/scorecard.yml"
+  
+  badges:
+    enabled: true
+    shield_io: true
+    badge_file: "README.md"
+
+# Exemptions and special configurations
+exemptions:
+  # Some checks may not apply to all repository types
+  binary-artifacts:
+    # Allow certain binary files that are necessary
+    allowed_files:
+      - "docs/assets/*.png"
+      - "docs/assets/*.jpg"
+      - "docs/assets/*.jpeg"
+
+# Additional metadata
+metadata:
+  project_name: "CCTelegram"
+  project_description: "Secure Telegram bridge for Claude Code with enterprise monitoring"
+  maintainers:
+    - "@co8"
+  security_contact: "security@cctelegram.org"
+  license: "MIT"

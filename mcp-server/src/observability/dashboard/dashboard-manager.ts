@@ -8,9 +8,11 @@
 import { EventEmitter } from 'events';
 import * as http from 'http';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { DashboardConfig, DashboardPanel, DashboardUser } from '../config.js';
 import { MetricsCollector } from '../metrics/metrics-collector.js';
 import { secureLog } from '../../security.js';
+import { SecurityHeadersManager, getDefaultConfig } from '../../security-headers.js';
 
 export interface DashboardData {
   timestamp: number;
@@ -81,12 +83,14 @@ export class DashboardManager extends EventEmitter {
   private updateInterval?: NodeJS.Timeout;
   private isRunning: boolean = false;
   private connectedClients: Set<any> = new Set();
+  private securityHeaders: SecurityHeadersManager;
 
   constructor(config: DashboardConfig, metricsCollector?: MetricsCollector) {
     super();
     this.config = config;
     this.metricsCollector = metricsCollector;
     this.dashboardData = this.initializeDashboardData();
+    this.securityHeaders = new SecurityHeadersManager(getDefaultConfig());
 
     secureLog('info', 'Dashboard manager initialized', {
       enabled: config.enabled,
@@ -173,6 +177,8 @@ export class DashboardManager extends EventEmitter {
    */
   private async startServer(): Promise<void> {
     this.server = http.createServer((req, res) => {
+      // Apply security headers
+      this.applySecurityHeaders(req, res);
       this.handleRequest(req, res);
     });
 
@@ -188,6 +194,67 @@ export class DashboardManager extends EventEmitter {
         }
       });
     });
+  }
+
+  /**
+   * Apply security headers to response
+   */
+  private applySecurityHeaders(req: http.IncomingMessage, res: http.ServerResponse): void {
+    // Generate nonce for this request
+    const requestId = req.headers['x-request-id'] as string || 
+                     req.headers['x-correlation-id'] as string ||
+                     crypto.randomUUID();
+    
+    const nonce = this.securityHeaders.generateNonce(requestId);
+    (req as any).nonce = nonce;
+    (req as any).requestId = requestId;
+
+    // Apply Helmet security headers manually for http module
+    const helmetHeaders = {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '0',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Content-Security-Policy': this.buildCSPHeader(nonce),
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Origin-Agent-Cluster': '?1'
+    };
+
+    Object.entries(helmetHeaders).forEach(([key, value]) => {
+      res.setHeader(key, value);
+    });
+  }
+
+  /**
+   * Build CSP header with nonce
+   */
+  private buildCSPHeader(nonce: { script: string; style: string }): string {
+    const directives = [
+      "default-src 'self'",
+      `script-src 'self' 'nonce-${nonce.script}' 'strict-dynamic'`,
+      `style-src 'self' 'nonce-${nonce.style}' 'unsafe-inline'`,
+      "img-src 'self' data: https:",
+      "font-src 'self' https: data:",
+      "connect-src 'self' wss: ws:",
+      "media-src 'self'",
+      "object-src 'none'",
+      "child-src 'self'",
+      "frame-src 'none'",
+      "worker-src 'self'",
+      "manifest-src 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'"
+    ];
+
+    if (process.env.NODE_ENV !== 'development') {
+      directives.push("upgrade-insecure-requests");
+    }
+
+    return directives.join('; ');
   }
 
   /**
@@ -216,7 +283,7 @@ export class DashboardManager extends EventEmitter {
       switch (true) {
         case url === '/':
         case url === '/dashboard':
-          this.serveDashboard(res);
+          this.serveDashboard(res, req);
           break;
 
         case url === '/api/data':
@@ -324,8 +391,9 @@ export class DashboardManager extends EventEmitter {
   /**
    * Serve main dashboard
    */
-  private serveDashboard(res: http.ServerResponse): void {
-    const dashboardHtml = this.generateDashboardHtml();
+  private serveDashboard(res: http.ServerResponse, req?: http.IncomingMessage): void {
+    const nonce = (req as any)?.nonce || { script: '', style: '' };
+    const dashboardHtml = this.generateDashboardHtml(nonce);
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(dashboardHtml);
   }
@@ -333,7 +401,7 @@ export class DashboardManager extends EventEmitter {
   /**
    * Generate dashboard HTML
    */
-  private generateDashboardHtml(): string {
+  private generateDashboardHtml(nonce: { script: string; style: string }): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -341,7 +409,7 @@ export class DashboardManager extends EventEmitter {
         <title>CCTelegram MCP Server Dashboard</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
+        <style nonce="${nonce.style}">
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
           .header { background: #1f2937; color: white; padding: 1rem 2rem; display: flex; justify-content: between; align-items: center; }
@@ -386,7 +454,7 @@ export class DashboardManager extends EventEmitter {
           </div>
         </div>
 
-        <script>
+        <script nonce="${nonce.script}">
           let ws;
           let dashboardData = null;
 

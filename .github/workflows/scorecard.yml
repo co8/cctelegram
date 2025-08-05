@@ -1,0 +1,254 @@
+name: OpenSSF Scorecard
+
+on:
+  # Run weekly on Mondays at 8 AM UTC
+  schedule:
+    - cron: '0 8 * * 1'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+  
+  # Run on main branch pushes (for immediate feedback)
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - '.ossf-scorecard.yml'
+      - 'SECURITY.md'
+      - 'Cargo.toml'
+      - 'mcp-server/package.json'
+
+# Declare default permissions as read only
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to upload the results to code-scanning dashboard
+      security-events: write
+      # Needed to publish results and get a badge
+      id-token: write
+      # Needed for GitHub OIDC token
+      contents: read
+      actions: read
+
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: "Run analysis"
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: scorecard-results.sarif
+          results_format: sarif
+          # Publish the results for public repositories to enable scorecard badges
+          publish_results: true
+
+      # Upload the results to GitHub's code scanning dashboard
+      - name: "Upload to code-scanning"
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: scorecard-results.sarif
+
+      # Store results as JSON for comparison and analysis
+      - name: "Generate JSON results"
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: scorecard-results.json
+          results_format: json
+          publish_results: false
+
+      # Scorecard analysis and comparison
+      - name: "Analyze Scorecard Results"
+        id: scorecard-analysis
+        run: |
+          echo "📊 Analyzing Scorecard Results"
+          
+          # Parse the JSON results
+          OVERALL_SCORE=$(jq '.score' scorecard-results.json)
+          
+          echo "Overall Score: $OVERALL_SCORE"
+          echo "overall-score=$OVERALL_SCORE" >> $GITHUB_OUTPUT
+          
+          # Check if we have a baseline to compare against
+          if [ -f ".scorecard-baseline.json" ]; then
+            BASELINE_SCORE=$(jq '.score' .scorecard-baseline.json)
+            SCORE_DIFF=$(echo "$OVERALL_SCORE - $BASELINE_SCORE" | bc -l)
+            
+            echo "Baseline Score: $BASELINE_SCORE"
+            echo "Score Change: $SCORE_DIFF"
+            echo "baseline-score=$BASELINE_SCORE" >> $GITHUB_OUTPUT
+            echo "score-diff=$SCORE_DIFF" >> $GITHUB_OUTPUT
+            
+            # Analyze individual check changes
+            echo "🔍 Individual Check Analysis:"
+            jq -r '.checks[] | "\(.name): \(.score)"' scorecard-results.json | while read -r line; do
+              echo "  $line"
+            done
+          else
+            echo "No baseline found - this will become the new baseline"
+          fi
+          
+          # Generate detailed report
+          cat > scorecard-summary.md << 'EOF'
+          # 🏆 OpenSSF Scorecard Report
+          
+          ## Overall Score
+          **Current Score**: `${OVERALL_SCORE}/10`
+          
+          ## Individual Checks
+          EOF
+          
+          # Add individual check results
+          jq -r '.checks[] | "| \(.name) | \(.score)/10 | \(.reason) |"' scorecard-results.json >> scorecard-summary.md
+          
+          # Security recommendations
+          echo "" >> scorecard-summary.md
+          echo "## 🔒 Security Recommendations" >> scorecard-summary.md
+          
+          # Check for failing security checks
+          FAILED_CHECKS=$(jq -r '.checks[] | select(.score < 7) | .name' scorecard-results.json)
+          
+          if [ -n "$FAILED_CHECKS" ]; then
+            echo "The following security checks need attention:" >> scorecard-summary.md
+            echo "$FAILED_CHECKS" | while read -r check; do
+              echo "- **$check**: $(jq -r --arg check "$check" '.checks[] | select(.name == $check) | .reason' scorecard-results.json)" >> scorecard-summary.md
+            done
+          else
+            echo "✅ All security checks are passing!" >> scorecard-summary.md
+          fi
+
+      # Update baseline if score improved
+      - name: "Update Baseline"
+        if: steps.scorecard-analysis.outputs.score-diff > 0 || !hashFiles('.scorecard-baseline.json')
+        run: |
+          echo "📈 Updating scorecard baseline"
+          cp scorecard-results.json .scorecard-baseline.json
+          
+          # Commit the updated baseline
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .scorecard-baseline.json
+          git commit -m "Update scorecard baseline: score improved to ${{ steps.scorecard-analysis.outputs.overall-score }}" || exit 0
+
+      # Generate security badge
+      - name: "Generate Security Badge"
+        run: |
+          SCORE="${{ steps.scorecard-analysis.outputs.overall-score }}"
+          
+          # Determine badge color based on score
+          if (( $(echo "$SCORE >= 9.0" | bc -l) )); then
+            COLOR="brightgreen"
+            LABEL="excellent"
+          elif (( $(echo "$SCORE >= 8.0" | bc -l) )); then
+            COLOR="green"
+            LABEL="good"
+          elif (( $(echo "$SCORE >= 7.0" | bc -l) )); then
+            COLOR="yellow"
+            LABEL="fair"
+          elif (( $(echo "$SCORE >= 6.0" | bc -l) )); then
+            COLOR="orange"
+            LABEL="poor"
+          else
+            COLOR="red"
+            LABEL="critical"
+          fi
+          
+          echo "🏆 Scorecard Badge: $SCORE ($LABEL)"
+          echo "badge-color=$COLOR" >> $GITHUB_OUTPUT
+          echo "badge-label=$LABEL" >> $GITHUB_OUTPUT
+
+      # Create security report issue for significant changes
+      - name: "Create Security Report Issue"
+        if: steps.scorecard-analysis.outputs.score-diff < -0.5
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const scoreDiff = parseFloat('${{ steps.scorecard-analysis.outputs.score-diff }}');
+            const currentScore = parseFloat('${{ steps.scorecard-analysis.outputs.overall-score }}');
+            const baselineScore = parseFloat('${{ steps.scorecard-analysis.outputs.baseline-score }}');
+            
+            const title = `🚨 Scorecard Security Score Decreased: ${currentScore} (${scoreDiff})`;
+            
+            const body = `
+            ## 📉 OpenSSF Scorecard Score Decrease Alert
+            
+            The OpenSSF Scorecard security score has decreased significantly:
+            
+            | Metric | Value |
+            |--------|-------|
+            | **Previous Score** | ${baselineScore}/10 |
+            | **Current Score** | ${currentScore}/10 |
+            | **Change** | ${scoreDiff} |
+            
+            ## 🔍 Investigation Required
+            
+            This decrease may indicate:
+            - New security vulnerabilities in dependencies
+            - Changes to security configurations
+            - Regression in security practices
+            - Changes to branch protection rules
+            
+            ## 📋 Action Items
+            
+            - [ ] Review recent changes to security configurations
+            - [ ] Check for new dependency vulnerabilities
+            - [ ] Verify branch protection rules are still in place
+            - [ ] Review failed scorecard checks in the workflow logs
+            - [ ] Update security practices if needed
+            
+            ## 📊 Full Report
+            
+            See the [Scorecard workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed results.
+            
+            ---
+            
+            *This issue was automatically created by the OpenSSF Scorecard workflow.*
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['security', 'scorecard', 'urgent']
+            });
+
+      # Upload artifacts
+      - name: "Upload Scorecard Results"
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results-${{ github.run_id }}
+          path: |
+            scorecard-results.json
+            scorecard-results.sarif
+            scorecard-summary.md
+          retention-days: 90
+
+      # Summary output
+      - name: "Scorecard Summary"
+        run: |
+          echo "## 🏆 OpenSSF Scorecard Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Score**: ${{ steps.scorecard-analysis.outputs.overall-score }}/10" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -n "${{ steps.scorecard-analysis.outputs.score-diff }}" ]; then
+            echo "**Change from Baseline**: ${{ steps.scorecard-analysis.outputs.score-diff }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "### Individual Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Score | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          jq -r '.checks[] | "| \(.name) | \(.score)/10 | \(if .score >= 7 then "✅" else "❌" end) |"' scorecard-results.json >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View detailed results](https://securityscorecards.dev/viewer/?uri=github.com/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY

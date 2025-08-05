@@ -1,0 +1,143 @@
+# Snyk Configuration File
+# This file configures Snyk security scanning behavior
+
+# General settings
+version: v1.0.0
+
+# Language-specific settings
+language-settings:
+  javascript:
+    # Ignore dev dependencies for production vulnerability scanning
+    ignore-dev-deps: false
+    # Set severity threshold
+    severity-threshold: medium
+    
+# Vulnerability ignores (use sparingly and with time limits)
+ignore:
+  # Example: Ignore specific vulnerability with expiration
+  # SNYK-JS-PACKAGENAME-VULN-ID:
+  #   - '*':
+  #       reason: 'Low risk - used only in development'
+  #       expires: '2024-12-31T23:59:59.999Z'
+
+# Patch configuration
+patches: {}
+
+# Exclude specific paths from scanning
+exclude:
+  global:
+    - 'node_modules/**'
+    - '**/*.d.ts'
+    - 'dist/**'
+    - 'coverage/**'
+    - 'test/**/*.fixture.*'
+    - 'tests/fixtures/**'
+    - 'tests/mocks/**'
+  
+  # Code analysis exclusions
+  code:
+    - 'tests/**'
+    - '**/*.test.ts'
+    - '**/*.test.js'
+    - '**/*.spec.ts'
+    - '**/*.spec.js'
+    - 'benchmark/**'
+    - 'examples/**'
+
+# Open source vulnerability scanning
+vulnerabilities:
+  # Fail build on critical vulnerabilities
+  fail-on:
+    - critical
+  
+  # Monitor but don't fail on these severities
+  monitor-only:
+    - low
+  
+  # Auto-fix configuration
+  auto-fix:
+    enabled: true
+    # Only auto-fix patch and minor version updates
+    strategy: 'patch-only'
+
+# Container scanning configuration
+container:
+  # Exclude base image vulnerabilities we can't control
+  exclude-base-image-vulns: false
+  # Fail on high and critical container vulnerabilities
+  severity-threshold: high
+
+# Infrastructure as Code scanning
+iac:
+  # Rules to ignore (be very cautious with this)
+  ignore: {}
+  
+  # Severity threshold for IaC scanning
+  severity-threshold: medium
+
+# License policy
+license-policy:
+  # Define allowed licenses
+  allowed:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+    - CC0-1.0
+    - Unlicense
+  
+  # Define disallowed licenses
+  disallowed:
+    - GPL-2.0
+    - GPL-3.0
+    - AGPL-1.0
+    - AGPL-3.0
+    - LGPL-2.0
+    - LGPL-2.1
+    - LGPL-3.0
+    - CPAL-1.0
+    - OSL-3.0
+    - EPL-1.0
+    - CPL-1.0
+  
+  # Policy for unknown licenses
+  unknown-licenses: warn
+
+# Reporting configuration
+reporting:
+  # Include dependency paths in reports
+  show-dependency-paths: true
+  
+  # Include fix suggestions
+  show-fix-suggestions: true
+  
+  # Output format preferences
+  formats:
+    - json
+    - sarif
+  
+  # Include legal compliance information
+  include-legal-info: true
+
+# Notification settings (when using Snyk platform)
+notifications:
+  # Enable email notifications for new vulnerabilities
+  new-vulnerabilities: true
+  
+  # Enable notifications for weekly reports
+  weekly-report: true
+  
+  # Notification severity threshold
+  severity-threshold: high
+
+# Organization-specific settings (configure when using Snyk org)
+org-settings:
+  # Enable automatic PR creation for fixes
+  auto-pr-creation: true
+  
+  # Enable automatic dependency updates
+  auto-dependency-updates: false
+  
+  # Test frequency for monitoring
+  test-frequency: daily

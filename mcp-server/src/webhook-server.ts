@@ -7,6 +7,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import Joi from 'joi';
 import { Server } from 'http';
+import { SecurityHeadersManager, getDefaultConfig } from './security-headers.js';
 
 export interface WebhookPayload {
   type: 'telegram_response';
@@ -43,24 +44,38 @@ export class WebhookServer {
   private server: Server | null = null;
   private port: number;
   private isRunning = false;
+  private securityHeaders: SecurityHeadersManager;
 
   constructor(port: number = 3000) {
     this.port = port;
     this.app = express();
+    this.securityHeaders = new SecurityHeadersManager(getDefaultConfig());
     this.setupMiddleware();
     this.setupRoutes();
     this.setupErrorHandling();
   }
 
   private setupMiddleware(): void {
+    // Security headers middleware (must be first)
+    this.app.use(this.securityHeaders.getHelmetMiddleware());
+    this.app.use(this.securityHeaders.nonceMiddleware());
+    this.app.use(this.securityHeaders.auditMiddleware());
+
     // JSON parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     
-    // CORS middleware
+    // CORS middleware (updated to work with security headers)
     this.app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Correlation-ID');
+      // Only set CORS headers if not already set by security headers
+      if (!res.getHeader('Access-Control-Allow-Origin')) {
+        res.header('Access-Control-Allow-Origin', '*');
+      }
+      if (!res.getHeader('Access-Control-Allow-Methods')) {
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      }
+      if (!res.getHeader('Access-Control-Allow-Headers')) {
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Correlation-ID, X-Request-ID');
+      }
       
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -147,11 +162,30 @@ export class WebhookServer {
         port: this.port,
         endpoints: [
           'GET /health',
-          'GET /status', 
+          'GET /status',
+          'GET /security-headers',
           'POST /webhook/bridge-response'
         ],
         uptime_seconds: process.uptime(),
         memory_usage: process.memoryUsage(),
+        security_headers: this.securityHeaders.getStatusReport(),
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    // Security headers status endpoint
+    this.app.get('/security-headers', (req, res) => {
+      const statusReport = this.securityHeaders.getStatusReport();
+      const validationResult = this.securityHeaders.validateConfiguration();
+      
+      res.json({
+        status: validationResult.valid ? 'compliant' : 'needs_attention',
+        validation: validationResult,
+        headers_status: statusReport,
+        nonce_example: {
+          script: `<script nonce="${(req as any).nonce?.script || 'GENERATED_NONCE'}">`,
+          style: `<style nonce="${(req as any).nonce?.style || 'GENERATED_NONCE'}">`
+        },
         timestamp: new Date().toISOString()
       });
     });
@@ -188,8 +222,10 @@ export class WebhookServer {
     return new Promise((resolve, reject) => {
       this.server = this.app.listen(this.port, () => {
         this.isRunning = true;
+        this.startNonceCleanup();
         console.log(`[WEBHOOK-SERVER] Started on port ${this.port}`);
         console.log(`[WEBHOOK-SERVER] Health check: http://localhost:${this.port}/health`);
+        console.log(`[WEBHOOK-SERVER] Security headers: http://localhost:${this.port}/security-headers`);
         console.log(`[WEBHOOK-SERVER] Webhook endpoint: http://localhost:${this.port}/webhook/bridge-response`);
         resolve();
       });
@@ -233,6 +269,17 @@ export class WebhookServer {
 
   public getPort(): number {
     return this.port;
+  }
+
+  public getSecurityHeadersManager(): SecurityHeadersManager {
+    return this.securityHeaders;
+  }
+
+  private startNonceCleanup(): void {
+    // Clean up expired nonces every 5 minutes
+    setInterval(() => {
+      this.securityHeaders.cleanupExpiredNonces();
+    }, 300000);
   }
 }
 
