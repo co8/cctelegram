@@ -15,6 +15,7 @@ Welcome to the comprehensive documentation for the CCTelegram project, covering 
 #### 🔌 MCP Server Documentation
 - **[MCP Server Documentation](./mcp-server/README.md)** - Complete MCP Server documentation
 - **[Comprehensive Analysis Report](./mcp-server/ANALYSIS_REPORT.md)** - Security, performance, and testing analysis
+- **[CI/CD Pipeline](./CI-CD-PIPELINE.md)** - Enterprise-grade CI/CD pipeline with security scanning and quality gates
 - **[API Documentation](./mcp-server/api/)** - Complete API specifications and usage guides
 - **[Security Assessment](./mcp-server/security/security-assessment.md)** - CVSS 9.1 vulnerability analysis
 - **[Enterprise Deployment](./mcp-server/deployment/enterprise-guide.md)** - Production deployment procedures
@@ -80,9 +81,10 @@ Welcome to the comprehensive documentation for the CCTelegram project, covering 
 3. **[Implementation Summary](./reference/IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
 
 #### For Operations Teams
-1. **[MCP Server Operations](./mcp-server/operations/runbooks/incident-response.md)** - Incident response procedures
-2. **[Security Procedures](./mcp-server/security/security-assessment.md)** - Security monitoring and response
-3. **[Deployment Guide](./mcp-server/deployment/enterprise-guide.md)** - Production deployment procedures
+1. **[CI/CD Pipeline](./CI-CD-PIPELINE.md)** - Automated deployment and quality validation pipeline
+2. **[MCP Server Operations](./mcp-server/operations/runbooks/incident-response.md)** - Incident response procedures
+3. **[Security Procedures](./mcp-server/security/security-assessment.md)** - Security monitoring and response
+4. **[Deployment Guide](./mcp-server/deployment/enterprise-guide.md)** - Production deployment procedures
 
 ### 📊 Project Status
 

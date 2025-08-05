@@ -10,6 +10,7 @@ This directory contains comprehensive enterprise-grade documentation for the CCT
 - **[MCP Tools Reference](./api/tools-reference.md)** - Detailed reference for each MCP tool
 
 ### 🚀 Deployment & Operations
+- **[CI/CD Pipeline](../CI-CD-PIPELINE.md)** - Enterprise-grade automated deployment with security scanning and quality gates
 - **[Enterprise Deployment Guide](./deployment/enterprise-guide.md)** - Production deployment procedures
 - **[Environment Configuration](./deployment/environment-config.md)** - Environment-specific configurations
 - **[Infrastructure Requirements](./deployment/infrastructure.md)** - Hardware and software requirements
@@ -50,9 +51,10 @@ This directory contains comprehensive enterprise-grade documentation for the CCT
 For immediate setup and deployment:
 
 1. **[Security Requirements](./security/security-procedures.md#immediate-requirements)** - Address critical vulnerabilities first
-2. **[Basic Deployment](./deployment/enterprise-guide.md#quick-deployment)** - Minimal production setup
-3. **[Monitoring Setup](./deployment/monitoring-setup.md#basic-setup)** - Essential monitoring configuration
-4. **[Health Checks](./operations/runbooks/health-checks.md)** - Verify system health
+2. **[CI/CD Pipeline Setup](../CI-CD-PIPELINE.md#getting-started)** - Automated deployment and quality validation
+3. **[Basic Deployment](./deployment/enterprise-guide.md#quick-deployment)** - Minimal production setup
+4. **[Monitoring Setup](./deployment/monitoring-setup.md#basic-setup)** - Essential monitoring configuration
+5. **[Health Checks](./operations/runbooks/health-checks.md)** - Verify system health
 
 ## ⚠️ Critical Security Notice
 
