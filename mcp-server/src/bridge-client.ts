@@ -97,6 +97,8 @@ export class CCTelegramBridgeClient {
           secureLog('info', 'Bridge initialization completed');
         } else {
           secureLog('info', 'Bridge already running at startup');
+          // Check for source-binary synchronization
+          await this.checkBridgeVersionSync();
         }
       } catch (error) {
         secureLog('error', 'Bridge initialization failed', {
@@ -140,15 +142,21 @@ export class CCTelegramBridgeClient {
         secureLog('debug', 'Generated timestamp');
       }
 
-      // Create event file
+      // Create event file with both event_id and task_id for bridge compatibility
+      const eventData = {
+        ...event,
+        event_id: event.task_id // Bridge expects both fields
+      };
+      
       const fileName = `${event.task_id}_${Date.now()}.json`;
       const filePath = path.join(this.eventsDir, fileName);
       secureLog('debug', 'Writing event to file', {
         file_name: fileName,
-        event_type: event.type
+        event_type: event.type,
+        has_event_id: true
       });
       
-      await fs.writeJSON(filePath, event, { spaces: 2 });
+      await fs.writeJSON(filePath, eventData, { spaces: 2 });
       secureLog('debug', 'File written successfully');
       
       // Verify the file was created
@@ -892,6 +900,38 @@ export class CCTelegramBridgeClient {
         success: false,
         message: `Failed to restart bridge: ${error instanceof Error ? error.message : String(error)}`
       };
+    }
+  }
+
+  /**
+   * Check if bridge binary is synchronized with source code
+   */
+  private async checkBridgeVersionSync(): Promise<void> {
+    try {
+      // Get current git commit
+      const { stdout } = await execAsync('git rev-parse HEAD', { cwd: path.dirname(process.cwd()) });
+      const currentCommit = stdout.trim();
+      
+      // Try to get bridge version info from health endpoint
+      const healthConfig = getBridgeAxiosConfig('health', this.healthEndpoint);
+      const response = await axios.get(this.healthEndpoint, healthConfig);
+      
+      // Look for build info in response (if bridge provides it)
+      if (response.data && response.data.build_info) {
+        const buildCommit = response.data.build_info.git_hash;
+        if (buildCommit && buildCommit !== currentCommit) {
+          secureLog('warn', 'Bridge binary may be outdated', {
+            binary_commit: buildCommit.substring(0, 8),
+            source_commit: currentCommit.substring(0, 8),
+            recommendation: 'Consider rebuilding with: cargo build --release'
+          });
+        }
+      }
+    } catch (error) {
+      // Silent fail - this is just a helpful check
+      secureLog('debug', 'Could not check bridge version sync', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
 

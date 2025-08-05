@@ -34,6 +34,26 @@ async fn main() -> Result<()> {
     utils::setup_logging()?;
 
     info!("Starting CC Telegram Bridge v{}", env!("CARGO_PKG_VERSION"));
+    info!("Build info: {} ({})", env!("GIT_HASH_SHORT"), env!("BUILD_TIME"));
+    
+    // Warn if running in debug mode
+    #[cfg(debug_assertions)]
+    warn!("Running in DEBUG mode - rebuild with --release for production");
+    
+    // Check for source-binary synchronization
+    if let Ok(current_head) = std::process::Command::new("git")
+        .args(&["rev-parse", "HEAD"])
+        .output()
+    {
+        let current_hash = String::from_utf8_lossy(&current_head.stdout).trim().to_string();
+        let build_hash = env!("GIT_HASH");
+        
+        if current_hash != build_hash {
+            warn!("⚠️  Binary built from commit {} but source is at commit {}", 
+                  &build_hash[..8], &current_hash[..8]);
+            warn!("⚠️  Consider rebuilding with 'cargo build --release' for latest changes");
+        }
+    }
 
     // Load configuration
     let config = Config::load()?;
