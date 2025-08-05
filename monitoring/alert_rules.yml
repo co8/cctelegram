@@ -1,0 +1,114 @@
+# Prometheus alerting rules for CCTelegram MCP Server
+
+groups:
+  - name: mcp-server-alerts
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          service: cctelegram-mcp
+        annotations:
+          summary: "High error rate detected in MCP Server"
+          description: "Error rate is {{ $value }} errors per second"
+
+      # High response time alert
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: cctelegram-mcp
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # Memory usage alert
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 400
+        for: 10m
+        labels:
+          severity: warning
+          service: cctelegram-mcp
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}MB"
+
+      # CPU usage alert
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: cctelegram-mcp
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}%"
+
+      # Service down alert
+      - alert: ServiceDown
+        expr: up{job="mcp-server"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: cctelegram-mcp
+        annotations:
+          summary: "MCP Server is down"
+          description: "The MCP Server has been down for more than 1 minute"
+
+      # Rate limiting alert
+      - alert: RateLimitingActive
+        expr: rate(rate_limit_exceeded_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: cctelegram-mcp
+        annotations:
+          summary: "High rate limiting activity"
+          description: "Rate limiting is being triggered {{ $value }} times per second"
+
+      # Security violations alert
+      - alert: SecurityViolations
+        expr: rate(security_violations_total[5m]) > 0
+        for: 0s
+        labels:
+          severity: critical
+          service: cctelegram-mcp
+        annotations:
+          summary: "Security violations detected"
+          description: "{{ $value }} security violations per second"
+
+      # Failed authentication attempts
+      - alert: AuthenticationFailures
+        expr: rate(authentication_failures_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: cctelegram-mcp
+        annotations:
+          summary: "High authentication failure rate"
+          description: "{{ $value }} authentication failures per second"
+
+  - name: infrastructure-alerts
+    rules:
+      # Disk space alert
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space is running low"
+          description: "Disk space is {{ $value }}% full"
+
+      # Container restart alert
+      - alert: ContainerRestarted
+        expr: increase(container_restart_count[1h]) > 0
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container has been restarted"
+          description: "Container {{ $labels.name }} has restarted {{ $value }} times in the last hour"

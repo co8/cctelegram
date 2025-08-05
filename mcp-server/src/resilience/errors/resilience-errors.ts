@@ -461,6 +461,107 @@ export class SystemError extends BaseResilienceError {
   }
 }
 
+export class SystemFailureError extends SystemError {
+  constructor(
+    message: string,
+    component: string,
+    context: Partial<ErrorContext> = {},
+    originalError?: Error
+  ) {
+    super(
+      `System failure: ${message}`,
+      'SYSTEM_FAILURE',
+      'critical',
+      { ...context, metadata: { ...context.metadata, component } },
+      originalError
+    );
+    this.name = 'SystemFailureError';
+  }
+}
+
+/**
+ * Retry-specific errors
+ */
+export class RetryError extends BaseResilienceError {
+  constructor(
+    message: string,
+    maxAttempts: number,
+    actualAttempts: number,
+    context: Partial<ErrorContext> = {},
+    originalError?: Error
+  ) {
+    super(
+      `Retry failed after ${actualAttempts} attempts: ${message}`,
+      'RETRY_EXHAUSTED',
+      'system',
+      'medium',
+      false,
+      { ...context, metadata: { ...context.metadata, maxAttempts, actualAttempts } },
+      originalError
+    );
+    this.name = 'RetryError';
+  }
+
+  protected getDefaultRecoveryStrategy(): RecoveryStrategy {
+    return 'escalate';
+  }
+}
+
+/**
+ * Recovery-specific errors
+ */
+export class RecoveryError extends BaseResilienceError {
+  constructor(
+    message: string,
+    errorCode: string,
+    context: Partial<ErrorContext> = {},
+    originalContext?: Partial<ErrorContext>,
+    originalError?: Error
+  ) {
+    super(
+      `Recovery failed: ${message}`,
+      'RECOVERY_FAILED',
+      'system',
+      'high',
+      false,
+      { ...context, metadata: { ...context.metadata, originalErrorCode: errorCode, originalContext } },
+      originalError
+    );
+    this.name = 'RecoveryError';
+  }
+
+  protected getDefaultRecoveryStrategy(): RecoveryStrategy {
+    return 'escalate';
+  }
+}
+
+/**
+ * Health check specific errors
+ */
+export class HealthCheckError extends BaseResilienceError {
+  constructor(
+    message: string,
+    endpoint: string,
+    context: Partial<ErrorContext> = {},
+    originalError?: Error
+  ) {
+    super(
+      `Health check failed: ${message}`,
+      'HEALTH_CHECK_FAILED',
+      'system',
+      'medium',
+      true,
+      { ...context, metadata: { ...context.metadata, endpoint } },
+      originalError
+    );
+    this.name = 'HealthCheckError';
+  }
+
+  protected getDefaultRecoveryStrategy(): RecoveryStrategy {
+    return 'retry';
+  }
+}
+
 /**
  * Unknown/Generic errors
  */

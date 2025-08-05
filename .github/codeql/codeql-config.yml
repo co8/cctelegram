@@ -1,0 +1,31 @@
+name: "CCTelegram MCP Security CodeQL Config"
+
+disable-default-queries: false
+
+queries:
+  - name: security-extended
+    uses: security-extended
+  - name: security-and-quality  
+    uses: security-and-quality
+  - name: typescript-security
+    uses: .github/codeql/queries/typescript-security.ql
+
+paths-ignore:
+  - node_modules/
+  - dist/
+  - coverage/
+  - tests/mocks/
+  - "**/*.test.ts"
+  - "**/*.fixture.ts"
+
+paths:
+  - src/
+  - tests/integration/
+
+# Custom security query packs
+packs:
+  - codeql/typescript-queries
+  - codeql/javascript-queries
+  
+# Advanced configuration
+trap-caching: true

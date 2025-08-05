@@ -7,6 +7,23 @@
 
 ---
 
+## 📋 Updated Security Documentation Available
+
+**⚠️ IMPORTANT**: An updated comprehensive security analysis is now available at:
+
+**[📊 Comprehensive MCP Server Security Assessment](../mcp-server/security/security-assessment.md)**
+
+This updated analysis includes:
+- **CVSS 9.1** critical vulnerability assessment
+- **8-component security analysis** with detailed remediation roadmap
+- **STRIDE threat modeling** results
+- **Production-ready security controls** implementation guide
+- **Compliance frameworks** (SOC 2, PCI DSS, GDPR, OWASP)
+
+**For the most current security information, please refer to the comprehensive assessment above.**
+
+---
+
 ## Executive Summary
 
 This comprehensive security audit examined both the CCTelegram Bridge (Rust) and MCP Server (TypeScript) components. The findings reveal a **stark security contrast** between the two components:

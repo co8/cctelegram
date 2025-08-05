@@ -1,0 +1,1177 @@
+openapi: 3.0.3
+info:
+  title: CCTelegram MCP Server API
+  description: |
+    Comprehensive API specification for the CCTelegram MCP Server, providing Telegram integration
+    for Claude Code and other Model Context Protocol (MCP) clients.
+    
+    ## Features
+    - Event notifications to Telegram
+    - Interactive approval workflows  
+    - Bridge process management
+    - Task status monitoring
+    - Performance alerts
+    - Response processing
+    
+    ## Security
+    This API implements comprehensive security controls including:
+    - API key authentication
+    - Input validation and sanitization
+    - Rate limiting
+    - Audit logging
+    - Error sanitization
+    
+    ## Integration
+    This server integrates with:
+    - CCTelegram Bridge (Rust)
+    - Telegram Bot API
+    - Task management systems
+    - Monitoring and observability frameworks
+    
+  version: 1.5.0
+  contact:
+    name: CCTelegram Development Team
+    url: https://github.com/your-org/cctelegram
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: stdio://
+    description: MCP Protocol over STDIO
+  - url: ws://localhost:8080
+    description: WebSocket MCP Connection (Development)
+  - url: tcp://localhost:8080  
+    description: TCP MCP Connection (Enterprise)
+
+security:
+  - apiKey: []
+
+paths:
+  /tools:
+    get:
+      summary: List Available MCP Tools
+      description: Returns all available MCP tools with their schemas and descriptions
+      operationId: listTools
+      responses:
+        '200':
+          description: List of available tools
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ToolsList'
+
+  /tools/send_telegram_event:
+    post:
+      summary: Send Telegram Event
+      description: |
+        Send a structured event to the CC Telegram Bridge for notification.
+        Supports multiple event types including task completion, alerts, and approvals.
+      operationId: sendTelegramEvent
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramEventRequest'
+            examples:
+              task_completion:
+                $ref: '#/components/examples/TaskCompletionEvent'
+              performance_alert:
+                $ref: '#/components/examples/PerformanceAlertEvent'
+              approval_request:
+                $ref: '#/components/examples/ApprovalRequestEvent'  
+      responses:
+        '200':
+          description: Event sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/RateLimitError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/send_telegram_message:
+    post:
+      summary: Send Simple Telegram Message
+      description: Send a simple text message to Telegram as an info notification
+      operationId: sendTelegramMessage
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelegramMessageRequest'
+      responses:
+        '200':
+          description: Message sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/send_task_completion:
+    post:
+      summary: Send Task Completion Notification
+      description: Send a task completion notification with results and metadata
+      operationId: sendTaskCompletion
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCompletionRequest'
+      responses:
+        '200':
+          description: Task completion sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/send_performance_alert:
+    post:
+      summary: Send Performance Alert
+      description: Send a performance alert when thresholds are exceeded
+      operationId: sendPerformanceAlert
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceAlertRequest'
+      responses:
+        '200':
+          description: Performance alert sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/send_approval_request:
+    post:
+      summary: Send Approval Request
+      description: Send an approval request with interactive buttons
+      operationId: sendApprovalRequest
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequestRequest'
+      responses:
+        '200':
+          description: Approval request sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/get_telegram_responses:
+    get:
+      summary: Get Telegram Responses
+      description: Get user responses from Telegram interactions
+      operationId: getTelegramResponses
+      security:
+        - apiKey: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of responses to return
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: User responses retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramResponsesResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/get_bridge_status:
+    get:
+      summary: Get Bridge Status
+      description: Get the current status and health of the CC Telegram Bridge
+      operationId: getBridgeStatus
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeStatusResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/list_event_types:
+    get:
+      summary: List Event Types
+      description: List all available event types with descriptions
+      operationId: listEventTypes
+      security:
+        - apiKey: []
+      parameters:
+        - name: category
+          in: query
+          description: Filter by event category
+          schema:
+            type: string
+            enum: [task, build, test, deployment, performance, security, system]
+      responses:
+        '200':
+          description: Event types listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventTypesResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/clear_old_responses:
+    delete:
+      summary: Clear Old Responses
+      description: Clear old response files to prevent accumulation
+      operationId: clearOldResponses
+      security:
+        - apiKey: []
+      parameters:
+        - name: older_than_hours
+          in: query
+          description: Clear responses older than this many hours
+          schema:
+            type: number
+            default: 24
+            minimum: 1
+            maximum: 720
+      responses:
+        '200':
+          description: Old responses cleared successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClearResponsesResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/process_pending_responses:
+    post:
+      summary: Process Pending Responses
+      description: Process pending approval responses and return actionable information
+      operationId: processPendingResponses
+      security:
+        - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                since_minutes:
+                  type: number
+                  description: Process responses from the last N minutes
+                  default: 10
+                  minimum: 1
+                  maximum: 1440
+      responses:
+        '200':
+          description: Pending responses processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingResponsesResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/start_bridge:
+    post:
+      summary: Start Bridge Process
+      description: Start the CCTelegram Bridge process if not running
+      operationId: startBridge
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeOperationResponse'
+        '409':
+          description: Bridge already running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/stop_bridge:
+    post:
+      summary: Stop Bridge Process
+      description: Stop the CCTelegram Bridge process
+      operationId: stopBridge
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeOperationResponse'
+        '404':
+          description: Bridge not running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/restart_bridge:
+    post:
+      summary: Restart Bridge Process
+      description: Restart the CCTelegram Bridge process
+      operationId: restartBridge
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge restarted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeOperationResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/ensure_bridge_running:
+    post:
+      summary: Ensure Bridge Running
+      description: Ensure the bridge is running, start it if needed
+      operationId: ensureBridgeRunning
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge status ensured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnsureBridgeResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/check_bridge_process:
+    get:
+      summary: Check Bridge Process
+      description: Check if the bridge process is running
+      operationId: checkBridgeProcess
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Bridge process status checked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeProcessResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /tools/get_task_status:
+    get:
+      summary: Get Task Status
+      description: Get current task status and list from both Claude Code session tasks and TaskMaster project tasks
+      operationId: getTaskStatus
+      security:
+        - apiKey: []
+      parameters:
+        - name: project_root
+          in: query
+          description: Path to project root
+          schema:
+            type: string
+        - name: task_system
+          in: query
+          description: Which task system to query
+          schema:
+            type: string
+            enum: [claude-code, taskmaster, both]
+            default: both
+        - name: status_filter
+          in: query
+          description: Filter tasks by status
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, blocked]
+        - name: summary_only
+          in: query
+          description: Return only summary statistics
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Task status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /resources:
+    get:
+      summary: List Available Resources
+      description: Returns all available MCP resources
+      operationId: listResources
+      responses:
+        '200':
+          description: List of available resources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourcesList'
+
+  /resources/cctelegram:
+    get:
+      summary: Get CCTelegram Resources
+      description: Get various CCTelegram system resources
+      operationId: getCCTelegramResource
+      parameters:
+        - name: resource
+          in: query
+          required: true
+          description: Resource type to retrieve
+          schema:
+            type: string
+            enum: [event-types, bridge-status, responses, event-templates]
+      responses:
+        '200':
+          description: Resource retrieved successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/EventTypesResponse'
+                  - $ref: '#/components/schemas/BridgeStatusResponse'
+                  - $ref: '#/components/schemas/TelegramResponsesResponse'
+                  - $ref: '#/components/schemas/EventTemplatesResponse'
+        '404':
+          description: Resource not found
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for MCP server authentication
+
+  schemas:
+    # Core Request Schemas
+    TelegramEventRequest:
+      type: object
+      required: [type, title, description]
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        title:
+          type: string
+          description: Event title
+          maxLength: 200
+          pattern: '^[a-zA-Z0-9\s\-_\.,:;!?()]+$'  
+        description:
+          type: string
+          description: Event description
+          maxLength: 1000
+        task_id:
+          type: string
+          description: Optional task ID
+          pattern: '^[a-zA-Z0-9\-_]{1,50}$'
+        source:
+          type: string
+          description: Event source
+          default: claude-code
+          maxLength: 50
+        data:
+          type: object
+          description: Additional event data
+          additionalProperties: true
+          maxProperties: 20
+
+    TelegramMessageRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Message text to send
+          maxLength: 4000
+        source:
+          type: string
+          description: Message source
+          default: claude-code
+          maxLength: 50
+
+    TaskCompletionRequest:
+      type: object
+      required: [task_id, title]
+      properties:
+        task_id:
+          type: string
+          description: Task identifier
+          pattern: '^[a-zA-Z0-9\-_]{1,50}$'
+        title:
+          type: string
+          description: Task title
+          maxLength: 200
+        results:
+          type: string
+          description: Task results or summary
+          maxLength: 2000
+        files_affected:
+          type: array
+          description: List of files that were affected
+          items:
+            type: string
+            maxLength: 500
+          maxItems: 50
+        duration_ms:
+          type: number
+          description: Task duration in milliseconds
+          minimum: 0
+          maximum: 86400000  # 24 hours
+
+    PerformanceAlertRequest:
+      type: object
+      required: [title, current_value, threshold]
+      properties:
+        title:
+          type: string
+          description: Alert title
+          maxLength: 200
+        current_value:
+          type: number
+          description: Current metric value
+        threshold:
+          type: number
+          description: Threshold that was exceeded
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+
+    ApprovalRequestRequest:
+      type: object
+      required: [title, description]
+      properties:
+        title:
+          type: string
+          description: Request title
+          maxLength: 200
+        description:
+          type: string
+          description: Request description
+          maxLength: 1000
+        options:
+          type: array
+          description: Response options
+          items:
+            type: string
+            maxLength: 50
+          default: [Approve, Deny]
+          minItems: 2
+          maxItems: 5
+
+    # Response Schemas
+    EventResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the event was sent successfully
+        event_id:
+          type: string
+          description: Unique event identifier
+        message:
+          type: string
+          description: Success message
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+
+    TelegramResponsesResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of responses returned
+        total:
+          type: integer
+          description: Total number of responses available
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/TelegramResponse'
+
+    TelegramResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Response ID
+        event_id:
+          type: string
+          description: Original event ID
+        user_id:
+          type: string
+          description: Telegram user ID
+        username:
+          type: string
+          description: Telegram username
+        response:
+          type: string
+          description: User response text
+        timestamp:
+          type: string
+          format: date-time
+          description: Response timestamp
+        message_id:
+          type: integer
+          description: Telegram message ID
+
+    BridgeStatusResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, stopped, error, unknown]
+          description: Bridge process status
+        pid:
+          type: integer
+          description: Process ID (if running)
+        uptime:
+          type: number
+          description: Uptime in seconds
+        last_activity:
+          type: string
+          format: date-time
+          description: Last activity timestamp
+        health:
+          $ref: '#/components/schemas/HealthStatus'
+        version:
+          type: string
+          description: Bridge version
+        configuration:
+          type: object
+          description: Bridge configuration summary
+
+    HealthStatus:
+      type: object
+      properties:
+        overall:
+          type: string
+          enum: [healthy, degraded, unhealthy, unknown]
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthCheck'
+        last_updated:
+          type: string
+          format: date-time
+
+    HealthCheck:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Health check name
+        status:
+          type: string
+          enum: [pass, fail, warn]
+        description:
+          type: string
+          description: Check description
+        observed_value:
+          type: string
+          description: Observed value
+        observed_unit:
+          type: string
+          description: Unit of measurement
+        time:
+          type: string
+          format: date-time
+          description: Check timestamp
+
+    EventTypesResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: Number of event types
+        event_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTypeInfo'
+
+    EventTypeInfo:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/EventType'
+        category:
+          type: string
+          description: Event category
+        description:
+          type: string
+          description: Event description
+        schema:
+          type: object
+          description: Event data schema
+        examples:
+          type: array
+          description: Usage examples
+
+    ClearResponsesResponse:
+      type: object
+      properties:
+        deleted_count:
+          type: integer
+          description: Number of response files deleted
+        message:
+          type: string
+          description: Operation summary
+
+    PendingResponsesResponse:
+      type: object
+      properties:
+        pending_count:
+          type: integer
+          description: Number of pending responses
+        processed_count:
+          type: integer
+          description: Number of responses processed
+        responses:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingResponse'
+
+    PendingResponse:
+      type: object
+      properties:
+        event_id:
+          type: string
+          description: Original event ID
+        response_id:
+          type: string
+          description: Response ID
+        user_response:
+          type: string
+          description: User's response
+        timestamp:
+          type: string
+          format: date-time
+        actionable:
+          type: boolean
+          description: Whether response requires action
+
+    BridgeOperationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether operation succeeded
+        message:
+          type: string
+          description: Operation result message
+        pid:
+          type: integer
+          description: Process ID (for start/restart operations)
+        previous_pid:
+          type: integer
+          description: Previous process ID (for restart operations)
+
+    EnsureBridgeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether bridge is now running
+        message:
+          type: string
+          description: Operation result message
+        action:
+          type: string
+          enum: [started, already_running, failed]
+          description: Action taken
+        pid:
+          type: integer
+          description: Process ID
+
+    BridgeProcessResponse:
+      type: object
+      properties:
+        running:
+          type: boolean
+          description: Whether bridge process is running
+        message:
+          type: string
+          description: Status message
+        pid:
+          type: integer
+          description: Process ID (if running)
+
+    TaskStatusResponse:
+      type: object
+      properties:
+        claude_code:
+          $ref: '#/components/schemas/TaskSystemStatus'
+        taskmaster:
+          $ref: '#/components/schemas/TaskSystemStatus'
+        summary:
+          $ref: '#/components/schemas/TaskSummary'
+
+    TaskSystemStatus:
+      type: object
+      properties:
+        available:
+          type: boolean
+          description: Whether task system is available
+        task_count:
+          type: integer
+          description: Total number of tasks
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Task ID
+        title:
+          type: string
+          description: Task title
+        status:
+          type: string
+          enum: [pending, in_progress, completed, blocked]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TaskSummary:
+      type: object
+      properties:
+        total_tasks:
+          type: integer
+        by_status:
+          type: object
+          additionalProperties:
+            type: integer
+        by_system:
+          type: object
+          additionalProperties:
+            type: integer
+
+    ToolsList:
+      type: object
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolInfo'
+
+    ToolInfo:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Tool name
+        description:
+          type: string
+          description: Tool description
+        inputSchema:
+          type: object
+          description: JSON schema for tool input
+
+    ResourcesList:
+      type: object
+      properties:
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceInfo'
+
+    ResourceInfo:
+      type: object
+      properties:
+        uri:
+          type: string
+          description: Resource URI
+        mimeType:
+          type: string
+          description: Resource MIME type
+        name:
+          type: string
+          description: Resource name
+        description:
+          type: string
+          description: Resource description
+
+    EventTemplatesResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTemplate'
+
+    EventTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Template ID
+        name:
+          type: string
+          description: Template name
+        description:
+          type: string
+          description: Template description
+        event_type:
+          $ref: '#/components/schemas/EventType'
+        template:
+          type: object
+          description: Template structure
+
+    # Enum Types
+    EventType:
+      type: string
+      enum:
+        - task_completion
+        - task_started
+        - task_failed
+        - task_progress
+        - task_cancelled
+        - code_generation
+        - code_analysis
+        - code_refactoring
+        - code_review
+        - code_testing
+        - code_deployment
+        - build_completed
+        - build_failed
+        - test_suite_run
+        - lint_check
+        - type_check
+        - performance_alert
+        - error_occurred
+        - system_health
+        - approval_request
+        - user_response
+        - info_notification
+        - alert_notification
+        - progress_update
+
+    AlertSeverity:
+      type: string
+      enum: [low, medium, high, critical]
+      default: medium
+
+    # Error Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: boolean
+          description: Indicates an error occurred
+          example: true
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        details:
+          type: object
+          description: Additional error details
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+        request_id:
+          type: string
+          description: Request correlation ID
+
+  responses:
+    ValidationError:
+      description: Input validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: true
+            code: VALIDATION_ERROR
+            message: Input validation failed
+            details:
+              field: title
+              reason: exceeds maximum length
+            timestamp: "2025-01-15T10:30:00Z"
+
+    AuthenticationError:
+      description: Authentication failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: true
+            code: AUTHENTICATION_ERROR
+            message: Invalid or missing API key
+            timestamp: "2025-01-15T10:30:00Z"
+
+    RateLimitError:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: true
+            code: RATE_LIMIT_EXCEEDED
+            message: Too many requests
+            details:
+              limit: 100
+              window: 60
+              retry_after: 30
+            timestamp: "2025-01-15T10:30:00Z"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: true
+            code: INTERNAL_ERROR
+            message: An internal error occurred
+            timestamp: "2025-01-15T10:30:00Z"
+            request_id: req_abc123
+
+  examples:
+    TaskCompletionEvent:
+      summary: Task Completion Event
+      description: Example of a task completion notification
+      value:
+        type: task_completion
+        title: Build Process Completed
+        description: Successfully built production artifacts
+        task_id: build_2025_001
+        source: claude-code
+        data:
+          status: completed
+          duration_ms: 45000
+          artifacts: ["dist/app.js", "dist/styles.css"]
+          exit_code: 0
+
+    PerformanceAlertEvent:
+      summary: Performance Alert Event  
+      description: Example of a performance threshold alert
+      value:
+        type: performance_alert
+        title: High CPU Usage Detected
+        description: CPU usage has exceeded 80% for more than 5 minutes
+        source: monitoring-system
+        data:
+          metric: cpu_usage_percent
+          current_value: 85.7
+          threshold: 80.0
+          severity: high
+          duration_ms: 300000
+
+    ApprovalRequestEvent:
+      summary: Approval Request Event
+      description: Example of an approval request with interactive buttons
+      value:
+        type: approval_request
+        title: Deploy to Production
+        description: Ready to deploy version 1.5.0 to production environment?
+        task_id: deploy_prod_001
+        source: deployment-system
+        data:
+          requires_response: true
+          response_options: ["Deploy", "Cancel", "Review"]
+          timeout_minutes: 30
+          deployment_target: production
+          version: "1.5.0"
+
+tags:
+  - name: Events
+    description: Event notification operations
+  - name: Messages
+    description: Simple message operations
+  - name: Bridge Management
+    description: Bridge process control operations
+  - name: Responses
+    description: User response processing operations
+  - name: Status
+    description: System status and health operations
+  - name: Resources
+    description: MCP resource operations
+
+externalDocs:
+  description: CCTelegram MCP Server Documentation
+  url: https://github.com/your-org/cctelegram/docs

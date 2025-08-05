@@ -1,0 +1,696 @@
+name: Comprehensive Quality Gates
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mcp-server/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mcp-server/**'
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment for quality gates'
+        required: false
+        default: 'staging'
+        type: string
+      strict_mode:
+        description: 'Enable strict quality gates for production'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      quality-score:
+        description: 'Overall quality score (0-100)'
+        value: ${{ jobs.quality-assessment.outputs.score }}
+      gates-passed:
+        description: 'Whether all quality gates passed'
+        value: ${{ jobs.quality-gates-validation.outputs.passed }}
+
+env:
+  NODE_VERSION: '20.x'
+  QUALITY_THRESHOLD_STAGING: 80
+  QUALITY_THRESHOLD_PRODUCTION: 90
+
+concurrency:
+  group: quality-gates-${{ github.ref }}-${{ inputs.environment || 'default' }}
+  cancel-in-progress: true
+
+jobs:
+  # ===== Code Quality Analysis =====
+  code-quality:
+    name: 📊 Code Quality Analysis
+    runs-on: ubuntu-latest
+    
+    outputs:
+      eslint-score: ${{ steps.eslint-analysis.outputs.score }}
+      complexity-score: ${{ steps.complexity-analysis.outputs.score }}
+      maintainability-score: ${{ steps.maintainability-analysis.outputs.score }}
+      code-quality-passed: ${{ steps.quality-gate.outputs.passed }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server
+        run: |
+          npm ci
+          # Install additional quality analysis tools
+          npm install --save-dev \
+            @typescript-eslint/parser \
+            @typescript-eslint/eslint-plugin \
+            eslint \
+            prettier \
+            eslint-plugin-sonarjs \
+            eslint-plugin-security \
+            typescript-complexity-analyzer \
+            jscpd
+
+      - name: ESLint quality analysis
+        id: eslint-analysis
+        working-directory: ./mcp-server
+        run: |
+          # Create comprehensive ESLint config
+          cat > .eslintrc.json << 'EOF'
+          {
+            "parser": "@typescript-eslint/parser",
+            "plugins": ["@typescript-eslint", "sonarjs", "security"],
+            "extends": [
+              "eslint:recommended",
+              "@typescript-eslint/recommended",
+              "plugin:sonarjs/recommended",
+              "plugin:security/recommended"
+            ],
+            "parserOptions": {
+              "ecmaVersion": 2022,
+              "sourceType": "module",
+              "project": "./tsconfig.json"
+            },
+            "rules": {
+              "@typescript-eslint/no-explicit-any": "error",
+              "@typescript-eslint/no-unused-vars": "error",
+              "@typescript-eslint/prefer-const": "error",
+              "@typescript-eslint/no-non-null-assertion": "warn",
+              "@typescript-eslint/explicit-function-return-type": "warn",
+              "sonarjs/cognitive-complexity": ["error", 15],
+              "sonarjs/no-duplicate-string": ["error", 3],
+              "security/detect-object-injection": "warn",
+              "security/detect-non-literal-fs-filename": "warn",
+              "complexity": ["error", { "max": 10 }],
+              "max-depth": ["error", { "max": 4 }],
+              "max-lines-per-function": ["warn", { "max": 50 }],
+              "no-console": "off"
+            },
+            "ignorePatterns": ["dist/", "node_modules/", "coverage/", "*.test.ts"]
+          }
+          EOF
+          
+          # Run ESLint with detailed reporting
+          npx eslint "src/**/*.{ts,tsx}" --format=json --output-file=eslint-report.json || true
+          
+          # Analyze ESLint results
+          cat > analyze-eslint.js << 'EOF'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+          
+          let totalErrors = 0;
+          let totalWarnings = 0;
+          let totalFiles = report.length;
+          let filesWithIssues = 0;
+          
+          report.forEach(file => {
+            totalErrors += file.errorCount;
+            totalWarnings += file.warningCount;
+            if (file.errorCount > 0 || file.warningCount > 0) {
+              filesWithIssues++;
+            }
+          });
+          
+          // Calculate ESLint score (0-100)
+          let score = 100;
+          score -= Math.min(totalErrors * 5, 50);      // Max 50 points for errors
+          score -= Math.min(totalWarnings * 2, 30);    // Max 30 points for warnings
+          score -= Math.min(filesWithIssues * 3, 20);  // Max 20 points for files with issues
+          
+          score = Math.max(0, score);
+          
+          const analysis = {
+            score,
+            totalErrors,
+            totalWarnings,
+            totalFiles,
+            filesWithIssues,
+            errorRate: totalFiles > 0 ? (filesWithIssues / totalFiles * 100).toFixed(2) : 0
+          };
+          
+          fs.writeFileSync('eslint-analysis.json', JSON.stringify(analysis, null, 2));
+          
+          console.log(`ESLint Analysis:`);
+          console.log(`- Score: ${score}/100`);
+          console.log(`- Errors: ${totalErrors}`);
+          console.log(`- Warnings: ${totalWarnings}`);
+          console.log(`- Files with issues: ${filesWithIssues}/${totalFiles}`);
+          
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `score=${score}\n`);
+          EOF
+          
+          node analyze-eslint.js
+
+      - name: Code complexity analysis
+        id: complexity-analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "🔍 Analyzing code complexity..."
+          
+          # Create complexity analysis script
+          cat > analyze-complexity.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          function analyzeComplexity(dir, results = []) {
+            const files = fs.readdirSync(dir);
+            
+            files.forEach(file => {
+              const filePath = path.join(dir, file);
+              const stat = fs.statSync(filePath);
+              
+              if (stat.isDirectory() && !file.includes('node_modules') && !file.includes('dist')) {
+                analyzeComplexity(filePath, results);
+              } else if (file.endsWith('.ts') && !file.endsWith('.test.ts')) {
+                const content = fs.readFileSync(filePath, 'utf8');
+                
+                // Simple complexity metrics
+                const lines = content.split('\n').length;
+                const functions = (content.match(/function\s+\w+|=>\s*{|\w+\s*\(/g) || []).length;
+                const conditionals = (content.match(/if\s*\(|else\s+if|switch\s*\(|case\s+/g) || []).length;
+                const loops = (content.match(/for\s*\(|while\s*\(|forEach|map\s*\(/g) || []).length;
+                const depth = Math.max(...content.split('\n').map(line => {
+                  const match = line.match(/^(\s*)/);
+                  return match ? Math.floor(match[1].length / 2) : 0;
+                }));
+                
+                const cyclomaticComplexity = 1 + conditionals + loops;
+                
+                results.push({
+                  file: filePath.replace('src/', ''),
+                  lines,
+                  functions,
+                  conditionals,
+                  loops,
+                  depth,
+                  cyclomaticComplexity
+                });
+              }
+            });
+            
+            return results;
+          }
+          
+          const results = analyzeComplexity('src');
+          
+          // Calculate overall complexity score
+          const avgComplexity = results.reduce((sum, r) => sum + r.cyclomaticComplexity, 0) / results.length;
+          const avgDepth = results.reduce((sum, r) => sum + r.depth, 0) / results.length;
+          const avgLinesPerFunction = results.reduce((sum, r) => sum + (r.functions > 0 ? r.lines / r.functions : r.lines), 0) / results.length;
+          
+          // Score based on complexity thresholds
+          let score = 100;
+          if (avgComplexity > 15) score -= 30;
+          else if (avgComplexity > 10) score -= 15;
+          else if (avgComplexity > 7) score -= 5;
+          
+          if (avgDepth > 5) score -= 20;
+          else if (avgDepth > 4) score -= 10;
+          else if (avgDepth > 3) score -= 5;
+          
+          if (avgLinesPerFunction > 100) score -= 20;
+          else if (avgLinesPerFunction > 50) score -= 10;
+          
+          score = Math.max(0, score);
+          
+          const analysis = {
+            score,
+            averageComplexity: avgComplexity.toFixed(2),
+            averageDepth: avgDepth.toFixed(2),
+            averageLinesPerFunction: avgLinesPerFunction.toFixed(2),
+            totalFiles: results.length,
+            highComplexityFiles: results.filter(r => r.cyclomaticComplexity > 15).length
+          };
+          
+          fs.writeFileSync('complexity-analysis.json', JSON.stringify(analysis, null, 2));
+          
+          console.log(`Complexity Analysis:`);
+          console.log(`- Score: ${score}/100`);
+          console.log(`- Average Complexity: ${avgComplexity.toFixed(2)}`);
+          console.log(`- Average Depth: ${avgDepth.toFixed(2)}`);
+          console.log(`- High Complexity Files: ${analysis.highComplexityFiles}`);
+          
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `score=${score}\n`);
+          EOF
+          
+          node analyze-complexity.js
+
+      - name: Code duplication analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "🔍 Analyzing code duplication..."
+          
+          # Run JSCPD for duplicate code detection
+          npx jscpd src --reporters json --output duplication-report.json --min-lines 5 --min-tokens 50 || true
+          
+          # Analyze duplication results
+          if [ -f "duplication-report.json" ]; then
+            DUPLICATION_PERCENT=$(cat duplication-report.json | jq '.statistics.total.percentage // 0')
+            echo "Code duplication: ${DUPLICATION_PERCENT}%"
+          else
+            echo "No significant code duplication detected"
+          fi
+
+      - name: Maintainability analysis
+        id: maintainability-analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "🔧 Analyzing maintainability..."
+          
+          # Calculate maintainability index
+          cat > maintainability.js << 'EOF'
+          const fs = require('fs');
+          
+          // Load previous analyses
+          const eslintAnalysis = JSON.parse(fs.readFileSync('eslint-analysis.json', 'utf8'));
+          const complexityAnalysis = JSON.parse(fs.readFileSync('complexity-analysis.json', 'utf8'));
+          
+          // Read duplication report if exists
+          let duplicationPercent = 0;
+          if (fs.existsSync('duplication-report.json')) {
+            const dupReport = JSON.parse(fs.readFileSync('duplication-report.json', 'utf8'));
+            duplicationPercent = dupReport.statistics?.total?.percentage || 0;
+          }
+          
+          // Calculate maintainability score
+          let score = 100;
+          
+          // ESLint issues impact (30% weight)
+          score -= (100 - eslintAnalysis.score) * 0.3;
+          
+          // Complexity impact (40% weight)
+          score -= (100 - complexityAnalysis.score) * 0.4;
+          
+          // Duplication impact (20% weight)
+          score -= duplicationPercent * 2; // 2 points per percent of duplication
+          
+          // Documentation impact (10% weight) - simplified check
+          const srcFiles = fs.readdirSync('src', { recursive: true }).filter(f => f.endsWith('.ts'));
+          let documentedFiles = 0;
+          srcFiles.forEach(file => {
+            try {
+              const content = fs.readFileSync(`src/${file}`, 'utf8');
+              if (content.includes('/**') || content.includes('//')) {
+                documentedFiles++;
+              }
+            } catch (e) {
+              // Ignore file read errors
+            }
+          });
+          
+          const documentationRatio = srcFiles.length > 0 ? documentedFiles / srcFiles.length : 1;
+          score -= (1 - documentationRatio) * 10; // Up to 10 points for lack of documentation
+          
+          score = Math.max(0, Math.min(100, score));
+          
+          const analysis = {
+            score: Math.round(score),
+            eslintScore: eslintAnalysis.score,
+            complexityScore: complexityAnalysis.score,
+            duplicationPercent,
+            documentationRatio: (documentationRatio * 100).toFixed(1),
+            factors: {
+              codeQuality: eslintAnalysis.score,
+              complexity: complexityAnalysis.score,
+              duplication: Math.max(0, 100 - duplicationPercent * 2),
+              documentation: Math.round(documentationRatio * 100)
+            }
+          };
+          
+          fs.writeFileSync('maintainability-analysis.json', JSON.stringify(analysis, null, 2));
+          
+          console.log(`Maintainability Analysis:`);
+          console.log(`- Overall Score: ${analysis.score}/100`);
+          console.log(`- Code Quality: ${analysis.eslintScore}/100`);
+          console.log(`- Complexity: ${analysis.complexityScore}/100`);
+          console.log(`- Duplication: ${duplicationPercent}%`);
+          console.log(`- Documentation: ${analysis.documentationRatio}%`);
+          
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `score=${analysis.score}\n`);
+          EOF
+          
+          node maintainability.js
+
+      - name: Code quality gate
+        id: quality-gate
+        working-directory: ./mcp-server
+        run: |
+          ESLINT_SCORE="${{ steps.eslint-analysis.outputs.score }}"
+          COMPLEXITY_SCORE="${{ steps.complexity-analysis.outputs.score }}"
+          MAINTAINABILITY_SCORE="${{ steps.maintainability-analysis.outputs.score }}"
+          
+          echo "🚪 Code Quality Gate Check:"
+          echo "- ESLint Score: $ESLINT_SCORE/100"
+          echo "- Complexity Score: $COMPLEXITY_SCORE/100"
+          echo "- Maintainability Score: $MAINTAINABILITY_SCORE/100"
+          
+          # Quality thresholds
+          MIN_ESLINT_SCORE=80
+          MIN_COMPLEXITY_SCORE=75
+          MIN_MAINTAINABILITY_SCORE=80
+          
+          if [ "$ESLINT_SCORE" -lt "$MIN_ESLINT_SCORE" ]; then
+            echo "❌ ESLint score below threshold ($ESLINT_SCORE < $MIN_ESLINT_SCORE)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ "$COMPLEXITY_SCORE" -lt "$MIN_COMPLEXITY_SCORE" ]; then
+            echo "❌ Complexity score below threshold ($COMPLEXITY_SCORE < $MIN_COMPLEXITY_SCORE)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ "$MAINTAINABILITY_SCORE" -lt "$MIN_MAINTAINABILITY_SCORE" ]; then
+            echo "❌ Maintainability score below threshold ($MAINTAINABILITY_SCORE < $MIN_MAINTAINABILITY_SCORE)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ All code quality gates passed"
+            echo "passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload code quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-reports-${{ github.run_id }}
+          path: |
+            mcp-server/eslint-report.json
+            mcp-server/eslint-analysis.json
+            mcp-server/complexity-analysis.json
+            mcp-server/maintainability-analysis.json
+            mcp-server/duplication-report.json
+          retention-days: 30
+
+  # ===== Test Quality Analysis =====
+  test-quality:
+    name: 🧪 Test Quality Analysis
+    runs-on: ubuntu-latest
+    
+    outputs:
+      coverage-score: ${{ steps.coverage-analysis.outputs.score }}
+      test-quality-score: ${{ steps.test-quality-analysis.outputs.score }}
+      test-quality-passed: ${{ steps.test-quality-gate.outputs.passed }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server
+        run: npm ci
+
+      - name: Run comprehensive tests
+        working-directory: ./mcp-server
+        run: |
+          # Run all test suites with coverage
+          npm run test:ci
+          
+          # Run performance tests
+          npm run test:performance || echo "Performance tests completed with warnings"
+
+      - name: Coverage analysis
+        id: coverage-analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "📊 Analyzing test coverage..."
+          
+          if [ -f "coverage/coverage-summary.json" ]; then
+            COVERAGE_STATEMENTS=$(cat coverage/coverage-summary.json | jq '.total.statements.pct')
+            COVERAGE_BRANCHES=$(cat coverage/coverage-summary.json | jq '.total.branches.pct')
+            COVERAGE_FUNCTIONS=$(cat coverage/coverage-summary.json | jq '.total.functions.pct')
+            COVERAGE_LINES=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+            
+            # Calculate weighted coverage score
+            COVERAGE_SCORE=$(echo "scale=0; ($COVERAGE_STATEMENTS * 0.3 + $COVERAGE_BRANCHES * 0.3 + $COVERAGE_FUNCTIONS * 0.2 + $COVERAGE_LINES * 0.2) / 1" | bc)
+            
+            echo "Coverage Analysis:"
+            echo "- Statements: $COVERAGE_STATEMENTS%"
+            echo "- Branches: $COVERAGE_BRANCHES%"
+            echo "- Functions: $COVERAGE_FUNCTIONS%"
+            echo "- Lines: $COVERAGE_LINES%"
+            echo "- Overall Score: $COVERAGE_SCORE/100"
+            
+            echo "score=$COVERAGE_SCORE" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Coverage report not found"
+            echo "score=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Test quality analysis
+        id: test-quality-analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "🔍 Analyzing test quality..."
+          
+          # Count different types of tests
+          UNIT_TESTS=$(find tests -name "*.test.ts" -path "*/unit/*" | wc -l)
+          INTEGRATION_TESTS=$(find tests -name "*.test.ts" -path "*/integration/*" | wc -l)
+          PERFORMANCE_TESTS=$(find tests -name "*.test.ts" -path "*/performance/*" | wc -l)
+          TOTAL_TESTS=$(find tests -name "*.test.ts" | wc -l)
+          
+          # Calculate test distribution score
+          UNIT_RATIO=$(echo "scale=2; $UNIT_TESTS / $TOTAL_TESTS * 100" | bc 2>/dev/null || echo "0")
+          INTEGRATION_RATIO=$(echo "scale=2; $INTEGRATION_TESTS / $TOTAL_TESTS * 100" | bc 2>/dev/null || echo "0")
+          PERFORMANCE_RATIO=$(echo "scale=2; $PERFORMANCE_TESTS / $TOTAL_TESTS * 100" | bc 2>/dev/null || echo "0")
+          
+          # Quality score based on test pyramid principles
+          TEST_QUALITY_SCORE=100
+          
+          # Ideal test distribution: 70% unit, 20% integration, 10% performance/e2e
+          UNIT_DEVIATION=$(echo "scale=0; ($UNIT_RATIO - 70) * ($UNIT_RATIO - 70) / 100" | bc 2>/dev/null || echo "0")
+          INTEGRATION_DEVIATION=$(echo "scale=0; ($INTEGRATION_RATIO - 20) * ($INTEGRATION_RATIO - 20) / 100" | bc 2>/dev/null || echo "0")
+          
+          TEST_QUALITY_SCORE=$(echo "scale=0; $TEST_QUALITY_SCORE - $UNIT_DEVIATION - $INTEGRATION_DEVIATION" | bc 2>/dev/null || echo "100")
+          
+          # Ensure score is between 0-100
+          if [ "$TEST_QUALITY_SCORE" -lt 0 ]; then
+            TEST_QUALITY_SCORE=0
+          elif [ "$TEST_QUALITY_SCORE" -gt 100 ]; then
+            TEST_QUALITY_SCORE=100
+          fi
+          
+          echo "Test Quality Analysis:"
+          echo "- Total Tests: $TOTAL_TESTS"
+          echo "- Unit Tests: $UNIT_TESTS (${UNIT_RATIO}%)"
+          echo "- Integration Tests: $INTEGRATION_TESTS (${INTEGRATION_RATIO}%)"
+          echo "- Performance Tests: $PERFORMANCE_TESTS (${PERFORMANCE_RATIO}%)"
+          echo "- Quality Score: $TEST_QUALITY_SCORE/100"
+          
+          echo "score=$TEST_QUALITY_SCORE" >> $GITHUB_OUTPUT
+
+      - name: Test quality gate
+        id: test-quality-gate
+        working-directory: ./mcp-server
+        run: |
+          COVERAGE_SCORE="${{ steps.coverage-analysis.outputs.score }}"
+          TEST_QUALITY_SCORE="${{ steps.test-quality-analysis.outputs.score }}"
+          STRICT_MODE="${{ inputs.strict_mode }}"
+          
+          echo "🚪 Test Quality Gate Check:"
+          echo "- Coverage Score: $COVERAGE_SCORE/100"
+          echo "- Test Quality Score: $TEST_QUALITY_SCORE/100"
+          echo "- Strict Mode: $STRICT_MODE"
+          
+          # Set thresholds based on mode
+          if [ "$STRICT_MODE" = "true" ]; then
+            MIN_COVERAGE=95
+            MIN_TEST_QUALITY=90
+          else
+            MIN_COVERAGE=90
+            MIN_TEST_QUALITY=80
+          fi
+          
+          if [ "$COVERAGE_SCORE" -lt "$MIN_COVERAGE" ]; then
+            echo "❌ Coverage score below threshold ($COVERAGE_SCORE < $MIN_COVERAGE)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ "$TEST_QUALITY_SCORE" -lt "$MIN_TEST_QUALITY" ]; then
+            echo "❌ Test quality score below threshold ($TEST_QUALITY_SCORE < $MIN_TEST_QUALITY)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ All test quality gates passed"
+            echo "passed=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ===== Overall Quality Assessment =====
+  quality-assessment:
+    name: 📋 Overall Quality Assessment
+    runs-on: ubuntu-latest
+    needs: [code-quality, test-quality]
+    if: always()
+    
+    outputs:
+      score: ${{ steps.overall-assessment.outputs.score }}
+      grade: ${{ steps.overall-assessment.outputs.grade }}
+      
+    steps:
+      - name: Overall quality assessment
+        id: overall-assessment
+        run: |
+          echo "📋 Computing overall quality assessment..."
+          
+          # Get scores from previous jobs
+          CODE_QUALITY_PASSED="${{ needs.code-quality.outputs.code-quality-passed }}"
+          TEST_QUALITY_PASSED="${{ needs.test-quality.outputs.test-quality-passed }}"
+          
+          ESLINT_SCORE="${{ needs.code-quality.outputs.eslint-score }}"
+          COMPLEXITY_SCORE="${{ needs.code-quality.outputs.complexity-score }}"
+          MAINTAINABILITY_SCORE="${{ needs.code-quality.outputs.maintainability-score }}"
+          COVERAGE_SCORE="${{ needs.test-quality.outputs.coverage-score }}"
+          TEST_QUALITY_SCORE="${{ needs.test-quality.outputs.test-quality-score }}"
+          
+          # Calculate weighted overall score
+          OVERALL_SCORE=$(echo "scale=0; ($ESLINT_SCORE * 0.20 + $COMPLEXITY_SCORE * 0.20 + $MAINTAINABILITY_SCORE * 0.20 + $COVERAGE_SCORE * 0.25 + $TEST_QUALITY_SCORE * 0.15) / 1" | bc 2>/dev/null || echo "0")
+          
+          # Determine grade
+          if [ "$OVERALL_SCORE" -ge 95 ]; then
+            GRADE="A+"
+          elif [ "$OVERALL_SCORE" -ge 90 ]; then
+            GRADE="A"
+          elif [ "$OVERALL_SCORE" -ge 85 ]; then
+            GRADE="B+"
+          elif [ "$OVERALL_SCORE" -ge 80 ]; then
+            GRADE="B"
+          elif [ "$OVERALL_SCORE" -ge 75 ]; then
+            GRADE="C+"
+          elif [ "$OVERALL_SCORE" -ge 70 ]; then
+            GRADE="C"
+          else
+            GRADE="D"
+          fi
+          
+          echo "📊 Overall Quality Assessment:"
+          echo "- ESLint Score: $ESLINT_SCORE/100 (20%)"
+          echo "- Complexity Score: $COMPLEXITY_SCORE/100 (20%)"
+          echo "- Maintainability Score: $MAINTAINABILITY_SCORE/100 (20%)"
+          echo "- Coverage Score: $COVERAGE_SCORE/100 (25%)"
+          echo "- Test Quality Score: $TEST_QUALITY_SCORE/100 (15%)"
+          echo "- Overall Score: $OVERALL_SCORE/100"
+          echo "- Grade: $GRADE"
+          
+          echo "score=$OVERALL_SCORE" >> $GITHUB_OUTPUT
+          echo "grade=$GRADE" >> $GITHUB_OUTPUT
+
+  # ===== Final Quality Gates Validation =====
+  quality-gates-validation:
+    name: 🚪 Quality Gates Validation
+    runs-on: ubuntu-latest
+    needs: [code-quality, test-quality, quality-assessment]
+    if: always()
+    
+    outputs:
+      passed: ${{ steps.final-validation.outputs.passed }}
+      
+    steps:
+      - name: Final quality gates validation
+        id: final-validation
+        run: |
+          echo "🚪 Final Quality Gates Validation..."
+          
+          CODE_QUALITY_PASSED="${{ needs.code-quality.outputs.code-quality-passed }}"
+          TEST_QUALITY_PASSED="${{ needs.test-quality.outputs.test-quality-passed }}"
+          OVERALL_SCORE="${{ needs.quality-assessment.outputs.score }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          STRICT_MODE="${{ inputs.strict_mode }}"
+          
+          # Set threshold based on environment
+          if [ "$ENVIRONMENT" = "production" ] || [ "$STRICT_MODE" = "true" ]; then
+            THRESHOLD=${{ env.QUALITY_THRESHOLD_PRODUCTION }}
+          else
+            THRESHOLD=${{ env.QUALITY_THRESHOLD_STAGING }}
+          fi
+          
+          echo "Quality Gates Summary:"
+          echo "- Code Quality: $CODE_QUALITY_PASSED"
+          echo "- Test Quality: $TEST_QUALITY_PASSED"
+          echo "- Overall Score: $OVERALL_SCORE/100"
+          echo "- Required Threshold: $THRESHOLD/100"
+          echo "- Environment: $ENVIRONMENT"
+          echo "- Strict Mode: $STRICT_MODE"
+          
+          # Final validation
+          if [ "$CODE_QUALITY_PASSED" != "true" ]; then
+            echo "❌ Code quality gates failed"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ "$TEST_QUALITY_PASSED" != "true" ]; then
+            echo "❌ Test quality gates failed"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          elif [ "$OVERALL_SCORE" -lt "$THRESHOLD" ]; then
+            echo "❌ Overall quality score below threshold ($OVERALL_SCORE < $THRESHOLD)"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          else
+            echo "✅ All quality gates passed!"
+            echo "passed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate quality report
+        if: always()
+        run: |
+          cat > quality-report.md << EOF
+          # Quality Gates Report
+          
+          **Generated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Environment**: ${{ inputs.environment || 'staging' }}
+          **Strict Mode**: ${{ inputs.strict_mode }}
+          
+          ## Overall Assessment
+          - **Score**: ${{ needs.quality-assessment.outputs.score }}/100
+          - **Grade**: ${{ needs.quality-assessment.outputs.grade }}
+          - **Status**: ${{ steps.final-validation.outputs.passed == 'true' && '✅ PASSED' || '❌ FAILED' }}
+          
+          ## Component Scores
+          - **ESLint**: ${{ needs.code-quality.outputs.eslint-score }}/100
+          - **Complexity**: ${{ needs.code-quality.outputs.complexity-score }}/100
+          - **Maintainability**: ${{ needs.code-quality.outputs.maintainability-score }}/100
+          - **Coverage**: ${{ needs.test-quality.outputs.coverage-score }}/100
+          - **Test Quality**: ${{ needs.test-quality.outputs.test-quality-score }}/100
+          
+          ## Quality Gates Status
+          - **Code Quality**: ${{ needs.code-quality.outputs.code-quality-passed == 'true' && '✅ PASSED' || '❌ FAILED' }}
+          - **Test Quality**: ${{ needs.test-quality.outputs.test-quality-passed == 'true' && '✅ PASSED' || '❌ FAILED' }}
+          
+          EOF
+
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gates-report-${{ github.run_id }}
+          path: quality-report.md
+          retention-days: 30

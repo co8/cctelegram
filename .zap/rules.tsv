@@ -1,0 +1,85 @@
+# ZAP Security Rules for CCTelegram MCP Server
+# Format: rule_id	threshold	action
+# Actions: IGNORE, INFO, WARN, FAIL
+
+# High severity rules - Fail the build
+10003	HIGH	FAIL	# Potential Path Traversal
+10004	HIGH	FAIL	# Remote File Inclusion
+10010	HIGH	FAIL	# Cookie No HttpOnly Flag
+10011	HIGH	FAIL	# Cookie No Secure Flag
+10012	HIGH	FAIL	# Password Autocomplete
+10015	HIGH	FAIL	# Incomplete or No Cache-control Header Set
+10016	HIGH	FAIL	# Web Browser XSS Protection Not Enabled
+10017	HIGH	FAIL	# Cross-Domain JavaScript Source File Inclusion
+10019	HIGH	FAIL	# Content-Type Header Missing
+10020	HIGH	FAIL	# X-Frame-Options Header
+10021	HIGH	FAIL	# X-Content-Type-Options Header Missing
+10023	HIGH	FAIL	# Information Disclosure - Debug Error Messages
+10024	HIGH	FAIL	# Information Disclosure - Sensitive Information in URL
+10025	HIGH	FAIL	# Information Disclosure - Sensitive Information in HTTP Referrer Header
+10026	HIGH	FAIL	# HTTP Parameter Override
+10027	HIGH	FAIL	# Information Disclosure - Suspicious Comments
+10028	HIGH	FAIL	# Open Redirect
+10029	HIGH	FAIL	# Cookie Poisoning
+10030	HIGH	FAIL	# User Controllable Charset
+10031	HIGH	FAIL	# User Controllable HTML Element Attribute (Potential XSS)
+10032	HIGH	FAIL	# Viewstate Scanner
+10033	HIGH	FAIL	# Directory Browsing
+10034	HIGH	FAIL	# Heartbleed OpenSSL Vulnerability
+10035	HIGH	FAIL	# Strict-Transport-Security Header
+10036	HIGH	FAIL	# HTTP Server Response Header
+10037	HIGH	FAIL	# Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s)
+10038	HIGH	FAIL	# Content Security Policy (CSP) Header Not Set
+10039	HIGH	FAIL	# X-Backend-Server Header Information Leak
+10040	HIGH	FAIL	# Secure Pages Include Mixed Content
+10041	HIGH	FAIL	# HTTP to HTTPS Insecure Transition in Form Post
+10042	HIGH	FAIL	# HTTPS to HTTP Insecure Transition in Form Post
+10043	HIGH	FAIL	# User Controllable JavaScript Event (XSS)
+10044	HIGH	FAIL	# Big Redirect Detected (Potential Sensitive Information Leak)
+10045	HIGH	FAIL	# Source Code Disclosure - /WEB-INF folder
+10046	HIGH	FAIL	# Source Code Disclosure - Git
+10047	HIGH	FAIL	# HTTPS Content Available via HTTP
+10048	HIGH	FAIL	# Remote Code Execution - Shell Shock
+10049	HIGH	FAIL	# Content Cacheability
+10050	HIGH	FAIL	# Retrieved from Cache
+10051	HIGH	FAIL	# Relative Path Confusion
+10052	HIGH	FAIL	# X-ChromeLogger-Data (XCOLD) Header Information Leak
+10053	HIGH	FAIL	# Apache Range Header DoS (CVE-2011-3192)
+10054	HIGH	FAIL	# Cookie Without SameSite Attribute
+10055	HIGH	FAIL	# CSP Scanner
+10056	HIGH	FAIL	# X-Debug-Token Information Leak
+10057	HIGH	FAIL	# Username Hash Found
+10058	HIGH	FAIL	# GET for POST
+10059	HIGH	FAIL	# PII Disclosure
+10060	HIGH	FAIL	# Source Code Disclosure - SVN
+10061	HIGH	FAIL	# ELMAH Information Leak
+10062	HIGH	FAIL	# PII Scanner
+10095	HIGH	FAIL	# Backup File Disclosure
+10096	HIGH	FAIL	# Timestamp Disclosure
+10097	HIGH	FAIL	# Hash Disclosure
+10098	HIGH	FAIL	# Cross-Domain Misconfiguration
+
+# Medium severity rules - Warn but don't fail
+40003	MEDIUM	WARN	# CRLF Injection
+40008	MEDIUM	WARN	# Parameter Tampering
+40009	MEDIUM	WARN	# Server Side Include
+40012	MEDIUM	WARN	# Cross Site Scripting (Reflected)
+40013	MEDIUM	WARN	# Session Fixation
+40014	MEDIUM	WARN	# Cross Site Scripting (Persistent)
+40016	MEDIUM	WARN	# Cross Site Scripting (Persistent) - Prime
+40017	MEDIUM	WARN	# Cross Site Scripting (Persistent) - Spider
+40018	MEDIUM	WARN	# SQL Injection
+40019	MEDIUM	WARN	# SQL Injection - MySQL
+40020	MEDIUM	WARN	# SQL Injection - Hypersonic SQL
+40021	MEDIUM	WARN	# SQL Injection - Oracle
+40022	MEDIUM	WARN	# SQL Injection - PostgreSQL
+40023	MEDIUM	WARN	# Possible Username Enumeration
+40024	MEDIUM	WARN	# SQL Injection - SQLite
+40025	MEDIUM	WARN	# Proxy Disclosure
+40026	MEDIUM	WARN	# Cross Site Scripting (DOM Based)
+40027	MEDIUM	WARN	# SQL Injection - MsSQL
+40028	MEDIUM	WARN	# LDAP Injection
+
+# Low severity rules - Info only
+50000	LOW	INFO	# Script Passive Scan Rules
+50001	LOW	INFO	# Passive Scan Rules

@@ -1,0 +1,242 @@
+# Docker Compose for CCTelegram MCP Server
+# Supports development, testing, and production environments
+
+version: '3.8'
+
+services:
+  # ===== MCP Server Service =====
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+      target: runtime
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+    image: cctelegram-mcp-server:${VERSION:-latest}
+    container_name: cctelegram-mcp
+    restart: unless-stopped
+    
+    # Security configuration
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - MCP_LOG_LEVEL=${MCP_LOG_LEVEL:-info}
+      - MCP_ENABLE_AUTH=${MCP_ENABLE_AUTH:-true}
+      - MCP_ENABLE_RATE_LIMIT=${MCP_ENABLE_RATE_LIMIT:-true}
+      - MCP_ENABLE_INPUT_VALIDATION=${MCP_ENABLE_INPUT_VALIDATION:-true}
+      - MCP_ENABLE_SECURE_LOGGING=${MCP_ENABLE_SECURE_LOGGING:-true}
+      - MCP_API_KEYS=${MCP_API_KEYS}
+      - MCP_HMAC_SECRET=${MCP_HMAC_SECRET}
+      - MCP_RATE_LIMIT_POINTS=${MCP_RATE_LIMIT_POINTS:-100}
+      - MCP_RATE_LIMIT_DURATION=${MCP_RATE_LIMIT_DURATION:-60}
+      - CC_TELEGRAM_EVENTS_DIR=/app/data/events
+      - CC_TELEGRAM_RESPONSES_DIR=/app/data/responses
+    
+    # Port mapping
+    ports:
+      - "${MCP_PORT:-3000}:3000"
+    
+    # Volumes for data persistence
+    volumes:
+      - mcp-data:/app/data
+      - mcp-logs:/app/logs
+      - /tmp:/tmp:rw,noexec,nosuid,size=100m
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - mcp-network
+
+  # ===== Development Service =====
+  mcp-dev:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+      target: development
+    image: cctelegram-mcp-dev:${VERSION:-latest}
+    container_name: cctelegram-mcp-dev
+    profiles: ["dev"]
+    
+    environment:
+      - NODE_ENV=development
+      - MCP_LOG_LEVEL=debug
+      - MCP_ENABLE_AUTH=false
+      - DEBUG=*
+    
+    ports:
+      - "3000:3000"
+      - "9229:9229"  # Debugger port
+    
+    volumes:
+      - ./mcp-server/src:/app/src:ro
+      - ./mcp-server/tests:/app/tests:ro
+      - mcp-dev-data:/app/data
+      
+    networks:
+      - mcp-network
+
+  # ===== Testing Service =====
+  mcp-test:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+      target: testing
+    image: cctelegram-mcp-test:${VERSION:-latest}
+    container_name: cctelegram-mcp-test
+    profiles: ["test"]
+    
+    environment:
+      - NODE_ENV=test
+      - CI=true
+    
+    volumes:
+      - ./mcp-server/coverage:/app/coverage
+      
+    networks:
+      - mcp-network
+
+  # ===== Security Scanning Service =====
+  mcp-security:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+      target: security
+    image: cctelegram-mcp-security:${VERSION:-latest}
+    container_name: cctelegram-mcp-security
+    profiles: ["security"]
+    
+    volumes:
+      - ./security-reports:/app/security-reports
+      
+    networks:
+      - mcp-network
+
+  # ===== Monitoring Services =====
+  
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: cctelegram-prometheus
+    profiles: ["monitoring"]
+    
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    
+    ports:
+      - "9090:9090"
+    
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    
+    networks:
+      - mcp-network
+
+  # Grafana for metrics visualization
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: cctelegram-grafana
+    profiles: ["monitoring"]
+    
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    
+    ports:
+      - "3001:3000"
+    
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    
+    networks:
+      - mcp-network
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    container_name: cctelegram-jaeger
+    profiles: ["monitoring"]
+    
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14268:14268"  # HTTP collector
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    
+    networks:
+      - mcp-network
+
+# ===== Volumes =====
+volumes:
+  mcp-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_DIR:-./data}
+  
+  mcp-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOGS_DIR:-./logs}
+  
+  mcp-dev-data:
+    driver: local
+  
+  prometheus-data:
+    driver: local
+  
+  grafana-data:
+    driver: local
+
+# ===== Networks =====
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

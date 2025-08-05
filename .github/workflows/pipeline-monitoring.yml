@@ -1,0 +1,553 @@
+name: Pipeline Health Monitoring
+
+on:
+  schedule:
+    # Run every 15 minutes to monitor pipeline health
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      check_type:
+        description: 'Type of health check to perform'
+        required: true
+        default: 'comprehensive'
+        type: choice
+        options:
+          - comprehensive
+          - performance
+          - security
+          - infrastructure
+      alert_threshold:
+        description: 'Alert threshold (1-5, where 5 is most sensitive)'
+        required: false
+        default: '3'
+        type: choice
+        options:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+
+env:
+  MONITORING_RETENTION_DAYS: 30
+  ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+
+jobs:
+  # ===== Pipeline Health Assessment =====
+  pipeline-health-check:
+    name: 🔍 Pipeline Health Assessment
+    runs-on: ubuntu-latest
+    
+    outputs:
+      health-score: ${{ steps.health-assessment.outputs.score }}
+      critical-issues: ${{ steps.health-assessment.outputs.critical-issues }}
+      warning-issues: ${{ steps.health-assessment.outputs.warning-issues }}
+      recommendations: ${{ steps.health-assessment.outputs.recommendations }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Analyze recent workflow runs
+        id: workflow-analysis
+        run: |
+          echo "📊 Analyzing recent workflow runs..."
+          
+          # Use GitHub API to analyze recent workflow runs
+          gh api repos/${{ github.repository }}/actions/runs \
+            --paginate \
+            --jq '.workflow_runs[] | select(.created_at > (now - 86400 | strftime("%Y-%m-%dT%H:%M:%SZ"))) | {id, status, conclusion, workflow_name: .name, created_at, updated_at}' \
+            > recent-runs.json || echo "[]" > recent-runs.json
+          
+          # Analyze success rates
+          cat > analyze-runs.js << 'EOF'
+          const fs = require('fs');
+          const runs = JSON.parse(fs.readFileSync('recent-runs.json', 'utf8'));
+          
+          const analysis = {
+            total_runs: runs.length,
+            successful_runs: 0,
+            failed_runs: 0,
+            cancelled_runs: 0,
+            in_progress_runs: 0,
+            avg_duration: 0,
+            workflows: {}
+          };
+          
+          runs.forEach(run => {
+            // Count by conclusion
+            if (run.conclusion === 'success') analysis.successful_runs++;
+            else if (run.conclusion === 'failure') analysis.failed_runs++;
+            else if (run.conclusion === 'cancelled') analysis.cancelled_runs++;
+            else if (run.status === 'in_progress') analysis.in_progress_runs++;
+            
+            // Track by workflow
+            if (!analysis.workflows[run.workflow_name]) {
+              analysis.workflows[run.workflow_name] = {
+                total: 0,
+                successful: 0,
+                failed: 0,
+                success_rate: 0
+              };
+            }
+            
+            analysis.workflows[run.workflow_name].total++;
+            if (run.conclusion === 'success') {
+              analysis.workflows[run.workflow_name].successful++;
+            } else if (run.conclusion === 'failure') {
+              analysis.workflows[run.workflow_name].failed++;
+            }
+          });
+          
+          // Calculate success rates
+          Object.keys(analysis.workflows).forEach(workflow => {
+            const w = analysis.workflows[workflow];
+            w.success_rate = w.total > 0 ? (w.successful / w.total * 100).toFixed(2) : 0;
+          });
+          
+          analysis.overall_success_rate = analysis.total_runs > 0 ? 
+            (analysis.successful_runs / analysis.total_runs * 100).toFixed(2) : 100;
+          
+          fs.writeFileSync('workflow-analysis.json', JSON.stringify(analysis, null, 2));
+          
+          console.log('📈 Workflow Analysis Summary:');
+          console.log(`- Total runs (24h): ${analysis.total_runs}`);
+          console.log(`- Success rate: ${analysis.overall_success_rate}%`);
+          console.log(`- Failed runs: ${analysis.failed_runs}`);
+          
+          // Set outputs
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `total-runs=${analysis.total_runs}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `success-rate=${analysis.overall_success_rate}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `failed-runs=${analysis.failed_runs}\n`);
+          EOF
+          
+          node analyze-runs.js
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Check infrastructure health
+        id: infrastructure-check
+        run: |
+          echo "🏗️ Checking infrastructure health..."
+          
+          HEALTH_STATUS="healthy"
+          INFRASTRUCTURE_ISSUES=()
+          
+          # Check GitHub Actions runner availability
+          RUNNER_STATUS="available"
+          if [ "$RUNNER_STATUS" != "available" ]; then
+            INFRASTRUCTURE_ISSUES+=("GitHub Actions runners unavailable")
+            HEALTH_STATUS="degraded"
+          fi
+          
+          # Check container registry accessibility
+          echo "🐳 Testing container registry access..."
+          if ! echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin >/dev/null 2>&1; then
+            INFRASTRUCTURE_ISSUES+=("Container registry inaccessible")
+            HEALTH_STATUS="degraded"
+          fi
+          
+          # Check dependency availability
+          echo "📦 Checking dependency sources..."
+          if ! curl -s https://registry.npmjs.org/ >/dev/null; then
+            INFRASTRUCTURE_ISSUES+=("NPM registry unreachable")
+            HEALTH_STATUS="degraded"
+          fi
+          
+          echo "status=$HEALTH_STATUS" >> $GITHUB_OUTPUT
+          printf '%s\n' "${INFRASTRUCTURE_ISSUES[@]}" > infrastructure-issues.txt
+          
+          echo "🏗️ Infrastructure status: $HEALTH_STATUS"
+
+      - name: Security posture assessment
+        id: security-check
+        run: |
+          echo "🛡️ Assessing security posture..."
+          
+          SECURITY_SCORE=100
+          SECURITY_ISSUES=()
+          
+          # Check for recent security alerts
+          gh api repos/${{ github.repository }}/security-advisories \
+            --jq '.[] | select(.state == "published") | {severity, summary}' \
+            > security-advisories.json 2>/dev/null || echo "[]" > security-advisories.json
+          
+          ADVISORY_COUNT=$(cat security-advisories.json | jq '. | length')
+          if [ "$ADVISORY_COUNT" -gt 0 ]; then
+            SECURITY_ISSUES+=("$ADVISORY_COUNT active security advisories")
+            SECURITY_SCORE=$((SECURITY_SCORE - ADVISORY_COUNT * 10))
+          fi
+          
+          # Check for vulnerable dependencies in recent scans
+          if [ -f "npm-audit-full.json" ]; then
+            CRITICAL_VULNS=$(cat npm-audit-full.json | jq '.metadata.vulnerabilities.critical // 0')
+            HIGH_VULNS=$(cat npm-audit-full.json | jq '.metadata.vulnerabilities.high // 0')
+            
+            if [ "$CRITICAL_VULNS" -gt 0 ]; then
+              SECURITY_ISSUES+=("$CRITICAL_VULNS critical vulnerabilities")
+              SECURITY_SCORE=$((SECURITY_SCORE - CRITICAL_VULNS * 20))
+            fi
+            
+            if [ "$HIGH_VULNS" -gt 0 ]; then
+              SECURITY_ISSUES+=("$HIGH_VULNS high vulnerabilities")
+              SECURITY_SCORE=$((SECURITY_SCORE - HIGH_VULNS * 10))
+            fi
+          fi
+          
+          # Ensure score doesn't go below 0
+          if [ "$SECURITY_SCORE" -lt 0 ]; then
+            SECURITY_SCORE=0
+          fi
+          
+          echo "score=$SECURITY_SCORE" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SECURITY_ISSUES[@]}" > security-issues.txt
+          
+          echo "🛡️ Security score: $SECURITY_SCORE/100"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Performance metrics analysis
+        id: performance-check
+        run: |
+          echo "⚡ Analyzing performance metrics..."
+          
+          PERFORMANCE_SCORE=100
+          PERFORMANCE_ISSUES=()
+          
+          # Analyze recent performance test results
+          if [ -f "performance-current.json" ]; then
+            THROUGHPUT=$(cat performance-current.json | jq '.concurrent_requests.throughput // 0')
+            AVG_RESPONSE_TIME=$(cat performance-current.json | jq '.concurrent_requests.avg_response_time // 0')
+            MEMORY_USAGE=$(cat performance-current.json | jq '.memory_usage.max_mb // 0')
+            
+            # Check performance thresholds
+            if (( $(echo "$THROUGHPUT < 40" | bc -l 2>/dev/null || echo "0") )); then
+              PERFORMANCE_ISSUES+=("Low throughput: ${THROUGHPUT} req/s")
+              PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 15))
+            fi
+            
+            if (( $(echo "$AVG_RESPONSE_TIME > 150" | bc -l 2>/dev/null || echo "0") )); then
+              PERFORMANCE_ISSUES+=("High response time: ${AVG_RESPONSE_TIME}ms")
+              PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 15))
+            fi
+            
+            if (( $(echo "$MEMORY_USAGE > 300" | bc -l 2>/dev/null || echo "0") )); then
+              PERFORMANCE_ISSUES+=("High memory usage: ${MEMORY_USAGE}MB")
+              PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 10))
+            fi
+          fi
+          
+          # Check pipeline execution times
+          RECENT_DURATION_MS=$(cat workflow-analysis.json | jq '.avg_duration // 0' 2>/dev/null || echo "0")
+          RECENT_DURATION_MIN=$((RECENT_DURATION_MS / 60000))
+          
+          if [ "$RECENT_DURATION_MIN" -gt 20 ]; then
+            PERFORMANCE_ISSUES+=("Long pipeline duration: ${RECENT_DURATION_MIN}min")
+            PERFORMANCE_SCORE=$((PERFORMANCE_SCORE - 10))
+          fi
+          
+          echo "score=$PERFORMANCE_SCORE" >> $GITHUB_OUTPUT
+          printf '%s\n' "${PERFORMANCE_ISSUES[@]}" > performance-issues.txt
+          
+          echo "⚡ Performance score: $PERFORMANCE_SCORE/100"
+
+      - name: Overall health assessment
+        id: health-assessment
+        run: |
+          echo "🏥 Computing overall health assessment..."
+          
+          # Get individual scores
+          SUCCESS_RATE="${{ steps.workflow-analysis.outputs.success-rate }}"
+          SECURITY_SCORE="${{ steps.security-check.outputs.score }}"
+          PERFORMANCE_SCORE="${{ steps.performance-check.outputs.score }}"
+          INFRASTRUCTURE_STATUS="${{ steps.infrastructure-check.outputs.status }}"
+          
+          # Calculate weighted health score
+          SUCCESS_RATE_NUM=$(printf "%.0f" "$SUCCESS_RATE")
+          
+          # Infrastructure penalty
+          INFRASTRUCTURE_PENALTY=0
+          if [ "$INFRASTRUCTURE_STATUS" = "degraded" ]; then
+            INFRASTRUCTURE_PENALTY=20
+          elif [ "$INFRASTRUCTURE_STATUS" = "unhealthy" ]; then
+            INFRASTRUCTURE_PENALTY=40
+          fi
+          
+          # Overall health score (weighted average)
+          HEALTH_SCORE=$(( (SUCCESS_RATE_NUM * 40 + SECURITY_SCORE * 30 + PERFORMANCE_SCORE * 30) / 100 - INFRASTRUCTURE_PENALTY ))
+          
+          # Ensure score is between 0-100
+          if [ "$HEALTH_SCORE" -lt 0 ]; then
+            HEALTH_SCORE=0
+          elif [ "$HEALTH_SCORE" -gt 100 ]; then
+            HEALTH_SCORE=100
+          fi
+          
+          # Collect all issues
+          CRITICAL_ISSUES=()
+          WARNING_ISSUES=()
+          RECOMMENDATIONS=()
+          
+          # Critical issues (health score < 60)
+          if [ "$HEALTH_SCORE" -lt 60 ]; then
+            if [ "$SUCCESS_RATE_NUM" -lt 80 ]; then
+              CRITICAL_ISSUES+=("Pipeline success rate below 80%: ${SUCCESS_RATE}%")
+            fi
+            
+            if [ "$SECURITY_SCORE" -lt 70 ]; then
+              CRITICAL_ISSUES+=("Security score critically low: ${SECURITY_SCORE}/100")
+            fi
+          fi
+          
+          # Warning issues (health score < 85)
+          if [ "$HEALTH_SCORE" -lt 85 ]; then
+            if [ "$SUCCESS_RATE_NUM" -lt 95 ]; then
+              WARNING_ISSUES+=("Pipeline success rate could be improved: ${SUCCESS_RATE}%")
+            fi
+            
+            if [ "$PERFORMANCE_SCORE" -lt 85 ]; then
+              WARNING_ISSUES+=("Performance metrics below optimal: ${PERFORMANCE_SCORE}/100")
+            fi
+          fi
+          
+          # Generate recommendations
+          if [ "$SUCCESS_RATE_NUM" -lt 90 ]; then
+            RECOMMENDATIONS+=("Review and fix frequently failing tests")
+            RECOMMENDATIONS+=("Implement retry logic for flaky tests")
+          fi
+          
+          if [ "$SECURITY_SCORE" -lt 90 ]; then
+            RECOMMENDATIONS+=("Update dependencies to fix vulnerabilities")
+            RECOMMENDATIONS+=("Review security scanning configuration")
+          fi
+          
+          if [ "$PERFORMANCE_SCORE" -lt 90 ]; then
+            RECOMMENDATIONS+=("Optimize performance bottlenecks")
+            RECOMMENDATIONS+=("Review resource allocation")
+          fi
+          
+          # Output results
+          echo "score=$HEALTH_SCORE" >> $GITHUB_OUTPUT
+          printf '%s\n' "${CRITICAL_ISSUES[@]}" > critical-issues.txt
+          printf '%s\n' "${WARNING_ISSUES[@]}" > warning-issues.txt
+          printf '%s\n' "${RECOMMENDATIONS[@]}" > recommendations.txt
+          
+          echo "critical-issues=$(wc -l < critical-issues.txt)" >> $GITHUB_OUTPUT
+          echo "warning-issues=$(wc -l < warning-issues.txt)" >> $GITHUB_OUTPUT
+          echo "recommendations=$(wc -l < recommendations.txt)" >> $GITHUB_OUTPUT
+          
+          # Generate health report
+          cat > health-report.md << EOF
+          # Pipeline Health Report
+          
+          **Generated**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Overall Health Score**: ${HEALTH_SCORE}/100
+          
+          ## Component Scores
+          - **Pipeline Success Rate**: ${SUCCESS_RATE}%
+          - **Security Score**: ${SECURITY_SCORE}/100
+          - **Performance Score**: ${PERFORMANCE_SCORE}/100
+          - **Infrastructure**: ${INFRASTRUCTURE_STATUS}
+          
+          ## Critical Issues ($(wc -l < critical-issues.txt))
+          $(if [ -s critical-issues.txt ]; then cat critical-issues.txt | sed 's/^/- /'; else echo "None"; fi)
+          
+          ## Warning Issues ($(wc -l < warning-issues.txt))
+          $(if [ -s warning-issues.txt ]; then cat warning-issues.txt | sed 's/^/- /'; else echo "None"; fi)
+          
+          ## Recommendations ($(wc -l < recommendations.txt))
+          $(if [ -s recommendations.txt ]; then cat recommendations.txt | sed 's/^/- /'; else echo "All systems optimal"; fi)
+          EOF
+          
+          echo "🏥 Overall health score: $HEALTH_SCORE/100"
+
+  # ===== Alert System =====
+  alert-system:
+    name: 🚨 Alert System
+    runs-on: ubuntu-latest
+    needs: [pipeline-health-check]
+    if: always() && needs.pipeline-health-check.result == 'success'
+    
+    steps:
+      - name: Determine alert level
+        id: alert-level
+        run: |
+          HEALTH_SCORE="${{ needs.pipeline-health-check.outputs.health-score }}"
+          CRITICAL_ISSUES="${{ needs.pipeline-health-check.outputs.critical-issues }}"
+          WARNING_ISSUES="${{ needs.pipeline-health-check.outputs.warning-issues }}"
+          ALERT_THRESHOLD="${{ inputs.alert_threshold || '3' }}"
+          
+          # Determine alert level based on health score and threshold
+          ALERT_LEVEL="none"
+          
+          if [ "$HEALTH_SCORE" -lt 50 ] || [ "$CRITICAL_ISSUES" -gt 0 ]; then
+            ALERT_LEVEL="critical"
+          elif [ "$HEALTH_SCORE" -lt 75 ] || [ "$WARNING_ISSUES" -gt 2 ]; then
+            ALERT_LEVEL="warning"
+          elif [ "$HEALTH_SCORE" -lt 90 ] && [ "$ALERT_THRESHOLD" -ge 4 ]; then
+            ALERT_LEVEL="info"
+          fi
+          
+          echo "level=$ALERT_LEVEL" >> $GITHUB_OUTPUT
+          echo "🚨 Alert level: $ALERT_LEVEL"
+
+      - name: Send critical alerts
+        if: steps.alert-level.outputs.level == 'critical'
+        run: |
+          echo "🚨 CRITICAL ALERT: Pipeline health critically degraded"
+          
+          HEALTH_SCORE="${{ needs.pipeline-health-check.outputs.health-score }}"
+          
+          # Create alert payload
+          cat > alert-payload.json << EOF
+          {
+            "alert_type": "critical",
+            "title": "Pipeline Health Critical",
+            "message": "CCTelegram MCP Server pipeline health has degraded to ${HEALTH_SCORE}/100",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "health_score": ${HEALTH_SCORE},
+            "critical_issues": ${{ needs.pipeline-health-check.outputs.critical-issues }},
+            "warning_issues": ${{ needs.pipeline-health-check.outputs.warning-issues }},
+            "actions_required": [
+              "Investigate pipeline failures",
+              "Review security vulnerabilities",
+              "Check infrastructure status"
+            ]
+          }
+          EOF
+          
+          # Send to webhook if available
+          if [ "${{ env.ALERT_WEBHOOK_URL }}" != "" ]; then
+            curl -X POST "${{ env.ALERT_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d @alert-payload.json || echo "Failed to send webhook alert"
+          fi
+          
+          # Create GitHub issue for tracking
+          gh issue create \
+            --title "🚨 CRITICAL: Pipeline Health Degraded (Score: ${HEALTH_SCORE}/100)" \
+            --body "$(cat health-report.md)" \
+            --label "critical,pipeline,health" || echo "Failed to create issue"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Send warning alerts
+        if: steps.alert-level.outputs.level == 'warning'
+        run: |
+          echo "⚠️ WARNING: Pipeline health needs attention"
+          
+          HEALTH_SCORE="${{ needs.pipeline-health-check.outputs.health-score }}"
+          
+          # Create warning payload
+          cat > warning-payload.json << EOF
+          {
+            "alert_type": "warning",
+            "title": "Pipeline Health Warning",
+            "message": "CCTelegram MCP Server pipeline health score: ${HEALTH_SCORE}/100",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "repository": "${{ github.repository }}",
+            "health_score": ${HEALTH_SCORE},
+            "warning_issues": ${{ needs.pipeline-health-check.outputs.warning-issues }},
+            "recommendations": ${{ needs.pipeline-health-check.outputs.recommendations }}
+          }
+          EOF
+          
+          # Send to webhook if available
+          if [ "${{ env.ALERT_WEBHOOK_URL }}" != "" ]; then
+            curl -X POST "${{ env.ALERT_WEBHOOK_URL }}" \
+              -H "Content-Type: application/json" \
+              -d @warning-payload.json || echo "Failed to send webhook alert"
+          fi
+
+      - name: Update health dashboard
+        run: |
+          echo "📊 Updating health dashboard..."
+          
+          # Create/update health dashboard data
+          cat > dashboard-data.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "health_score": ${{ needs.pipeline-health-check.outputs.health-score }},
+            "components": {
+              "pipeline_success_rate": "${{ needs.pipeline-health-check.outputs.success-rate }}%",
+              "security_score": "${{ needs.pipeline-health-check.outputs.security-score }}/100",
+              "performance_score": "${{ needs.pipeline-health-check.outputs.performance-score }}/100",
+              "infrastructure_status": "${{ needs.pipeline-health-check.outputs.infrastructure-status }}"
+            },
+            "issues": {
+              "critical": ${{ needs.pipeline-health-check.outputs.critical-issues }},
+              "warning": ${{ needs.pipeline-health-check.outputs.warning-issues }},
+              "recommendations": ${{ needs.pipeline-health-check.outputs.recommendations }}
+            }
+          }
+          EOF
+
+  # ===== Health Metrics Collection =====
+  metrics-collection:
+    name: 📊 Metrics Collection
+    runs-on: ubuntu-latest
+    needs: [pipeline-health-check]
+    if: always()
+    
+    steps:
+      - name: Collect and store metrics
+        run: |
+          echo "📊 Collecting pipeline metrics..."
+          
+          # Create comprehensive metrics dataset
+          cat > pipeline-metrics.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "date": "$(date -u +%Y-%m-%d)",
+            "hour": "$(date -u +%H)",
+            "metrics": {
+              "overall_health_score": ${{ needs.pipeline-health-check.outputs.health-score }},
+              "pipeline_success_rate": "${{ needs.pipeline-health-check.outputs.success-rate }}",
+              "critical_issues_count": ${{ needs.pipeline-health-check.outputs.critical-issues }},
+              "warning_issues_count": ${{ needs.pipeline-health-check.outputs.warning-issues }},
+              "recommendations_count": ${{ needs.pipeline-health-check.outputs.recommendations }}
+            },
+            "metadata": {
+              "repository": "${{ github.repository }}",
+              "workflow_run_id": "${{ github.run_id }}",
+              "commit_sha": "${{ github.sha }}",
+              "trigger": "${{ github.event_name }}"
+            }
+          }
+          EOF
+
+      - name: Upload metrics and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-health-metrics-${{ github.run_id }}
+          path: |
+            pipeline-metrics.json
+            health-report.md
+            workflow-analysis.json
+            dashboard-data.json
+          retention-days: ${{ env.MONITORING_RETENTION_DAYS }}
+
+      - name: Generate monitoring summary
+        run: |
+          HEALTH_SCORE="${{ needs.pipeline-health-check.outputs.health-score }}"
+          
+          echo "## 🏥 Pipeline Health Monitoring Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Health Score**: ${HEALTH_SCORE}/100" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HEALTH_SCORE" -ge 90 ]; then
+            echo "✅ **Status**: Excellent - All systems operating optimally" >> $GITHUB_STEP_SUMMARY
+          elif [ "$HEALTH_SCORE" -ge 75 ]; then
+            echo "⚠️ **Status**: Good - Minor optimizations recommended" >> $GITHUB_STEP_SUMMARY
+          elif [ "$HEALTH_SCORE" -ge 60 ]; then
+            echo "🟡 **Status**: Fair - Attention needed for some components" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🚨 **Status**: Critical - Immediate action required" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Critical Issues**: ${{ needs.pipeline-health-check.outputs.critical-issues }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Warning Issues**: ${{ needs.pipeline-health-check.outputs.warning-issues }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Recommendations**: ${{ needs.pipeline-health-check.outputs.recommendations }}" >> $GITHUB_STEP_SUMMARY

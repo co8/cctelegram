@@ -1,0 +1,553 @@
+name: Performance Regression Testing
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mcp-server/**'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mcp-server/**'
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+env:
+  NODE_VERSION: '20.x'
+  PERFORMANCE_BASELINE_BRANCH: 'main'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===== Performance Baseline =====
+  performance-baseline:
+    name: 📊 Establish Performance Baseline
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    
+    outputs:
+      baseline-created: ${{ steps.baseline-check.outputs.created }}
+      baseline-path: ${{ steps.baseline-upload.outputs.path }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PERFORMANCE_BASELINE_BRANCH }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server
+        run: npm ci
+
+      - name: Build project
+        working-directory: ./mcp-server
+        run: npm run build
+
+      - name: Run baseline performance tests
+        working-directory: ./mcp-server
+        run: |
+          echo "🚀 Running baseline performance tests..."
+          
+          # Run performance tests with detailed metrics
+          npm test -- --testPathPattern=performance --testTimeout=120000 --verbose > performance-output.log 2>&1
+          
+          # Extract performance metrics from test output
+          cat > extract-metrics.js << 'EOF'
+          const fs = require('fs');
+          const output = fs.readFileSync('performance-output.log', 'utf8');
+          
+          // Extract performance metrics using regex patterns
+          const metrics = {
+            timestamp: new Date().toISOString(),
+            git_commit: process.env.GITHUB_SHA,
+            git_branch: process.env.GITHUB_REF_NAME,
+            concurrent_requests: {
+              throughput: extractMetric(output, /Throughput: ([\d.]+) req\/s/),
+              avg_response_time: extractMetric(output, /Average response time: ([\d.]+)ms/),
+              error_rate: extractMetric(output, /Error rate: ([\d.]+)%/),
+              successful_requests: extractMetric(output, /Successful requests: (\d+)/)
+            },
+            mixed_operations: {
+              throughput: extractMetric(output, /Mixed Operations Performance[\s\S]*?Throughput: ([\d.]+) ops\/s/),
+              success_rate: extractMetric(output, /Success rate: ([\d.]+)%/)
+            },
+            memory_usage: {
+              initial_mb: extractMetric(output, /Initial memory: ([\d.]+)MB/),
+              final_mb: extractMetric(output, /Final memory: ([\d.]+)MB/),
+              max_mb: extractMetric(output, /Max memory: ([\d.]+)MB/),
+              growth_percent: extractMetric(output, /Memory growth: ([\d.]+)%/)
+            },
+            benchmarks: {
+              send_event: extractMetric(output, /send_event: ([\d.]+) ops\/s/),
+              send_message: extractMetric(output, /send_message: ([\d.]+) ops\/s/),
+              get_status: extractMetric(output, /get_status: ([\d.]+) ops\/s/),
+              get_responses: extractMetric(output, /get_responses: ([\d.]+) ops\/s/),
+              bridge_management: extractMetric(output, /bridge_management: ([\d.]+) ops\/s/)
+            },
+            stress_test: {
+              throughput: extractMetric(output, /Stress Test Results[\s\S]*?Throughput: ([\d.]+) ops\/s/),
+              success_rate: extractMetric(output, /Success rate: ([\d.]+)%/),
+              total_time: extractMetric(output, /Total time: (\d+)ms/)
+            }
+          };
+          
+          function extractMetric(text, regex) {
+            const match = text.match(regex);
+            return match ? parseFloat(match[1]) : null;
+          }
+          
+          // Write baseline metrics
+          fs.writeFileSync('performance-baseline.json', JSON.stringify(metrics, null, 2));
+          
+          console.log('📊 Baseline Performance Metrics:');
+          console.log(JSON.stringify(metrics, null, 2));
+          EOF
+          
+          node extract-metrics.js
+
+      - name: Validate baseline metrics
+        working-directory: ./mcp-server
+        run: |
+          echo "✅ Validating baseline metrics..."
+          
+          # Check if baseline file was created and contains valid data
+          if [ ! -f "performance-baseline.json" ]; then
+            echo "❌ Baseline file not created"
+            exit 1
+          fi
+          
+          # Validate key metrics exist
+          node -e "
+            const baseline = JSON.parse(require('fs').readFileSync('performance-baseline.json', 'utf8'));
+            const required = ['concurrent_requests.throughput', 'memory_usage.max_mb', 'benchmarks.send_event'];
+            let valid = true;
+            
+            required.forEach(path => {
+              const value = path.split('.').reduce((obj, key) => obj?.[key], baseline);
+              if (value === null || value === undefined) {
+                console.log(\`❌ Missing metric: \${path}\`);
+                valid = false;
+              } else {
+                console.log(\`✅ \${path}: \${value}\`);
+              }
+            });
+            
+            if (!valid) process.exit(1);
+          "
+
+      - name: Baseline check
+        id: baseline-check
+        run: echo "created=true" >> $GITHUB_OUTPUT
+
+      - name: Upload baseline metrics
+        id: baseline-upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-baseline-${{ github.sha }}
+          path: mcp-server/performance-baseline.json
+          retention-days: 90
+
+      - name: Store baseline in repository
+        if: github.ref == 'refs/heads/main'
+        working-directory: ./mcp-server
+        run: |
+          # Store baseline in a separate branch for historical tracking
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Create/update performance-baselines branch
+          git fetch origin performance-baselines:performance-baselines 2>/dev/null || git checkout -b performance-baselines
+          git checkout performance-baselines
+          
+          # Create directory structure
+          mkdir -p .performance/baselines
+          
+          # Copy baseline with timestamp
+          cp performance-baseline.json ".performance/baselines/baseline-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:8}.json"
+          cp performance-baseline.json ".performance/baselines/latest.json"
+          
+          # Commit and push
+          git add .performance/baselines/
+          git commit -m "Add performance baseline for commit ${GITHUB_SHA:0:8}" || exit 0
+          git push origin performance-baselines
+
+  # ===== Performance Regression Testing =====
+  performance-regression:
+    name: 🔍 Performance Regression Analysis
+    runs-on: ubuntu-latest
+    needs: [performance-baseline]
+    if: always() && (github.event_name == 'pull_request' || github.ref != 'refs/heads/main')
+    
+    outputs:
+      regression-detected: ${{ steps.regression-analysis.outputs.detected }}
+      performance-score: ${{ steps.regression-analysis.outputs.score }}
+      regression-summary: ${{ steps.regression-analysis.outputs.summary }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server
+        run: npm ci
+
+      - name: Build project
+        working-directory: ./mcp-server
+        run: npm run build
+
+      # Download latest baseline
+      - name: Download baseline metrics
+        run: |
+          echo "📥 Downloading baseline metrics..."
+          
+          # Try to download from artifacts first
+          if [ "${{ needs.performance-baseline.outputs.baseline-created }}" = "true" ]; then
+            echo "Using baseline from current run"
+          else
+            # Checkout baseline from performance-baselines branch
+            git fetch origin performance-baselines:performance-baselines 2>/dev/null || {
+              echo "⚠️ No baseline branch found, creating default baseline"
+              mkdir -p .performance/baselines
+              cat > .performance/baselines/latest.json << 'EOF'
+          {
+            "timestamp": "2024-01-01T00:00:00.000Z",
+            "git_commit": "baseline",
+            "git_branch": "main",
+            "concurrent_requests": {
+              "throughput": 50,
+              "avg_response_time": 100,
+              "error_rate": 1,
+              "successful_requests": 100
+            },
+            "mixed_operations": {
+              "throughput": 30,
+              "success_rate": 95
+            },
+            "memory_usage": {
+              "initial_mb": 50,
+              "final_mb": 100,
+              "max_mb": 200,
+              "growth_percent": 50
+            },
+            "benchmarks": {
+              "send_event": 40,
+              "send_message": 80,
+              "get_status": 160,
+              "get_responses": 120,
+              "bridge_management": 16
+            },
+            "stress_test": {
+              "throughput": 10,
+              "success_rate": 80,
+              "total_time": 30000
+            }
+          }
+          EOF
+            }
+            
+            if [ -f ".performance/baselines/latest.json" ]; then
+              cp .performance/baselines/latest.json mcp-server/performance-baseline.json
+            else
+              git checkout performance-baselines -- .performance/baselines/latest.json
+              cp .performance/baselines/latest.json mcp-server/performance-baseline.json
+            fi
+          fi
+
+      - name: Download current baseline
+        if: needs.performance-baseline.outputs.baseline-created == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: performance-baseline-${{ github.sha }}
+          path: mcp-server/
+
+      - name: Run current performance tests
+        working-directory: ./mcp-server
+        run: |
+          echo "🚀 Running current performance tests..."
+          
+          # Run performance tests
+          npm test -- --testPathPattern=performance --testTimeout=120000 --verbose > performance-current.log 2>&1
+          
+          # Extract current metrics (reuse extraction script)
+          cat > extract-current-metrics.js << 'EOF'
+          const fs = require('fs');
+          const output = fs.readFileSync('performance-current.log', 'utf8');
+          
+          const metrics = {
+            timestamp: new Date().toISOString(),
+            git_commit: process.env.GITHUB_SHA,
+            git_branch: process.env.GITHUB_REF_NAME,
+            concurrent_requests: {
+              throughput: extractMetric(output, /Throughput: ([\d.]+) req\/s/),
+              avg_response_time: extractMetric(output, /Average response time: ([\d.]+)ms/),
+              error_rate: extractMetric(output, /Error rate: ([\d.]+)%/),
+              successful_requests: extractMetric(output, /Successful requests: (\d+)/)
+            },
+            mixed_operations: {
+              throughput: extractMetric(output, /Mixed Operations Performance[\s\S]*?Throughput: ([\d.]+) ops\/s/),
+              success_rate: extractMetric(output, /Success rate: ([\d.]+)%/)
+            },
+            memory_usage: {
+              initial_mb: extractMetric(output, /Initial memory: ([\d.]+)MB/),
+              final_mb: extractMetric(output, /Final memory: ([\d.]+)MB/),
+              max_mb: extractMetric(output, /Max memory: ([\d.]+)MB/),
+              growth_percent: extractMetric(output, /Memory growth: ([\d.]+)%/)
+            },
+            benchmarks: {
+              send_event: extractMetric(output, /send_event: ([\d.]+) ops\/s/),
+              send_message: extractMetric(output, /send_message: ([\d.]+) ops\/s/),
+              get_status: extractMetric(output, /get_status: ([\d.]+) ops\/s/),
+              get_responses: extractMetric(output, /get_responses: ([\d.]+) ops\/s/),
+              bridge_management: extractMetric(output, /bridge_management: ([\d.]+) ops\/s/)
+            },
+            stress_test: {
+              throughput: extractMetric(output, /Stress Test Results[\s\S]*?Throughput: ([\d.]+) ops\/s/),
+              success_rate: extractMetric(output, /Success rate: ([\d.]+)%/),
+              total_time: extractMetric(output, /Total time: (\d+)ms/)
+            }
+          };
+          
+          function extractMetric(text, regex) {
+            const match = text.match(regex);
+            return match ? parseFloat(match[1]) : null;
+          }
+          
+          fs.writeFileSync('performance-current.json', JSON.stringify(metrics, null, 2));
+          EOF
+          
+          node extract-current-metrics.js
+
+      - name: Performance regression analysis
+        id: regression-analysis
+        working-directory: ./mcp-server
+        run: |
+          echo "🔍 Analyzing performance regression..."
+          
+          cat > analyze-regression.js << 'EOF'
+          const fs = require('fs');
+          
+          // Load baseline and current metrics
+          const baseline = JSON.parse(fs.readFileSync('performance-baseline.json', 'utf8'));
+          const current = JSON.parse(fs.readFileSync('performance-current.json', 'utf8'));
+          
+          // Define regression thresholds (percentage change that triggers alert)
+          const thresholds = {
+            throughput: -10,        // 10% decrease in throughput
+            response_time: 20,      // 20% increase in response time
+            error_rate: 50,         // 50% increase in error rate
+            memory_usage: 25,       // 25% increase in memory usage
+            success_rate: -5        // 5% decrease in success rate
+          };
+          
+          const results = {
+            regressions: [],
+            improvements: [],
+            summary: {
+              total_checks: 0,
+              regressions_found: 0,
+              improvements_found: 0,
+              performance_score: 100
+            }
+          };
+          
+          function analyzeMetric(name, baselineValue, currentValue, threshold, higherIsBetter = true) {
+            if (baselineValue === null || currentValue === null) return;
+            
+            results.summary.total_checks++;
+            const percentChange = ((currentValue - baselineValue) / baselineValue) * 100;
+            
+            const isRegression = higherIsBetter ? 
+              percentChange < threshold : 
+              percentChange > Math.abs(threshold);
+            
+            const isImprovement = higherIsBetter ? 
+              percentChange > 5 : 
+              percentChange < -5;
+            
+            if (isRegression) {
+              results.regressions.push({
+                metric: name,
+                baseline: baselineValue,
+                current: currentValue,
+                change_percent: percentChange.toFixed(2),
+                threshold: threshold,
+                severity: Math.abs(percentChange) > Math.abs(threshold * 2) ? 'high' : 'medium'
+              });
+              results.summary.regressions_found++;
+              
+              // Deduct points from performance score
+              const severityMultiplier = Math.abs(percentChange) > Math.abs(threshold * 2) ? 20 : 10;
+              results.summary.performance_score -= severityMultiplier;
+            } else if (isImprovement) {
+              results.improvements.push({
+                metric: name,
+                baseline: baselineValue,
+                current: currentValue,
+                change_percent: percentChange.toFixed(2)
+              });
+              results.summary.improvements_found++;
+            }
+          }
+          
+          // Analyze key metrics
+          analyzeMetric('Concurrent Requests Throughput', 
+            baseline.concurrent_requests?.throughput, 
+            current.concurrent_requests?.throughput, 
+            thresholds.throughput, true);
+          
+          analyzeMetric('Average Response Time', 
+            baseline.concurrent_requests?.avg_response_time, 
+            current.concurrent_requests?.avg_response_time, 
+            thresholds.response_time, false);
+          
+          analyzeMetric('Error Rate', 
+            baseline.concurrent_requests?.error_rate, 
+            current.concurrent_requests?.error_rate, 
+            thresholds.error_rate, false);
+          
+          analyzeMetric('Memory Usage (Max)', 
+            baseline.memory_usage?.max_mb, 
+            current.memory_usage?.max_mb, 
+            thresholds.memory_usage, false);
+          
+          analyzeMetric('Mixed Operations Success Rate', 
+            baseline.mixed_operations?.success_rate, 
+            current.mixed_operations?.success_rate, 
+            thresholds.success_rate, true);
+          
+          // Analyze benchmarks
+          Object.keys(baseline.benchmarks || {}).forEach(benchmark => {
+            analyzeMetric(`Benchmark: ${benchmark}`, 
+              baseline.benchmarks[benchmark], 
+              current.benchmarks[benchmark], 
+              thresholds.throughput, true);
+          });
+          
+          // Ensure performance score doesn't go below 0
+          results.summary.performance_score = Math.max(0, results.summary.performance_score);
+          
+          // Generate summary
+          const regressionDetected = results.summary.regressions_found > 0;
+          let summaryText = `Performance Analysis Summary:\n`;
+          summaryText += `- Total Checks: ${results.summary.total_checks}\n`;
+          summaryText += `- Regressions Found: ${results.summary.regressions_found}\n`;
+          summaryText += `- Improvements Found: ${results.summary.improvements_found}\n`;
+          summaryText += `- Performance Score: ${results.summary.performance_score}/100\n`;
+          
+          if (regressionDetected) {
+            summaryText += `\n⚠️ Performance Regressions Detected:\n`;
+            results.regressions.forEach(reg => {
+              summaryText += `- ${reg.metric}: ${reg.change_percent}% change (${reg.baseline} → ${reg.current})\n`;
+            });
+          }
+          
+          if (results.summary.improvements_found > 0) {
+            summaryText += `\n✅ Performance Improvements:\n`;
+            results.improvements.forEach(imp => {
+              summaryText += `- ${imp.metric}: ${imp.change_percent}% improvement (${imp.baseline} → ${imp.current})\n`;
+            });
+          }
+          
+          // Write results
+          fs.writeFileSync('regression-analysis.json', JSON.stringify(results, null, 2));
+          
+          console.log(summaryText);
+          
+          // Set GitHub outputs
+          console.log('Setting GitHub outputs...');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `detected=${regressionDetected}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `score=${results.summary.performance_score}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `summary=${summaryText.replace(/\n/g, '\\n')}\n`);
+          
+          EOF
+          
+          node analyze-regression.js
+
+      - name: Performance gate check
+        working-directory: ./mcp-server
+        run: |
+          REGRESSION_DETECTED="${{ steps.regression-analysis.outputs.detected }}"
+          PERFORMANCE_SCORE="${{ steps.regression-analysis.outputs.score }}"
+          
+          echo "🚪 Performance Gate Check:"
+          echo "- Regression Detected: $REGRESSION_DETECTED"
+          echo "- Performance Score: $PERFORMANCE_SCORE/100"
+          
+          # Performance gate rules
+          if [ "$REGRESSION_DETECTED" = "true" ] && [ "$PERFORMANCE_SCORE" -lt 70 ]; then
+            echo "❌ FAILED: Significant performance regression detected (Score: $PERFORMANCE_SCORE < 70)"
+            exit 1
+          elif [ "$REGRESSION_DETECTED" = "true" ] && [ "$PERFORMANCE_SCORE" -lt 85 ]; then
+            echo "⚠️ WARNING: Performance regression detected but within acceptable range (Score: $PERFORMANCE_SCORE)"
+          else
+            echo "✅ PASSED: No significant performance regression"
+          fi
+
+      - name: Upload performance reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-regression-reports-${{ github.run_id }}
+          path: |
+            mcp-server/performance-baseline.json
+            mcp-server/performance-current.json
+            mcp-server/regression-analysis.json
+            mcp-server/performance-current.log
+          retention-days: 30
+
+      - name: Comment regression results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const regressionDetected = '${{ steps.regression-analysis.outputs.detected }}' === 'true';
+            const performanceScore = '${{ steps.regression-analysis.outputs.score }}';
+            const summary = `${{ steps.regression-analysis.outputs.summary }}`.replace(/\\n/g, '\n');
+            
+            const emoji = regressionDetected ? '⚠️' : '✅';
+            const status = regressionDetected ? 'REGRESSION DETECTED' : 'NO REGRESSION';
+            const color = regressionDetected ? '🔴' : '🟢';
+            
+            const comment = `
+            ## ${emoji} Performance Regression Analysis
+            
+            | Metric | Value |
+            |--------|-------|
+            | ${color} **Status** | **${status}** |
+            | 📊 Performance Score | ${performanceScore}/100 |
+            
+            <details>
+            <summary>📈 Detailed Analysis</summary>
+            
+            \`\`\`
+            ${summary}
+            \`\`\`
+            
+            </details>
+            
+            ${regressionDetected ? '⚠️ **Action Required**: Performance regression detected. Please review and optimize before merging.' : '🎉 No performance regression detected!'}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
