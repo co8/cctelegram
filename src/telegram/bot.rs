@@ -3,7 +3,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery,
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
-use anyhow::{Result, Context};
+use anyhow::Result;
 use tracing::{info, warn, error};
 use chrono::{Utc, TimeZone};
 use chrono_tz::Tz;
@@ -13,6 +13,8 @@ use crate::events::types::{Event, EventType};
 use crate::mcp::{McpIntegration, McpConfig};
 use super::messages::{MessageFormatter, MessageStyle};
 use super::rate_limiter::{RateLimiter, RateLimiterConfig};
+use super::retry_handler::{RetryHandler, RetryConfig, CircuitBreakerConfig};
+use crate::utils::errors::{BridgeError};
 
 pub struct TelegramBot {
     bot: Bot,
@@ -22,6 +24,7 @@ pub struct TelegramBot {
     timezone: Tz,
     mcp_integration: Option<Arc<McpIntegration>>,
     rate_limiter: Option<Arc<RateLimiter>>,
+    retry_handler: Arc<RetryHandler>,
 }
 
 #[derive(serde::Serialize)]
@@ -81,6 +84,7 @@ impl TelegramBot {
             timezone,
             mcp_integration: None, // Initialize without MCP integration by default
             rate_limiter: None, // Initialize without rate limiter by default
+            retry_handler: Arc::new(RetryHandler::new()),
         }
     }
 
@@ -93,6 +97,7 @@ impl TelegramBot {
             timezone,
             mcp_integration: None, // Initialize without MCP integration by default
             rate_limiter: None, // Initialize without rate limiter by default
+            retry_handler: Arc::new(RetryHandler::new()),
         }
     }
 
@@ -120,8 +125,13 @@ impl TelegramBot {
             Arc::new(RateLimiter::new_in_memory(config))
         };
         
+        // Update retry handler with rate limiter integration
+        self.retry_handler = Arc::new(
+            RetryHandler::new().with_rate_limiter(rate_limiter.clone())
+        );
+        
         self.rate_limiter = Some(rate_limiter);
-        info!("Rate limiting enabled successfully");
+        info!("Rate limiting enabled successfully with retry handler integration");
         Ok(())
     }
 
@@ -130,7 +140,15 @@ impl TelegramBot {
         let config = RateLimiterConfig::default();
         info!("Enabling default rate limiting (in-memory, {}msg/s global, {}msg/s per-chat)", 
               config.global_limit, config.per_chat_limit);
-        self.rate_limiter = Some(Arc::new(RateLimiter::new_in_memory(config)));
+        
+        let rate_limiter = Arc::new(RateLimiter::new_in_memory(config));
+        
+        // Update retry handler with rate limiter integration
+        self.retry_handler = Arc::new(
+            RetryHandler::new().with_rate_limiter(rate_limiter.clone())
+        );
+        
+        self.rate_limiter = Some(rate_limiter);
     }
 
     /// Get rate limiter metrics (for SubAgent Delta monitoring)
@@ -162,62 +180,80 @@ impl TelegramBot {
         }
     }
 
-    /// Send a message with rate limiting enforcement
-    async fn send_message_with_rate_limit(&self, chat_id: teloxide::types::ChatId, message: &str) -> Result<teloxide::types::Message> {
-        let chat_id_i64 = chat_id.0;
+    /// Configure retry handler with custom settings
+    pub fn configure_retry_handler(&mut self, retry_config: RetryConfig, circuit_breaker_config: CircuitBreakerConfig) {
+        let mut retry_handler = RetryHandler::with_config(retry_config, circuit_breaker_config);
         
-        // Check rate limit if rate limiter is enabled
+        // Preserve rate limiter integration if it exists
         if let Some(rate_limiter) = &self.rate_limiter {
-            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
-                .context("Rate limiter check failed")?;
-            
-            if !allowed {
-                return Err(anyhow::anyhow!(
-                    "Message to chat {} blocked by rate limiting", 
-                    chat_id_i64
-                ));
-            }
+            retry_handler = retry_handler.with_rate_limiter(rate_limiter.clone());
         }
         
-        // Send the message
-        self.bot
-            .send_message(chat_id, message)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
+        self.retry_handler = Arc::new(retry_handler);
+        info!("Retry handler configured with custom settings");
     }
 
-    /// Send a message with parse mode and rate limiting enforcement
-    async fn send_message_with_parse_mode_and_rate_limit(
+    /// Get retry handler statistics
+    pub async fn get_retry_handler_stats(&self) -> Result<serde_json::Value> {
+        self.retry_handler.get_stats().await
+    }
+
+    /// Reset retry handler statistics
+    pub async fn reset_retry_handler_stats(&self) {
+        self.retry_handler.reset_stats().await;
+    }
+
+    /// Send a message with rate limiting and retry logic
+    async fn send_message_with_retry(&self, chat_id: teloxide::types::ChatId, message: &str) -> Result<teloxide::types::Message> {
+        let chat_id_i64 = chat_id.0;
+        let message = message.to_string();
+        let bot = self.bot.clone();
+        
+        self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
+            let bot = bot.clone();
+            let chat_id = chat_id;
+            let message = message.clone();
+            
+            async move {
+                bot.send_message(chat_id, &message)
+                    .await
+                    .map_err(|e| {
+                        BridgeError::Telegram(e)
+                    })
+            }
+        }).await
+    }
+
+    /// Send a message with parse mode and retry logic
+    async fn send_message_with_parse_mode_and_retry(
         &self, 
         chat_id: teloxide::types::ChatId, 
         message: &str,
         parse_mode: ParseMode,
     ) -> Result<teloxide::types::Message> {
         let chat_id_i64 = chat_id.0;
+        let message = message.to_string();
+        let bot = self.bot.clone();
         
-        // Check rate limit if rate limiter is enabled
-        if let Some(rate_limiter) = &self.rate_limiter {
-            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
-                .context("Rate limiter check failed")?;
+        self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
+            let bot = bot.clone();
+            let chat_id = chat_id;
+            let message = message.clone();
+            let parse_mode = parse_mode;
             
-            if !allowed {
-                return Err(anyhow::anyhow!(
-                    "Message to chat {} blocked by rate limiting", 
-                    chat_id_i64
-                ));
+            async move {
+                bot.send_message(chat_id, &message)
+                    .parse_mode(parse_mode)
+                    .await
+                    .map_err(|e| {
+                        BridgeError::Telegram(e)
+                    })
             }
-        }
-        
-        // Send the message
-        self.bot
-            .send_message(chat_id, message)
-            .parse_mode(parse_mode)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
+        }).await
     }
 
-    /// Send a message with reply markup and rate limiting enforcement
-    async fn send_message_with_reply_markup_and_rate_limit(
+    /// Send a message with reply markup and retry logic
+    async fn send_message_with_reply_markup_and_retry(
         &self, 
         chat_id: teloxide::types::ChatId, 
         message: &str,
@@ -225,27 +261,26 @@ impl TelegramBot {
         reply_markup: InlineKeyboardMarkup,
     ) -> Result<teloxide::types::Message> {
         let chat_id_i64 = chat_id.0;
+        let message = message.to_string();
+        let bot = self.bot.clone();
         
-        // Check rate limit if rate limiter is enabled
-        if let Some(rate_limiter) = &self.rate_limiter {
-            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
-                .context("Rate limiter check failed")?;
+        self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
+            let bot = bot.clone();
+            let chat_id = chat_id;
+            let message = message.clone();
+            let parse_mode = parse_mode;
+            let reply_markup = reply_markup.clone();
             
-            if !allowed {
-                return Err(anyhow::anyhow!(
-                    "Message to chat {} blocked by rate limiting", 
-                    chat_id_i64
-                ));
+            async move {
+                bot.send_message(chat_id, &message)
+                    .parse_mode(parse_mode)
+                    .reply_markup(reply_markup)
+                    .await
+                    .map_err(|e| {
+                        BridgeError::Telegram(e)
+                    })
             }
-        }
-        
-        // Send the message
-        self.bot
-            .send_message(chat_id, message)
-            .parse_mode(parse_mode)
-            .reply_markup(reply_markup)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
+        }).await
     }
 
     pub async fn send_event_notification(&self, user_id: i64, event: &Event) -> Result<()> {
@@ -276,7 +311,7 @@ impl TelegramBot {
         let keyboard = self.create_completion_keyboard(event);
         let chat_id = teloxide::types::ChatId(user_id);
 
-        match self.send_message_with_reply_markup_and_rate_limit(
+        match self.send_message_with_reply_markup_and_retry(
             chat_id, &message, ParseMode::MarkdownV2, keyboard
         ).await {
             Ok(_) => {
@@ -295,7 +330,7 @@ impl TelegramBot {
         let keyboard = self.create_approval_keyboard(event);
         let chat_id = teloxide::types::ChatId(user_id);
 
-        match self.send_message_with_reply_markup_and_rate_limit(
+        match self.send_message_with_reply_markup_and_retry(
             chat_id, &message, ParseMode::MarkdownV2, keyboard
         ).await {
             Ok(_) => {
@@ -313,7 +348,7 @@ impl TelegramBot {
         let message = self.formatter.format_progress_message(event);
         let chat_id = teloxide::types::ChatId(user_id);
 
-        match self.send_message_with_parse_mode_and_rate_limit(
+        match self.send_message_with_parse_mode_and_retry(
             chat_id, &message, ParseMode::MarkdownV2
         ).await {
             Ok(_) => {
@@ -331,7 +366,7 @@ impl TelegramBot {
         let message = self.formatter.format_generic_message(event);
         let chat_id = teloxide::types::ChatId(user_id);
 
-        match self.send_message_with_parse_mode_and_rate_limit(
+        match self.send_message_with_parse_mode_and_retry(
             chat_id, &message, ParseMode::MarkdownV2
         ).await {
             Ok(_) => {
@@ -924,7 +959,7 @@ impl TelegramBot {
         );
 
         let chat_id = teloxide::types::ChatId(user_id);
-        match self.send_message_with_parse_mode_and_rate_limit(
+        match self.send_message_with_parse_mode_and_retry(
             chat_id, &startup_message, ParseMode::MarkdownV2
         ).await {
             Ok(_) => {
