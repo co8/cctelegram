@@ -626,7 +626,7 @@ impl TelegramBot {
                 
                 match self.read_taskmaster_tasks(&taskmaster_path).await {
                     Ok(Some(tasks_info)) => {
-                        status_parts.push("✅ Direct TaskMaster read".to_string());
+                        status_parts.push("📋 TaskMaster".to_string());
                         status_parts.push(format!("*Project: {}*", Self::escape_markdown_v2(&tasks_info.project_name)));
                         status_parts.push(format!("📌 Pending: {}", tasks_info.pending));
                         status_parts.push(format!("🔄 In Progress: {}", tasks_info.in_progress));
@@ -647,7 +647,7 @@ impl TelegramBot {
         }
         
         status_parts.push("".to_string());
-        status_parts.push("💡 For detailed task info, use MCP server with Claude Code".to_string());
+        // status_parts.push("💡 For detailed task info, use MCP server with Claude Code".to_string());
         
         status_parts.join("\n")
     }
