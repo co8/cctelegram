@@ -10,6 +10,7 @@ use chrono_tz::Tz;
 use serde_json;
 use tokio::fs;
 use crate::events::types::{Event, EventType};
+use crate::mcp::{McpIntegration, McpConfig};
 use super::messages::{MessageFormatter, MessageStyle};
 
 pub struct TelegramBot {
@@ -18,6 +19,7 @@ pub struct TelegramBot {
     formatter: MessageFormatter,
     responses_dir: PathBuf,
     timezone: Tz,
+    mcp_integration: Option<Arc<McpIntegration>>,
 }
 
 #[derive(serde::Serialize)]
@@ -75,6 +77,7 @@ impl TelegramBot {
             formatter: MessageFormatter::new(timezone),
             responses_dir,
             timezone,
+            mcp_integration: None, // Initialize without MCP integration by default
         }
     }
 
@@ -85,11 +88,22 @@ impl TelegramBot {
             formatter: MessageFormatter::new_with_style(timezone, message_style),
             responses_dir,
             timezone,
+            mcp_integration: None, // Initialize without MCP integration by default
         }
     }
 
     pub fn is_user_allowed(&self, user_id: i64) -> bool {
         self.allowed_users.contains(&user_id)
+    }
+
+    /// Enable MCP integration with custom configuration
+    pub fn enable_mcp_integration(&mut self, config: McpConfig) {
+        self.mcp_integration = Some(Arc::new(McpIntegration::with_config(config)));
+    }
+
+    /// Enable MCP integration with default configuration
+    pub fn enable_mcp_integration_default(&mut self) {
+        self.mcp_integration = Some(Arc::new(McpIntegration::new()));
     }
 
     pub async fn send_event_notification(&self, user_id: i64, event: &Event) -> Result<()> {

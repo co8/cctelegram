@@ -52,7 +52,7 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 @cctelegram send_telegram_message "🎉 CCTelegram MCP Server Working!"
 ```
 
-**🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**  
+**🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**
 
 **How it works**: MCP Server processes the command in Claude Code → Bridge detects the event file → Sends to Telegram  
 _Both components work together automatically - no manual management needed._
@@ -160,7 +160,7 @@ cctelegram/
 | --- | --- |
 | 🚀 **[Complete Setup Guide](@docs/setup/QUICKSTART.md)** | Detailed installation, configuration, and deployment |
 | 🔧 **[Features & Capabilities](@docs/reference/FEATURES.md)** | All features, API reference, event types, monitoring |
-| 🔒 **[Security & Compliance](@docs/reference/SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
+| 🔒 **[Security & Compliance](SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
 | 🎛️ **[MCP Integration](mcp-server/README.md)** | [Claude Code](https://github.com/anthropics/claude-code) MCP server setup and usage |
 | 📖 **[Technical Reference](@docs/reference/EVENT_SYSTEM.md)** | Event system architecture and implementation |
 | 🛡️ **[Security Audits](@docs/security/)** | Complete security audit reports and remediation |

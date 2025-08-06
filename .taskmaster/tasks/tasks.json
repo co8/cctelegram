@@ -1350,7 +1350,7 @@
         "id": 31,
         "title": "Phase 3: Command Consolidation - Refactor /tasks Command and MCP Server Integration",
         "description": "Refactor the /tasks command to work seamlessly with both MCP server and direct file access, implement graceful fallback mechanisms when MCP server is unavailable, and add clear status indicators for MCP server connectivity state. The redundant /current_task command has been successfully removed and the MCP server connectivity issues have been resolved.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           30,
           26,
@@ -1375,7 +1375,7 @@
             "id": 3,
             "title": "Implement Connection Management and Graceful Fallback System",
             "description": "Create connection pooling and retry logic with exponential backoff for MCP reconnection attempts, plus configuration-driven fallback system with user preferences for fallback behavior.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               1,
               2
@@ -1387,7 +1387,7 @@
             "id": 4,
             "title": "Implement Caching Layer and Comprehensive Error Handling",
             "description": "Create caching layer using Redis or in-memory cache to reduce MCP server load and improve fallback performance, plus comprehensive error handling with specific error codes and telemetry collection.",
-            "status": "pending",
+            "status": "done",
             "dependencies": [
               2,
               3
@@ -1566,7 +1566,7 @@
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-06T12:54:25.961Z",
+      "updated": "2025-08-06T13:08:26.291Z",
       "description": "Tasks for master context"
     }
   }

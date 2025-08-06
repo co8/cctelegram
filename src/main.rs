@@ -11,6 +11,7 @@ mod storage;
 mod utils;
 mod internal_processor;
 mod tier_orchestrator;
+mod mcp;
 
 use config::Config;
 use events::{EventWatcher, EventProcessor};

@@ -5,6 +5,7 @@ pub mod storage;
 pub mod utils;
 pub mod internal_processor;
 pub mod tier_orchestrator;
+pub mod mcp;
 
 pub use config::Config;
 pub use events::{EventWatcher, EventProcessor, types};
@@ -19,3 +20,4 @@ pub use utils::performance::{PerformanceMonitor, PerformanceConfig};
 pub use utils::{setup_logging, HealthServer};
 pub use internal_processor::{InternalProcessor, ResponsePayload, ProcessingResult};
 pub use tier_orchestrator::{TierOrchestrator, TierType, TierHealth, TierSelection, TierFailoverEvent, CircuitBreakerState};
+pub use mcp::{McpIntegration, McpConfig, McpConnectionManager, McpError, McpErrorCode, McpTelemetry};
