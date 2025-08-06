@@ -3,7 +3,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery,
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
-use anyhow::Result;
+use anyhow::{Result, Context};
 use tracing::{info, warn, error};
 use chrono::{Utc, TimeZone};
 use chrono_tz::Tz;
@@ -12,6 +12,7 @@ use tokio::fs;
 use crate::events::types::{Event, EventType};
 use crate::mcp::{McpIntegration, McpConfig};
 use super::messages::{MessageFormatter, MessageStyle};
+use super::rate_limiter::{RateLimiter, RateLimiterConfig};
 
 pub struct TelegramBot {
     bot: Bot,
@@ -20,6 +21,7 @@ pub struct TelegramBot {
     responses_dir: PathBuf,
     timezone: Tz,
     mcp_integration: Option<Arc<McpIntegration>>,
+    rate_limiter: Option<Arc<RateLimiter>>,
 }
 
 #[derive(serde::Serialize)]
@@ -78,6 +80,7 @@ impl TelegramBot {
             responses_dir,
             timezone,
             mcp_integration: None, // Initialize without MCP integration by default
+            rate_limiter: None, // Initialize without rate limiter by default
         }
     }
 
@@ -89,6 +92,7 @@ impl TelegramBot {
             responses_dir,
             timezone,
             mcp_integration: None, // Initialize without MCP integration by default
+            rate_limiter: None, // Initialize without rate limiter by default
         }
     }
 
@@ -104,6 +108,144 @@ impl TelegramBot {
     /// Enable MCP integration with default configuration
     pub fn enable_mcp_integration_default(&mut self) {
         self.mcp_integration = Some(Arc::new(McpIntegration::new()));
+    }
+
+    /// Enable rate limiting with custom configuration
+    pub async fn enable_rate_limiting(&mut self, config: RateLimiterConfig) -> Result<()> {
+        let rate_limiter = if let Some(redis_url) = &config.redis_url {
+            info!("Initializing rate limiter with Redis backend: {}", redis_url);
+            Arc::new(RateLimiter::new_with_redis(config).await?)
+        } else {
+            info!("Initializing rate limiter with in-memory backend");
+            Arc::new(RateLimiter::new_in_memory(config))
+        };
+        
+        self.rate_limiter = Some(rate_limiter);
+        info!("Rate limiting enabled successfully");
+        Ok(())
+    }
+
+    /// Enable rate limiting with default configuration (in-memory backend)
+    pub fn enable_rate_limiting_default(&mut self) {
+        let config = RateLimiterConfig::default();
+        info!("Enabling default rate limiting (in-memory, {}msg/s global, {}msg/s per-chat)", 
+              config.global_limit, config.per_chat_limit);
+        self.rate_limiter = Some(Arc::new(RateLimiter::new_in_memory(config)));
+    }
+
+    /// Get rate limiter metrics (for SubAgent Delta monitoring)
+    pub async fn get_rate_limiter_metrics(&self) -> Result<Option<super::rate_limiter::RateLimiterMetrics>> {
+        if let Some(rate_limiter) = &self.rate_limiter {
+            Ok(Some(rate_limiter.get_metrics().await?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Check if rate limiting is enabled
+    pub fn is_rate_limiting_enabled(&self) -> bool {
+        self.rate_limiter.is_some()
+    }
+
+    /// Get rate limiter configuration
+    pub fn get_rate_limiter_config(&self) -> Option<&super::rate_limiter::RateLimiterConfig> {
+        self.rate_limiter.as_ref().map(|rl| rl.get_config())
+    }
+
+    /// Check if multiple chats can send messages (for SubAgent Gamma batch processing)
+    pub async fn check_batch_rate_limit(&self, chat_ids: &[i64]) -> Result<Vec<bool>> {
+        if let Some(rate_limiter) = &self.rate_limiter {
+            rate_limiter.check_batch_rate_limit(chat_ids).await
+        } else {
+            // If no rate limiter, allow all
+            Ok(vec![true; chat_ids.len()])
+        }
+    }
+
+    /// Send a message with rate limiting enforcement
+    async fn send_message_with_rate_limit(&self, chat_id: teloxide::types::ChatId, message: &str) -> Result<teloxide::types::Message> {
+        let chat_id_i64 = chat_id.0;
+        
+        // Check rate limit if rate limiter is enabled
+        if let Some(rate_limiter) = &self.rate_limiter {
+            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
+                .context("Rate limiter check failed")?;
+            
+            if !allowed {
+                return Err(anyhow::anyhow!(
+                    "Message to chat {} blocked by rate limiting", 
+                    chat_id_i64
+                ));
+            }
+        }
+        
+        // Send the message
+        self.bot
+            .send_message(chat_id, message)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
+    }
+
+    /// Send a message with parse mode and rate limiting enforcement
+    async fn send_message_with_parse_mode_and_rate_limit(
+        &self, 
+        chat_id: teloxide::types::ChatId, 
+        message: &str,
+        parse_mode: ParseMode,
+    ) -> Result<teloxide::types::Message> {
+        let chat_id_i64 = chat_id.0;
+        
+        // Check rate limit if rate limiter is enabled
+        if let Some(rate_limiter) = &self.rate_limiter {
+            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
+                .context("Rate limiter check failed")?;
+            
+            if !allowed {
+                return Err(anyhow::anyhow!(
+                    "Message to chat {} blocked by rate limiting", 
+                    chat_id_i64
+                ));
+            }
+        }
+        
+        // Send the message
+        self.bot
+            .send_message(chat_id, message)
+            .parse_mode(parse_mode)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
+    }
+
+    /// Send a message with reply markup and rate limiting enforcement
+    async fn send_message_with_reply_markup_and_rate_limit(
+        &self, 
+        chat_id: teloxide::types::ChatId, 
+        message: &str,
+        parse_mode: ParseMode,
+        reply_markup: InlineKeyboardMarkup,
+    ) -> Result<teloxide::types::Message> {
+        let chat_id_i64 = chat_id.0;
+        
+        // Check rate limit if rate limiter is enabled
+        if let Some(rate_limiter) = &self.rate_limiter {
+            let allowed = rate_limiter.check_rate_limit(chat_id_i64).await
+                .context("Rate limiter check failed")?;
+            
+            if !allowed {
+                return Err(anyhow::anyhow!(
+                    "Message to chat {} blocked by rate limiting", 
+                    chat_id_i64
+                ));
+            }
+        }
+        
+        // Send the message
+        self.bot
+            .send_message(chat_id, message)
+            .parse_mode(parse_mode)
+            .reply_markup(reply_markup)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to send message: {}", e))
     }
 
     pub async fn send_event_notification(&self, user_id: i64, event: &Event) -> Result<()> {
@@ -132,57 +274,75 @@ impl TelegramBot {
     async fn send_task_completion(&self, user_id: i64, event: &Event) -> Result<()> {
         let message = self.formatter.format_completion_message(event);
         let keyboard = self.create_completion_keyboard(event);
+        let chat_id = teloxide::types::ChatId(user_id);
 
-        self.bot
-            .send_message(UserId(user_id as u64), message)
-            .parse_mode(ParseMode::MarkdownV2)
-            .reply_markup(keyboard)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send completion message: {}", e))?;
-
-        info!("Sent task completion notification to user {}", user_id);
-        Ok(())
+        match self.send_message_with_reply_markup_and_rate_limit(
+            chat_id, &message, ParseMode::MarkdownV2, keyboard
+        ).await {
+            Ok(_) => {
+                info!("Sent task completion notification to user {}", user_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to send task completion to user {}: {}", user_id, e);
+                Err(e)
+            }
+        }
     }
 
     async fn send_approval_request(&self, user_id: i64, event: &Event) -> Result<()> {
         let message = self.formatter.format_approval_message(event);
         let keyboard = self.create_approval_keyboard(event);
+        let chat_id = teloxide::types::ChatId(user_id);
 
-        self.bot
-            .send_message(UserId(user_id as u64), message)
-            .parse_mode(ParseMode::MarkdownV2)
-            .reply_markup(keyboard)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send approval message: {}", e))?;
-
-        info!("Sent approval request to user {}", user_id);
-        Ok(())
+        match self.send_message_with_reply_markup_and_rate_limit(
+            chat_id, &message, ParseMode::MarkdownV2, keyboard
+        ).await {
+            Ok(_) => {
+                info!("Sent approval request to user {}", user_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to send approval request to user {}: {}", user_id, e);
+                Err(e)
+            }
+        }
     }
 
     async fn send_progress_update(&self, user_id: i64, event: &Event) -> Result<()> {
         let message = self.formatter.format_progress_message(event);
+        let chat_id = teloxide::types::ChatId(user_id);
 
-        self.bot
-            .send_message(UserId(user_id as u64), message)
-            .parse_mode(ParseMode::MarkdownV2)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send progress message: {}", e))?;
-
-        info!("Sent progress update to user {}", user_id);
-        Ok(())
+        match self.send_message_with_parse_mode_and_rate_limit(
+            chat_id, &message, ParseMode::MarkdownV2
+        ).await {
+            Ok(_) => {
+                info!("Sent progress update to user {}", user_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to send progress update to user {}: {}", user_id, e);
+                Err(e)
+            }
+        }
     }
 
     async fn send_generic_notification(&self, user_id: i64, event: &Event) -> Result<()> {
         let message = self.formatter.format_generic_message(event);
+        let chat_id = teloxide::types::ChatId(user_id);
 
-        self.bot
-            .send_message(UserId(user_id as u64), message)
-            .parse_mode(ParseMode::MarkdownV2)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send generic notification: {}", e))?;
-
-        info!("Sent generic notification for {:?} to user {}", event.event_type, user_id);
-        Ok(())
+        match self.send_message_with_parse_mode_and_rate_limit(
+            chat_id, &message, ParseMode::MarkdownV2
+        ).await {
+            Ok(_) => {
+                info!("Sent generic notification for {:?} to user {}", event.event_type, user_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to send generic notification to user {}: {}", user_id, e);
+                Err(e)
+            }
+        }
     }
 
     fn create_completion_keyboard(&self, event: &Event) -> InlineKeyboardMarkup {
@@ -763,14 +923,19 @@ impl TelegramBot {
             timestamp
         );
 
-        self.bot
-            .send_message(UserId(user_id as u64), startup_message)
-            .parse_mode(ParseMode::MarkdownV2)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to send startup message: {}", e))?;
-
-        info!("Sent startup message to user {}", user_id);
-        Ok(())
+        let chat_id = teloxide::types::ChatId(user_id);
+        match self.send_message_with_parse_mode_and_rate_limit(
+            chat_id, &startup_message, ParseMode::MarkdownV2
+        ).await {
+            Ok(_) => {
+                info!("Sent startup message to user {}", user_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("Failed to send startup message to user {}: {}", user_id, e);
+                Err(e)
+            }
+        }
     }
 
     pub async fn process_unsent_events(&self) -> Result<()> {

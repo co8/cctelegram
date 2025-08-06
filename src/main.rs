@@ -124,13 +124,23 @@ async fn main() -> Result<()> {
     let message_style = MessageStyle::from_str(&config.telegram.message_style);
 
     // Initialize Telegram bot
-    let telegram_bot = Arc::new(TelegramBot::new_with_style(
+    let mut telegram_bot = TelegramBot::new_with_style(
         config.telegram.telegram_bot_token.clone(),
         config.telegram.telegram_allowed_users.clone(),
         config.paths.responses_dir.clone(),
         timezone,
         message_style,
-    ));
+    );
+
+    // Enable rate limiting
+    let rate_limiter_config = config.security.rate_limiter.to_rate_limiter_config();
+    if let Err(e) = telegram_bot.enable_rate_limiting(rate_limiter_config).await {
+        warn!("Failed to enable rate limiting: {}, continuing without rate limiting", e);
+    } else {
+        info!("Rate limiting enabled successfully");
+    }
+
+    let telegram_bot = Arc::new(telegram_bot);
 
     // Process any unsent events from previous sessions
     if let Err(e) = telegram_bot.process_unsent_events().await {

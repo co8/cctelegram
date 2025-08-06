@@ -41,6 +41,33 @@ fn default_message_style() -> String {
     "concise".to_string()
 }
 
+fn default_global_rate_limit() -> u32 { 30 }
+fn default_per_chat_rate_limit() -> u32 { 1 }
+fn default_telemetry_enabled() -> bool { true }
+
+impl Default for RateLimiterConfig {
+    fn default() -> Self {
+        Self {
+            global_limit: default_global_rate_limit(),
+            per_chat_limit: default_per_chat_rate_limit(),
+            redis_url: None,
+            enable_telemetry: default_telemetry_enabled(),
+        }
+    }
+}
+
+impl RateLimiterConfig {
+    /// Convert to the rate_limiter module's RateLimiterConfig
+    pub fn to_rate_limiter_config(&self) -> crate::telegram::rate_limiter::RateLimiterConfig {
+        crate::telegram::rate_limiter::RateLimiterConfig {
+            global_limit: self.global_limit,
+            per_chat_limit: self.per_chat_limit,
+            redis_url: self.redis_url.clone(),
+            enable_telemetry: self.enable_telemetry,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PathsConfig {
     pub events_dir: PathBuf,
@@ -59,6 +86,19 @@ pub struct SecurityConfig {
     pub rate_limit_requests: u32,
     pub rate_limit_window: u64,
     pub audit_log: bool,
+    pub rate_limiter: RateLimiterConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct RateLimiterConfig {
+    #[serde(default = "default_global_rate_limit")]
+    pub global_limit: u32,
+    #[serde(default = "default_per_chat_rate_limit")]
+    pub per_chat_limit: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub redis_url: Option<String>,
+    #[serde(default = "default_telemetry_enabled")]
+    pub enable_telemetry: bool,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -210,6 +250,7 @@ impl Default for Config {
                 rate_limit_requests: 30,
                 rate_limit_window: 60,
                 audit_log: true,
+                rate_limiter: RateLimiterConfig::default(),
             },
             performance: PerformanceConfig::default(),
             monitoring: MonitoringConfig {
@@ -358,6 +399,14 @@ impl Config {
         
         if let Ok(responses_dir) = std::env::var("CC_TELEGRAM_RESPONSES_DIR") {
             self.paths.responses_dir = PathBuf::from(responses_dir);
+        }
+
+        // Load Redis URL for rate limiting from environment
+        if let Ok(redis_url) = std::env::var("CC_TELEGRAM_REDIS_URL") {
+            if !redis_url.is_empty() {
+                self.security.rate_limiter.redis_url = Some(redis_url);
+                info!("Loaded Redis URL for rate limiting from environment");
+            }
         }
 
         Ok(())
