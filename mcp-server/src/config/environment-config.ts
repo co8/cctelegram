@@ -5,12 +5,12 @@
  * environment variable substitution, and configuration merging strategies.
  */
 
-import fs from 'fs-extra';
-import path from 'path';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import { merge } from 'lodash-es';
 import { config as dotenvConfig } from 'dotenv';
 import { expand as dotenvExpand } from 'dotenv-expand';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { 
   ApplicationConfig, 
   ApplicationConfigSchema, 
@@ -142,7 +142,7 @@ export class EnvironmentConfigManager {
       {
         name: 'default',
         priority: 1,
-        data: generateConfigTemplate(this.environment),
+        data: generateConfigTemplate(this.environment === 'test' ? 'development' : this.environment),
         required: true
       }
     ];
@@ -337,13 +337,17 @@ export class EnvironmentConfigManager {
 
     for (let i = 0; i < keys.length - 1; i++) {
       const key = keys[i];
+      if (!key) continue;
       if (!(key in current) || typeof current[key] !== 'object') {
         current[key] = {};
       }
       current = current[key];
     }
 
-    current[keys[keys.length - 1]] = value;
+    const lastKey = keys[keys.length - 1];
+    if (lastKey) {
+      current[lastKey] = value;
+    }
   }
 
   /**
@@ -352,7 +356,7 @@ export class EnvironmentConfigManager {
   private async createMissingConfigFile(source: ConfigurationSource): Promise<void> {
     if (!source.path) return;
 
-    const template = generateConfigTemplate(this.environment);
+    const template = generateConfigTemplate(this.environment === 'test' ? 'development' : this.environment);
     const configDir = path.dirname(source.path);
     
     await fs.ensureDir(configDir);

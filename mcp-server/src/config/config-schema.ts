@@ -371,21 +371,23 @@ export const EnvironmentMappings = {
 } as const;
 
 /**
- * Configuration validation function
+ * Enhanced configuration validation function with runtime type checking
  */
 export function validateConfiguration(config: unknown): { 
   success: boolean; 
   data?: ApplicationConfig; 
   error?: z.ZodError;
   warnings?: string[];
+  runtimeErrors?: string[];
 } {
   try {
     const result = ApplicationConfigSchema.safeParse(config);
     
     if (result.success) {
       const warnings: string[] = [];
+      const runtimeErrors: string[] = [];
       
-      // Check for potential security issues
+      // Security validation
       if (result.data.security.enableAuthentication && !result.data.security.jwtSecret) {
         warnings.push('JWT authentication is enabled but no JWT secret is configured');
       }
@@ -394,18 +396,94 @@ export function validateConfiguration(config: unknown): {
         warnings.push('Encryption is enabled but no encryption key is configured');
       }
       
-      if (result.data.base.environment === 'production' && result.data.base.logLevel === 'debug') {
-        warnings.push('Debug logging is enabled in production environment');
+      // Environment-specific validation
+      if (result.data.base.environment === 'production') {
+        if (result.data.base.logLevel === 'debug') {
+          warnings.push('Debug logging is enabled in production environment');
+        }
+        
+        if (!result.data.server.enableHttps) {
+          warnings.push('HTTPS is disabled in production environment');
+        }
+        
+        if (result.data.security.enableRateLimiting && result.data.security.rateLimit.maxRequests > 1000) {
+          warnings.push('Rate limiting threshold is very high for production');
+        }
       }
       
-      if (!result.data.server.enableHttps && result.data.base.environment === 'production') {
-        warnings.push('HTTPS is disabled in production environment');
+      // Server configuration validation
+      if (result.data.server.port < 1024 && process.getuid && process.getuid() !== 0) {
+        runtimeErrors.push('Cannot bind to privileged port without root privileges');
+      }
+      
+      if (result.data.server.maxConnections < 1) {
+        runtimeErrors.push('maxConnections must be at least 1');
+      }
+      
+      // Database validation
+      if (result.data.database) {
+        if (result.data.database.maxConnections < 1) {
+          runtimeErrors.push('Database maxConnections must be at least 1');
+        }
+        
+        if (result.data.database.connectionTimeout < 1000) {
+          warnings.push('Database connection timeout is very low (< 1 second)');
+        }
+      }
+      
+      // Monitoring configuration validation
+      const monitoring = result.data.monitoring;
+      if (monitoring.enablePrometheus && monitoring.metricsPort === result.data.server.port) {
+        runtimeErrors.push('Metrics port cannot be the same as server port');
+      }
+      
+      if (monitoring.healthCheckInterval < 5000) {
+        warnings.push('Health check interval is very low (< 5 seconds)');
+      }
+      
+      // Cache configuration validation
+      const cache = result.data.cache;
+      if (cache.enableCache && cache.cacheType === 'redis' && !cache.redisUrl) {
+        runtimeErrors.push('Redis cache is enabled but no Redis URL is configured');
+      }
+      
+      if (cache.maxMemoryUsage < 10 * 1024 * 1024) { // 10MB
+        warnings.push('Cache memory usage is very low (< 10MB)');
+      }
+      
+      // File system validation
+      const fs = result.data.fileSystem;
+      if (fs.maxFileSize < 1024) {
+        warnings.push('Maximum file size is very small (< 1KB)');
+      }
+      
+      // Resilience configuration validation
+      const resilience = result.data.resilience;
+      if (resilience.enabled) {
+        Object.entries(resilience.circuitBreaker).forEach(([key, config]) => {
+          if (config.failureThreshold < 1) {
+            runtimeErrors.push(`Circuit breaker ${key}: failureThreshold must be at least 1`);
+          }
+          if (config.timeout < 1000) {
+            warnings.push(`Circuit breaker ${key}: timeout is very low (< 1 second)`);
+          }
+        });
+        
+        Object.entries(resilience.retry).forEach(([key, config]) => {
+          if (config.maxAttempts < 1) {
+            runtimeErrors.push(`Retry policy ${key}: maxAttempts must be at least 1`);
+          }
+          if (config.baseDelay < 100) {
+            warnings.push(`Retry policy ${key}: baseDelay is very low (< 100ms)`);
+          }
+        });
       }
       
       return {
-        success: true,
+        success: runtimeErrors.length === 0,
         data: result.data,
-        warnings: warnings.length > 0 ? warnings : undefined
+        warnings: warnings.length > 0 ? warnings : undefined,
+        runtimeErrors: runtimeErrors.length > 0 ? runtimeErrors : undefined
       };
     }
     
@@ -419,6 +497,52 @@ export function validateConfiguration(config: unknown): {
       error: error as z.ZodError
     };
   }
+}
+
+/**
+ * Validate specific configuration values at runtime
+ */
+export function validateRuntimeConfiguration(config: ApplicationConfig): {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+} {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // Port availability check
+  if (typeof config.server.port === 'number' && (config.server.port < 1 || config.server.port > 65535)) {
+    errors.push('Server port must be between 1 and 65535');
+  }
+  
+  // Memory limits
+  if (config.cache.maxMemoryUsage > (1024 * 1024 * 1024)) { // 1GB
+    warnings.push('Cache memory usage is very high (> 1GB)');
+  }
+  
+  // File system checks
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(config.fileSystem.dataDirectory)) {
+      warnings.push(`Data directory does not exist: ${config.fileSystem.dataDirectory}`);
+    }
+  } catch (error) {
+    warnings.push('Unable to validate file system paths');
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+/**
+ * Type guard for configuration validation results
+ */
+export function isValidConfiguration(config: unknown): config is ApplicationConfig {
+  const result = validateConfiguration(config);
+  return result.success && !!result.data;
 }
 
 /**
@@ -452,9 +576,18 @@ export function generateConfigTemplate(environment: 'development' | 'staging' | 
     },
     monitoring: {
       enableHealthChecks: true,
+      healthCheckInterval: 30000,
       enableMetricsCollection: true,
+      metricsPort: 9090,
       enablePrometheus: environment === 'production',
-      enableTracing: environment !== 'development'
+      prometheusEndpoint: '/metrics',
+      enableTracing: environment !== 'development',
+      enableLogging: true,
+      logFormat: 'json' as const,
+      logLevel: environment === 'development' ? 'debug' as const : 'info' as const,
+      enableLogRotation: true,
+      maxLogSize: '50MB',
+      maxLogFiles: 10
     }
   };
 

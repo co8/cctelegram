@@ -7,10 +7,10 @@
  */
 
 import { Command } from 'commander';
-import chalk from 'chalk';
+import * as chalk from 'chalk';
 import inquirer from 'inquirer';
-import fs from 'fs-extra';
-import path from 'path';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import { table } from 'table';
 import { 
   EnvironmentConfigManager, 
@@ -395,7 +395,8 @@ class ConfigurationCLI {
     try {
       console.log(chalk.blue(`📝 Generating ${options.environment} configuration template...`));
 
-      const template = generateConfigTemplate(options.environment as Environment);
+      const env = options.environment as Environment;
+      const template = generateConfigTemplate(env === 'test' ? 'development' : env);
       
       if (options.output) {
         if (await fs.pathExists(options.output) && !options.overwrite) {
@@ -744,8 +745,8 @@ class ConfigurationCLI {
 
         if (options.redact) {
           displayConfig = this.configManager.exportConfiguration(false);
-          if (options.section) {
-            displayConfig = displayConfig[options.section];
+          if (options.section && typeof displayConfig === 'object' && displayConfig !== null) {
+            displayConfig = (displayConfig as Record<string, any>)[options.section];
           }
         }
 
@@ -1013,11 +1014,14 @@ class ConfigurationCLI {
     const rulesByCategory = new Map<string, ValidationRule[]>();
     
     rules.forEach(rule => {
-      const category = rule.name.split('-')[0];
+      const category = rule.name.split('-')[0] || 'general';
       if (!rulesByCategory.has(category)) {
         rulesByCategory.set(category, []);
       }
-      rulesByCategory.get(category)!.push(rule);
+      const categoryRules = rulesByCategory.get(category);
+      if (categoryRules) {
+        categoryRules.push(rule);
+      }
     });
 
     for (const [category, categoryRules] of rulesByCategory) {

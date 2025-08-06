@@ -470,26 +470,44 @@ export async function runBenchmarkCli(): Promise<void> {
     
     switch (arg) {
       case '--baseline':
+        if (!nextArg) {
+          throw new Error('--baseline requires a value');
+        }
         options.baseline = nextArg;
         i++;
         break;
       case '--output':
+        if (!nextArg) {
+          throw new Error('--output requires a value');
+        }
         options.output = nextArg;
         i++;
         break;
       case '--format':
+        if (!nextArg) {
+          throw new Error('--format requires a value');
+        }
         options.format = nextArg as any;
         i++;
         break;
       case '--threshold':
+        if (!nextArg) {
+          throw new Error('--threshold requires a value');
+        }
         options.threshold = parseInt(nextArg);
         i++;
         break;
       case '--timeout':
+        if (!nextArg) {
+          throw new Error('--timeout requires a value');
+        }
         options.timeout = parseInt(nextArg);
         i++;
         break;
       case '--temp-dir':
+        if (!nextArg) {
+          throw new Error('--temp-dir requires a value');
+        }
         options.tempDir = nextArg;
         i++;
         break;

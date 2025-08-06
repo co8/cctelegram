@@ -6,7 +6,7 @@
  */
 
 import { EventEmitter } from 'events';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { ApplicationConfig } from './config-schema.js';
 import { ReloadContext, ReloadResult } from './hot-reload-manager.js';
 import { ValidationReport } from './validation-middleware.js';

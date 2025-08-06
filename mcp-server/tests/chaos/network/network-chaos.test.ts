@@ -501,8 +501,8 @@ describe('Network Chaos Engineering Tests', () => {
     });
   });
 
-  // Helper methods
-  private calculateVariance(values: number[]): number {
+  // Helper functions
+  function calculateVariance(values: number[]): number {
     if (values.length === 0) return 0;
     
     const mean = values.reduce((sum, val) => sum + val) / values.length;
@@ -510,7 +510,7 @@ describe('Network Chaos Engineering Tests', () => {
     return squaredDifferences.reduce((sum, val) => sum + val) / values.length;
   }
 
-  private simulateRealisticTraffic(duration: number): { stop: () => void } {
+  function simulateRealisticTraffic(duration: number): { stop: () => void } {
     // Simulate realistic traffic patterns during chaos test
     const intervals: NodeJS.Timeout[] = [];
     

@@ -6,9 +6,9 @@
  */
 
 import { EventEmitter } from 'events';
-import fs from 'fs-extra';
-import crypto from 'crypto';
-import path from 'path';
+import * as fs from 'fs-extra';
+import * as crypto from 'crypto';
+import * as path from 'path';
 import { LRUCache } from 'lru-cache';
 import { ApplicationConfig } from './config-schema.js';
 import { secureLog } from '../security.js';
@@ -571,14 +571,17 @@ export class ConfigurationCache extends EventEmitter {
     let totalAge = 0;
 
     if (entries.length > 0) {
-      oldestEntry = entries[0].entry.timestamp;
-      newestEntry = entries[0].entry.timestamp;
+      const firstEntry = entries[0];
+      if (firstEntry) {
+        oldestEntry = firstEntry.entry.timestamp;
+        newestEntry = firstEntry.entry.timestamp;
+      }
 
       for (const { entry } of entries) {
-        if (entry.timestamp < oldestEntry) {
+        if (oldestEntry && entry.timestamp < oldestEntry) {
           oldestEntry = entry.timestamp;
         }
-        if (entry.timestamp > newestEntry) {
+        if (newestEntry && entry.timestamp > newestEntry) {
           newestEntry = entry.timestamp;
         }
         totalAge += Date.now() - entry.timestamp.getTime();

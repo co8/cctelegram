@@ -5,14 +5,14 @@
  * configurations, hot-reload, caching, migration, and observability integration.
  */
 
-import { EnvironmentConfigManager, Environment } from './environment-config.js';
-import { ConfigurationMigrationManager } from './config-migration.js';
-import { HotReloadManager } from './hot-reload-manager.js';
-import { ConfigurationValidationMiddleware } from './validation-middleware.js';
-import { ConfigurationCache } from './config-cache.js';
-import { ConfigurationObservabilityIntegration } from './observability-integration.js';
-import { ApplicationConfig } from './config-schema.js';
-import { secureLog } from '../security.js';
+import { EnvironmentConfigManager, Environment } from './environment-config';
+import { ConfigurationMigrationManager } from './config-migration';
+import { HotReloadManager } from './hot-reload-manager';
+import { ConfigurationValidationMiddleware } from './validation-middleware';
+import { ConfigurationCache } from './config-cache';
+import { ConfigurationObservabilityIntegration } from './observability-integration';
+import { ApplicationConfig } from './config-schema';
+import { secureLog } from '../security';
 
 export interface ConfigurationSystemOptions {
   environment?: Environment;
@@ -28,12 +28,12 @@ export interface ConfigurationSystemOptions {
 }
 
 export class ConfigurationSystem {
-  private configManager: EnvironmentConfigManager;
-  private migrationManager: ConfigurationMigrationManager;
-  private hotReloadManager: HotReloadManager;
-  private validationMiddleware: ConfigurationValidationMiddleware;
-  private cache: ConfigurationCache;
-  private observability: ConfigurationObservabilityIntegration;
+  private configManager!: EnvironmentConfigManager;
+  private migrationManager!: ConfigurationMigrationManager;
+  private hotReloadManager!: HotReloadManager;
+  private validationMiddleware!: ConfigurationValidationMiddleware;
+  private cache!: ConfigurationCache;
+  private observability!: ConfigurationObservabilityIntegration;
   private options: Required<ConfigurationSystemOptions>;
   private initialized: boolean = false;
 
@@ -400,23 +400,14 @@ export class ConfigurationSystem {
 }
 
 // Export all configuration system components
-export {
-  EnvironmentConfigManager,
-  ConfigurationMigrationManager,
-  HotReloadManager,
-  ConfigurationValidationMiddleware,
-  ConfigurationCache,
-  ConfigurationObservabilityIntegration,
-  ApplicationConfig,
-  Environment
-} from './config-schema.js';
+export { ApplicationConfig } from './config-schema';
 
-export * from './environment-config.js';
-export * from './config-migration.js';
-export * from './hot-reload-manager.js';
-export * from './validation-middleware.js';
-export * from './config-cache.js';
-export * from './observability-integration.js';
+export * from './environment-config';
+export * from './config-migration';
+export * from './hot-reload-manager';
+export * from './validation-middleware';
+export * from './config-cache';
+export * from './observability-integration';
 
 // Default export
 export default ConfigurationSystem;

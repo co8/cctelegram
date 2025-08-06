@@ -3,7 +3,7 @@
  * Provides utilities for validating and generating SRI hashes for CDN resources
  */
 
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import axios from 'axios';
 import { logger } from '../utils/logger';
 
@@ -68,12 +68,17 @@ export function generateSRIHash(content: string | Buffer, algorithm: SRIAlgorith
     throw new Error(`Unsupported SRI algorithm: ${algorithm}`);
   }
 
-  const hash = crypto
-    .createHash(algorithm)
-    .update(content, typeof content === 'string' ? 'utf8' : undefined)
-    .digest('base64');
+  const hash = crypto.createHash(algorithm);
+  
+  if (typeof content === 'string') {
+    hash.update(content, 'utf8');
+  } else {
+    hash.update(content);
+  }
+  
+  const result = hash.digest('base64');
 
-  return `${algorithm}-${hash}`;
+  return `${algorithm}-${result}`;
 }
 
 /**

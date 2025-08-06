@@ -1,8 +1,8 @@
-import Joi from 'joi';
-import CryptoJS from 'crypto-js';
+import * as Joi from 'joi';
+import * as CryptoJS from 'crypto-js';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
-import fs from 'fs-extra';
-import path from 'path';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 import { EventType } from './types.js';
 
 // Security Configuration

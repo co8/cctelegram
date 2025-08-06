@@ -10,7 +10,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { EventEmitter } from 'events';
-import { BaselineManager, BaselineComparison, BaselineRecord, BaselineMetrics } from './baseline-manager.js';
+import { BaselineManager, BaselineComparison, BaselineRecord, BaselineMetrics } from './baseline-manager';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

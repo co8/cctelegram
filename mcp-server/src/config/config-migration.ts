@@ -5,9 +5,9 @@
  * rollback capabilities, and migration validation.
  */
 
-import fs from 'fs-extra';
-import path from 'path';
-import semver from 'semver';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import * as semver from 'semver';
 import { merge, cloneDeep } from 'lodash-es';
 import { ApplicationConfig, validateConfiguration, generateConfigTemplate } from './config-schema.js';
 import { secureLog } from '../security.js';
@@ -616,7 +616,8 @@ export class ConfigurationMigrationManager {
    */
   public getLatestVersion(): string {
     const migrations = this.listAvailableMigrations();
-    return migrations.length > 0 ? migrations[migrations.length - 1].version : this.currentVersion;
+    const latestMigration = migrations[migrations.length - 1];
+    return migrations.length > 0 && latestMigration ? latestMigration.version : this.currentVersion;
   }
 
   /**
@@ -650,7 +651,7 @@ export class ConfigurationMigrationManager {
         
         // Check if there are any missing intermediate versions
         const intermediate = Array.from(this.migrations.keys())
-          .filter(v => semver.gt(v, current) && semver.lt(v, next))
+          .filter(v => current && next && semver.gt(v, current) && semver.lt(v, next))
           .sort(semver.compare);
         
         missingMigrations.push(...intermediate);

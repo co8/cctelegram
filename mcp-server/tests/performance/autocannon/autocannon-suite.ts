@@ -111,11 +111,11 @@ export interface AutocannonResult {
   connections: number;
   pipelining: number;
   non2xx: number;
-  1xx: number;
-  2xx: number;
-  3xx: number;
-  4xx: number;
-  5xx: number;
+  '1xx': number;
+  '2xx': number;
+  '3xx': number;
+  '4xx': number;
+  '5xx': number;
 }
 
 export interface BenchmarkSuite {

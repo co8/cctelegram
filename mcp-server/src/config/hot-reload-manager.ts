@@ -7,14 +7,14 @@
 
 import { EventEmitter } from 'events';
 import chokidar from 'chokidar';
-import fs from 'fs-extra';
-import path from 'path';
-import crypto from 'crypto';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import * as crypto from 'crypto';
 import { debounce } from 'lodash-es';
-import { EnvironmentConfigManager } from './environment-config.ts';
-import { ConfigurationMigrationManager } from './config-migration.js';
-import { ApplicationConfig, validateConfiguration } from './config-schema.js';
-import { secureLog } from '../security.js';
+import { EnvironmentConfigManager } from './environment-config';
+import { ConfigurationMigrationManager } from './config-migration';
+import { ApplicationConfig, validateConfiguration } from './config-schema';
+import { secureLog } from '../security';
 
 export interface HotReloadOptions {
   enabled?: boolean;
@@ -60,7 +60,7 @@ export interface StatePreservation {
 export class HotReloadManager extends EventEmitter {
   private configManager: EnvironmentConfigManager;
   private migrationManager: ConfigurationMigrationManager;
-  private watcher?: chokidar.FSWatcher;
+  private watcher?: import('chokidar').FSWatcher;
   private options: Required<HotReloadOptions>;
   private isReloading: boolean = false;
   private lastReloadTime: Date | null = null;
@@ -174,7 +174,8 @@ export class HotReloadManager extends EventEmitter {
         changedFiles.push(filePath);
         debouncedReload(changedFiles.splice(0));
       })
-      .on('error', (error: Error) => {
+      .on('error', (err: unknown) => {
+        const error = err instanceof Error ? err : new Error(String(err));
         secureLog('error', 'File watcher error', {
           error: error.message
         });
@@ -620,7 +621,7 @@ export class HotReloadManager extends EventEmitter {
       throw new Error('No previous configuration available for rollback');
     }
 
-    const previousContext = this.reloadHistory[this.reloadHistory.length - 1];
+    const previousContext = this.reloadHistory[this.reloadHistory.length - 1]!;
     
     secureLog('info', 'Rolling back to previous configuration', {
       reload_id: previousContext.reloadId,

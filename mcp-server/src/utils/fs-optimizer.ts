@@ -56,7 +56,7 @@ export class FileSystemOptimizer {
       const stats = new Map<string, fs.Stats>();
       
       // Batch stat operations
-      const statPromises = files.map(async (file) => {
+      const statPromises = files.map(async (file): Promise<{ file: string; stat: fs.Stats | null; error?: unknown }> => {
         try {
           const filePath = path.join(directory, file);
           const stat = await fs.stat(filePath);

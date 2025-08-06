@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "build:core": "node build-core-only.js",
+    "validate:core": "node dist/resilient-index.js --validate",
+    "test:core": "jest --testPathPattern=\"core|unit\" --testTimeout=30000",
+    "quality:gates": "npm run build:core && npm run test:core && npm run validate:core"
+  },
+  "qualityChecks": {
+    "buildSuccess": "Core files must compile without errors",
+    "basicFunctionality": "MCP server must start and respond to health checks",
+    "typeChecking": "Core functionality must pass basic type validation"
+  }
+}

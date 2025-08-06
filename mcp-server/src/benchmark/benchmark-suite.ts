@@ -934,8 +934,11 @@ export class BenchmarkSuite extends EventEmitter {
       if (!stats[result.category]) {
         stats[result.category] = { total_duration: 0, count: 0 };
       }
-      stats[result.category].total_duration += result.performance.duration_ms;
-      stats[result.category].count++;
+      const categoryStats = stats[result.category];
+      if (categoryStats) {
+        categoryStats.total_duration += result.performance.duration_ms;
+        categoryStats.count++;
+      }
     });
     
     const averages: Record<string, { avg_duration: number; count: number }> = {};
