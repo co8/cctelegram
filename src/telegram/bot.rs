@@ -56,6 +56,8 @@ struct TaskMasterInfo {
     completed: u32,
     blocked: u32,
     total: u32,
+    subtasks_total: u32,
+    subtasks_completed: u32,
 }
 
 impl TelegramBot {
@@ -766,47 +768,123 @@ impl TelegramBot {
 
     async fn get_tasks_status(&self) -> String {
         let mut status_parts = vec![];
-        status_parts.push("*📋 Taskmaster Status*".to_string());
+        status_parts.push("*📋 TaskMaster Status*".to_string());
         
-        // Try to read TaskMaster directly first (primary method)
-        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
-        
-        match self.read_taskmaster_tasks(&taskmaster_path).await {
-            Ok(Some(tasks_info)) => {
-                status_parts.push(format!("*Project:* {}", Self::escape_markdown_v2(&tasks_info.project_name)));
-                status_parts.push(format!("📌 *Pending:* {}", tasks_info.pending));
-                status_parts.push(format!("🔄 *In Progress:* {}", tasks_info.in_progress));
-                status_parts.push(format!("✅ *Completed:* {}", tasks_info.completed));
-                status_parts.push(format!("🚧 *Blocked:* {}", tasks_info.blocked));
-                status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
-            }
-            Ok(None) => {
-                status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
-                status_parts.push("💡 Initialize with TaskMaster to track tasks".to_string());
-            }
-            Err(e) => {
-                status_parts.push("❌ Error reading TaskMaster".to_string());
-                status_parts.push(format!("⚠️ {}", Self::escape_markdown_v2(&e.to_string())));
+        // Try to get live TaskMaster data via MCP server first (highest priority)
+        // TODO: Fix MCP integration - temporarily disabled for now
+        match std::result::Result::<TaskMasterInfo, anyhow::Error>::Err(anyhow::anyhow!("MCP temporarily disabled")) {
+            Ok(tasks_info) => {
+                // Enhanced display with visual progress bars
+                status_parts.push(format!("*🏗️ Project:* {}", Self::escape_markdown_v2(&tasks_info.project_name)));
+                status_parts.push("".to_string()); // Spacing
                 
-                // Secondary fallback: Check MCP server as backup
-                match self.check_mcp_server_status().await {
-                    Ok(true) => {
+                // Calculate completion percentage
+                let completion_percentage = if tasks_info.total > 0 {
+                    (tasks_info.completed as f64 / tasks_info.total as f64 * 100.0).round() as u8
+                } else {
+                    0
+                };
+                
+                let subtask_completion = if tasks_info.subtasks_total > 0 {
+                    (tasks_info.subtasks_completed as f64 / tasks_info.subtasks_total as f64 * 100.0).round() as u8
+                } else {
+                    0
+                };
+                
+                // Main tasks progress bar
+                let progress_bar = Self::create_progress_bar(completion_percentage, 20);
+                status_parts.push(format!("*📊 Tasks Progress:* {}%", completion_percentage));
+                status_parts.push(format!("`{}`", progress_bar));
+                status_parts.push("".to_string()); // Spacing
+                
+                // Task breakdown with visual indicators
+                status_parts.push("*📈 Task Breakdown:*".to_string());
+                status_parts.push(format!("📌 *Pending:* {} {}", tasks_info.pending, Self::create_mini_bar(tasks_info.pending, tasks_info.total, 8)));
+                status_parts.push(format!("🔄 *In Progress:* {} {}", tasks_info.in_progress, Self::create_mini_bar(tasks_info.in_progress, tasks_info.total, 8)));
+                status_parts.push(format!("✅ *Completed:* {} {}", tasks_info.completed, Self::create_mini_bar(tasks_info.completed, tasks_info.total, 8)));
+                if tasks_info.blocked > 0 {
+                    status_parts.push(format!("🚧 *Blocked:* {} {}", tasks_info.blocked, Self::create_mini_bar(tasks_info.blocked, tasks_info.total, 8)));
+                }
+                status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
+                
+                // Subtasks progress if available
+                if tasks_info.subtasks_total > 0 {
+                    status_parts.push("".to_string()); // Spacing
+                    status_parts.push("*🔍 Subtasks Progress:*".to_string());
+                    let subtask_bar = Self::create_progress_bar(subtask_completion, 15);
+                    status_parts.push(format!("`{}` {}%", subtask_bar, subtask_completion));
+                    status_parts.push(format!("*Total Subtasks:* {} \\({} completed\\)", tasks_info.subtasks_total, tasks_info.subtasks_completed));
+                }
+                
+                // Project health indicator
+                status_parts.push("".to_string()); // Spacing
+                status_parts.push(format!("*🎯 Project Health:* {}", Self::get_project_health_indicator(completion_percentage, tasks_info.blocked)));
+                status_parts.push(format!("*🕐 Updated:* {}", Self::get_current_timestamp()));
+                status_parts.push("*💫 Data Source:* Live MCP Server".to_string());
+            }
+            Err(_) => {
+                // Fallback to file-based reading
+                let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+                let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+                
+                match self.read_taskmaster_tasks(&taskmaster_path).await {
+                    Ok(Some(tasks_info)) => {
+                        status_parts.push(format!("*🏗️ Project:* {}", Self::escape_markdown_v2(&tasks_info.project_name)));
                         status_parts.push("".to_string());
-                        status_parts.push("ℹ️ MCP Server available as fallback".to_string());
-                        status_parts.push("💡 For live updates, use Claude Code".to_string());
+                        
+                        // Calculate completion percentage
+                        let completion_percentage = if tasks_info.total > 0 {
+                            (tasks_info.completed as f64 / tasks_info.total as f64 * 100.0).round() as u8
+                        } else {
+                            0
+                        };
+                        
+                        // Progress bar
+                        let progress_bar = Self::create_progress_bar(completion_percentage, 20);
+                        status_parts.push(format!("*📊 Completion:* {}%", completion_percentage));
+                        status_parts.push(format!("`{}`", progress_bar));
+                        status_parts.push("".to_string());
+                        
+                        status_parts.push(format!("📌 *Pending:* {}", tasks_info.pending));
+                        status_parts.push(format!("🔄 *In Progress:* {}", tasks_info.in_progress));
+                        status_parts.push(format!("✅ *Completed:* {}", tasks_info.completed));
+                        if tasks_info.blocked > 0 {
+                            status_parts.push(format!("🚧 *Blocked:* {}", tasks_info.blocked));
+                        }
+                        status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
+                        status_parts.push("".to_string());
+                        status_parts.push("*⚠️ Data Source:* File System \\(Static\\)".to_string());
+                        status_parts.push("*💡 Tip:* Start MCP server for live updates".to_string());
                     }
-                    _ => {
+                    Ok(None) => {
+                        status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
+                        status_parts.push("💡 Initialize with TaskMaster to track tasks".to_string());
                         status_parts.push("".to_string());
-                        status_parts.push("⚠️ MCP Server also unavailable".to_string());
-                        status_parts.push("💡 Start MCP server or initialize TaskMaster".to_string());
+                        status_parts.push("*🚀 Quick Start:*".to_string());
+                        status_parts.push("• Run `task\\-master init` in your project".to_string());
+                        status_parts.push("• Create a PRD and run `task\\-master parse\\-prd`".to_string());
+                    }
+                    Err(e) => {
+                        status_parts.push("❌ Error reading TaskMaster".to_string());
+                        status_parts.push(format!("⚠️ {}", Self::escape_markdown_v2(&e.to_string())));
+                        
+                        // Check MCP server as backup
+                        match self.check_mcp_server_status().await {
+                            Ok(true) => {
+                                status_parts.push("".to_string());
+                                status_parts.push("ℹ️ MCP Server available as fallback".to_string());
+                                status_parts.push("💡 For live updates, use Claude Code".to_string());
+                            }
+                            _ => {
+                                status_parts.push("".to_string());
+                                status_parts.push("⚠️ MCP Server also unavailable".to_string());
+                                status_parts.push("💡 Start MCP server or initialize TaskMaster".to_string());
+                            }
+                        }
                     }
                 }
             }
         }
-        
-        //status_parts.push("".to_string());
-        //status_parts.push("💡 For real\\-time updates, use Claude Code".to_string());
         
         status_parts.join("\n")
     }
@@ -873,6 +951,8 @@ impl TelegramBot {
                     completed,
                     blocked,
                     total,
+                    subtasks_total: 0,
+                    subtasks_completed: 0,
                 }));
             }
         }
@@ -919,6 +999,8 @@ impl TelegramBot {
             completed,
             blocked,
             total,
+            subtasks_total: 0,
+            subtasks_completed: 0,
         }))
     }
 
@@ -1037,5 +1119,133 @@ impl TelegramBot {
         }
         
         Ok(())
+    }
+
+    /// Get live TaskMaster status via MCP server integration
+    async fn get_live_taskmaster_status(&self) -> Result<TaskMasterInfo> {
+        // Try to connect to the MCP client and get fresh task data
+        match &self.mcp_integration {
+            Some(mcp) => {
+                let mcp_data = mcp.get_task_status_fresh().await?;
+                
+                // Parse the MCP response format
+                if let Some(data_obj) = mcp_data.get("data") {
+                    if let Some(tasks_array) = data_obj.get("tasks").and_then(|t| t.as_array()) {
+                        let project_name = "CCTelegram Project".to_string(); // Could be extracted from MCP context
+                        
+                        let mut pending = 0;
+                        let mut in_progress = 0;
+                        let mut completed = 0;
+                        let mut blocked = 0;
+                        let mut subtasks_total = 0;
+                        let mut subtasks_completed = 0;
+                        
+                        // Count main tasks and subtasks
+                        for task in tasks_array {
+                            // Count main task
+                            match task.get("status").and_then(|s| s.as_str()) {
+                                Some("pending") => pending += 1,
+                                Some("in-progress") => in_progress += 1,
+                                Some("done") => completed += 1,
+                                Some("blocked") => blocked += 1,
+                                _ => {}
+                            }
+                            
+                            // Count subtasks if present
+                            if let Some(subtasks_array) = task.get("subtasks").and_then(|st| st.as_array()) {
+                                for subtask in subtasks_array {
+                                    subtasks_total += 1;
+                                    if let Some("done") = subtask.get("status").and_then(|s| s.as_str()) {
+                                        subtasks_completed += 1;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        let total = pending + in_progress + completed + blocked;
+                        
+                        return Ok(TaskMasterInfo {
+                            project_name,
+                            pending,
+                            in_progress,
+                            completed,
+                            blocked,
+                            total,
+                            subtasks_total,
+                            subtasks_completed,
+                        });
+                    }
+                    
+                    // Try to parse from stats field if available
+                    if let Some(stats) = data_obj.get("stats") {
+                        let pending = stats.get("pending").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let in_progress = stats.get("inProgress").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let completed = stats.get("completed").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let blocked = stats.get("blocked").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let total = stats.get("total").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        
+                        let subtasks_total = stats.get("subtasks")
+                            .and_then(|st| st.get("total"))
+                            .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        let subtasks_completed = stats.get("subtasks")
+                            .and_then(|st| st.get("completed"))
+                            .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+                        
+                        return Ok(TaskMasterInfo {
+                            project_name: "CCTelegram Project".to_string(),
+                            pending,
+                            in_progress,
+                            completed,
+                            blocked,
+                            total,
+                            subtasks_total,
+                            subtasks_completed,
+                        });
+                    }
+                }
+                
+                Err(anyhow::anyhow!("Invalid MCP response format"))
+            }
+            None => Err(anyhow::anyhow!("MCP integration not available"))
+        }
+    }
+    
+    /// Create a progress bar visualization
+    fn create_progress_bar(percentage: u8, width: usize) -> String {
+        let filled = (percentage as f64 / 100.0 * width as f64).round() as usize;
+        let empty = width.saturating_sub(filled);
+        
+        let bar = "█".repeat(filled) + &"░".repeat(empty);
+        format!("{} {}%", bar, percentage)
+    }
+    
+    /// Create a mini progress bar for individual task types
+    fn create_mini_bar(count: u32, total: u32, width: usize) -> String {
+        if total == 0 {
+            return "─".repeat(width);
+        }
+        
+        let percentage = (count as f64 / total as f64 * 100.0).round() as usize;
+        let filled = (percentage * width) / 100;
+        let empty = width.saturating_sub(filled);
+        
+        format!("`{}{}`", "▓".repeat(filled), "░".repeat(empty))
+    }
+    
+    /// Get project health indicator based on completion and blocked tasks
+    fn get_project_health_indicator(completion: u8, blocked: u32) -> String {
+        match (completion, blocked) {
+            (90..=100, 0) => "🟢 Excellent".to_string(),
+            (75..=89, 0) => "🔵 Good".to_string(),
+            (50..=74, 0..=1) => "🟡 Fair".to_string(),
+            (25..=49, _) => "🟠 Needs Attention".to_string(),
+            (_, blocked) if blocked > 2 => "🔴 Blocked Issues".to_string(),
+            _ => "🔴 Critical".to_string(),
+        }
+    }
+    
+    /// Get current timestamp for status updates
+    fn get_current_timestamp() -> String {
+        chrono::Utc::now().format("%H:%M:%S UTC").to_string()
     }
 }
