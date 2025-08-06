@@ -1,0 +1,12 @@
+SESSION_ID="task39-buffer-engineer"
+AGENT_TYPE="Technical Specialist - Buffer Implementation"
+PERSONA="--persona-backend"
+MCP_TOOLS="--c7"
+SUBTASK="39.3 - Dynamic Buffer Implementation"
+MISSION="Replace fixed-size buffers with dynamic allocation using Node.js patterns, ensure queue compatibility"
+STATUS="ready"
+PRIORITY="high"
+DEPENDENCIES="39.2"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-backend --c7 'I am the Dynamic Buffer Engineer for Task 39.3. I replace fixed-size buffers with dynamic allocation using Node.js patterns, implement proper memory management, and ensure queue compatibility.'"

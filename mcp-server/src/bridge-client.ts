@@ -10,6 +10,14 @@ import { CCTelegramEvent, BridgeStatus, TelegramResponse, EventType } from './ty
 import { secureLog, sanitizeForLogging, sanitizePath } from './security.js';
 import { getBridgeAxiosConfig, getHttpPool } from './http-pool.js';
 import { getFsOptimizer } from './utils/fs-optimizer.js';
+import { 
+  getGlobalBufferPool, 
+  DynamicBufferPool, 
+  createMessageProcessor,
+  safeBufferConcat,
+  type BufferPoolConfig,
+  type StreamProcessorOptions
+} from './utils/dynamic-buffer-manager.js';
 
 const execAsync = promisify(exec);
 
@@ -23,6 +31,9 @@ export class CCTelegramBridgeClient {
   private bridgeStatusCache: { running: boolean; timestamp: number } | null = null;
   private readonly CACHE_DURATION_MS = 30000; // 30 seconds
   private isStartingBridge = false; // Prevent concurrent starts
+  
+  // Dynamic buffer management
+  private bufferPool: DynamicBufferPool;
 
   constructor() {
     const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
@@ -48,6 +59,29 @@ export class CCTelegramBridgeClient {
     this.healthEndpoint = `http://localhost:${healthPort}/health`;
     this.metricsEndpoint = `http://localhost:${healthPort}/metrics`;
 
+    // Initialize dynamic buffer pool for message handling
+    this.bufferPool = getGlobalBufferPool({
+      initialPoolSize: 20,
+      maxPoolSize: 200,
+      bufferSize: 32768, // 32KB buffers for larger messages
+      enableMonitoring: true,
+      memoryPressureThreshold: 150, // 150MB threshold
+      gcInterval: 30000
+    });
+
+    // Monitor buffer pool statistics
+    this.bufferPool.on('memoryPressure', (data) => {
+      secureLog('warn', 'Buffer pool memory pressure detected', {
+        heap_used_mb: data.heapUsedMB,
+        threshold_mb: data.threshold,
+        pool_stats: this.bufferPool.getStats()
+      });
+    });
+
+    this.bufferPool.on('stats', (stats) => {
+      secureLog('debug', 'Buffer pool statistics', stats);
+    });
+    
     // Ensure directories exist
     this.ensureDirectories();
     
@@ -157,7 +191,30 @@ export class CCTelegramBridgeClient {
         has_event_id: true
       });
       
-      await fs.writeJSON(filePath, eventData, { spaces: 2 });
+      // Use dynamic buffer for efficient JSON serialization
+      const jsonString = JSON.stringify(eventData, null, 2);
+      const messageSize = Buffer.byteLength(jsonString, 'utf8');
+      
+      secureLog('debug', 'Message size calculated', {
+        size_bytes: messageSize,
+        size_kb: Math.round(messageSize / 1024 * 100) / 100
+      });
+      
+      // Use buffer pool for large messages
+      if (messageSize > 1024) {
+        const buffer = this.bufferPool.acquire(messageSize);
+        buffer.write(jsonString, 'utf8');
+        await fs.writeFile(filePath, buffer.subarray(0, messageSize));
+        this.bufferPool.release(buffer);
+        
+        secureLog('debug', 'Large message written using dynamic buffer', {
+          buffer_pool_stats: this.bufferPool.getStats()
+        });
+      } else {
+        // Use standard method for small messages
+        await fs.writeJSON(filePath, eventData, { spaces: 2 });
+      }
+      
       secureLog('debug', 'File written successfully');
       
       // Verify the file was created
@@ -186,6 +243,87 @@ export class CCTelegramBridgeClient {
       });
       throw new Error(`Failed to send event: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  /**
+   * Process large message streams with dynamic buffers and backpressure handling
+   */
+  async processLargeMessageStream(
+    messages: AsyncIterable<CCTelegramEvent>,
+    options: StreamProcessorOptions = {}
+  ): Promise<{ processed: number; errors: number; totalSize: number }> {
+    let processed = 0;
+    let errors = 0;
+    let totalSize = 0;
+    
+    const processor = createMessageProcessor({
+      maxMessageSize: 10 * 1024 * 1024, // 10MB max per message
+      enableBackpressure: true,
+      ...options
+    }, this.bufferPool);
+    
+    secureLog('info', 'Starting large message stream processing', {
+      max_message_size: processor.options?.maxMessageSize,
+      buffer_pool_stats: this.bufferPool.getStats()
+    });
+    
+    try {
+      for await (const event of messages) {
+        try {
+          const result = await this.sendEvent(event);
+          if (result.success) {
+            processed++;
+            const eventSize = Buffer.byteLength(JSON.stringify(event), 'utf8');
+            totalSize += eventSize;
+            
+            secureLog('debug', 'Stream event processed', {
+              event_id: result.event_id,
+              size_bytes: eventSize
+            });
+          } else {
+            errors++;
+          }
+        } catch (error) {
+          errors++;
+          secureLog('error', 'Failed to process stream event', {
+            error_message: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+        
+        // Check memory pressure and pause if needed
+        const memoryUsage = process.memoryUsage();
+        if (memoryUsage.heapUsed > this.bufferPool['config'].memoryPressureThreshold * 1024 * 1024) {
+          secureLog('warn', 'Memory pressure during stream processing, pausing', {
+            heap_used_mb: Math.round(memoryUsage.heapUsed / 1024 / 1024)
+          });
+          
+          // Wait for memory pressure to reduce
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      const result = { processed, errors, totalSize };
+      secureLog('info', 'Large message stream processing completed', result);
+      return result;
+      
+    } catch (error) {
+      secureLog('error', 'Stream processing failed', {
+        processed,
+        errors,
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+  
+  /**
+   * Get buffer pool statistics for monitoring
+   */
+  getBufferPoolStats() {
+    return {
+      ...this.bufferPool.getStats(),
+      memory_usage: process.memoryUsage()
+    };
   }
 
   /**

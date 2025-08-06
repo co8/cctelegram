@@ -1,0 +1,12 @@
+SESSION_ID="task39-validation-engineer"
+AGENT_TYPE="Technical Specialist - Integrity Validation"
+PERSONA="--persona-security"
+MCP_TOOLS="--seq"
+SUBTASK="39.5 - End-to-End Integrity Validation"
+MISSION="Implement SHA-256 checksums, design end-to-end validation systems, ensure message integrity across all tiers"
+STATUS="ready"
+PRIORITY="high"
+DEPENDENCIES="39.1,39.2,39.3,39.4"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-security --seq 'I am the Integrity Validation Engineer for Task 39.5. I implement SHA-256 checksums, design end-to-end validation systems, and ensure message integrity across all processing tiers.'"

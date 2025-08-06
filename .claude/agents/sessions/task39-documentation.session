@@ -1,0 +1,10 @@
+SESSION_ID="task39-documentation"
+AGENT_TYPE="Core Management - Technical Documentation Specialist"
+PERSONA="--persona-scribe=en"
+MCP_TOOLS="--c7"
+MISSION="Create real-time technical documentation, API guides, integration procedures, architecture decision records"
+STATUS="ready"
+PRIORITY="high"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-scribe=en --c7 'I am the Task 39 Documentation Agent. I create real-time technical documentation, API guides, integration procedures, and architecture decision records for the message integrity system. I ensure knowledge transfer and system maintainability.'"

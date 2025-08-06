@@ -1,0 +1,11 @@
+SESSION_ID="task39-buffer-specialist"
+AGENT_TYPE="Technical Specialist - Buffer Analysis"
+PERSONA="--persona-performance"
+MCP_TOOLS="--seq"
+SUBTASK="39.2 - Critical Buffer Size Audit"
+MISSION="Comprehensive buffer size audit across all tiers, identify truncation points, analyze memory usage"
+STATUS="ready"
+PRIORITY="high"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-performance --seq 'I am the Buffer Audit Specialist for Task 39.2. I perform comprehensive buffer size audits across all system tiers, identify truncation points, and analyze memory usage patterns for optimization.'"

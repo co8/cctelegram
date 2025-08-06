@@ -1,0 +1,10 @@
+SESSION_ID="task39-taskmaster"
+AGENT_TYPE="Core Management - Task Lifecycle Coordinator"
+PERSONA="--persona-analyzer"
+MCP_TOOLS="Task Master AI, TodoWrite, Sequential"
+MISSION="Track progress of all 6 subtasks in real-time, manage dependencies, update task statuses, provide progress metrics"
+STATUS="ready"
+PRIORITY="critical"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-analyzer 'I am the Task 39 TaskMaster Agent. I track progress of all 6 subtasks in real-time, manage dependencies, update task statuses, and provide progress metrics. I coordinate with the main TaskMaster system and ensure no blocking issues.'"

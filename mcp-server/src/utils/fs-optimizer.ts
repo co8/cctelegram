@@ -1,10 +1,12 @@
 /**
  * File System Operation Optimizer
  * Provides batched and cached file system operations to reduce I/O overhead
+ * Enhanced with dynamic buffer management for Task 39.3
  */
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import { getGlobalBufferPool, DynamicBufferPool } from './dynamic-buffer-manager.js';
 
 /**
  * Directory listing cache entry
@@ -27,12 +29,21 @@ interface BatchReadResult<T = any> {
 }
 
 /**
- * File system optimizer with caching and batching capabilities
+ * File system optimizer with caching, batching, and dynamic buffer management
  */
 export class FileSystemOptimizer {
   private directoryCache = new Map<string, DirectoryCache>();
   private readonly defaultCacheTtl = 30000; // 30 seconds
   private readonly maxCacheSize = 100;
+  private bufferPool: DynamicBufferPool;
+  
+  constructor(bufferPool?: DynamicBufferPool) {
+    this.bufferPool = bufferPool || getGlobalBufferPool({
+      bufferSize: 16384, // 16KB for file operations
+      initialPoolSize: 10,
+      maxPoolSize: 50
+    });
+  }
 
   /**
    * Get directory listing with caching
@@ -92,13 +103,35 @@ export class FileSystemOptimizer {
   }
 
   /**
-   * Batch read JSON files
+   * Batch read JSON files with dynamic buffer management
    */
   async batchReadJSON<T = any>(filePaths: string[]): Promise<BatchReadResult<T>[]> {
     const readPromises = filePaths.map(async (filePath): Promise<BatchReadResult<T>> => {
       try {
-        const data = await fs.readJSON(filePath);
-        return { success: true, data, filePath };
+        // Check file size first to determine buffer strategy
+        const stat = await fs.stat(filePath);
+        const fileSize = stat.size;
+        
+        if (fileSize > 64 * 1024) { // 64KB threshold for large files
+          // Use dynamic buffer for large files
+          const buffer = this.bufferPool.acquire(fileSize);
+          const fd = await fs.open(filePath, 'r');
+          
+          try {
+            const result = await fd.read(buffer, 0, fileSize, 0);
+            const jsonString = buffer.toString('utf8', 0, result.bytesRead);
+            const data = JSON.parse(jsonString);
+            
+            return { success: true, data, filePath };
+          } finally {
+            await fd.close();
+            this.bufferPool.release(buffer);
+          }
+        } else {
+          // Use standard method for small files
+          const data = await fs.readJSON(filePath);
+          return { success: true, data, filePath };
+        }
       } catch (error) {
         return { 
           success: false, 
@@ -109,6 +142,27 @@ export class FileSystemOptimizer {
     });
 
     return Promise.all(readPromises);
+  }
+  
+  /**
+   * Write large JSON files using dynamic buffers
+   */
+  async writeJSONWithBuffer(filePath: string, data: any, options: { spaces?: number } = {}): Promise<void> {
+    const jsonString = JSON.stringify(data, null, options.spaces || 2);
+    const dataSize = Buffer.byteLength(jsonString, 'utf8');
+    
+    if (dataSize > 1024) { // Use buffer pool for files > 1KB
+      const buffer = this.bufferPool.acquire(dataSize);
+      buffer.write(jsonString, 'utf8');
+      
+      try {
+        await fs.writeFile(filePath, buffer.subarray(0, dataSize));
+      } finally {
+        this.bufferPool.release(buffer);
+      }
+    } else {
+      await fs.writeJSON(filePath, data, options);
+    }
   }
 
   /**

@@ -357,12 +357,20 @@ impl PerformanceMonitor {
         (health_status, recommendations)
     }
     
-    /// Export metrics in Prometheus format
+    /// Export metrics in Prometheus format with dynamic buffer allocation
     pub fn export_prometheus_metrics(&self) -> anyhow::Result<String> {
         let encoder = TextEncoder::new();
         let metric_families = self.metrics_registry.gather();
-        let mut buffer = Vec::new();
+        
+        // Dynamic buffer allocation - estimate size based on metric count
+        let estimated_size = metric_families.len() * 256; // Rough estimate per metric family
+        let mut buffer = Vec::with_capacity(estimated_size);
+        
         encoder.encode(&metric_families, &mut buffer)?;
+        
+        // Shrink buffer to fit actual content to reduce memory footprint
+        buffer.shrink_to_fit();
+        
         Ok(String::from_utf8(buffer)?)
     }
     

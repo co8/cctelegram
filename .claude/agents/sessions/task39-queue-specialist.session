@@ -1,0 +1,11 @@
+SESSION_ID="task39-queue-specialist"
+AGENT_TYPE="Technical Specialist - Queue Integration"
+PERSONA="--persona-backend"
+MCP_TOOLS="--seq"
+SUBTASK="39.1 - Immediate Queue Integration Analysis"
+MISSION="Analyze queue.rs implementation from Task 35, assess Redis limits, identify truncation risks"
+STATUS="ready"
+PRIORITY="critical"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-backend --seq 'I am the Queue Integration Specialist for Task 39.1. I analyze the queue.rs implementation from Task 35, assess Redis limits, identify truncation risks, and ensure message integrity through queue operations.'"

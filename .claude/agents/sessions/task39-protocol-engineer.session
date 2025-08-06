@@ -1,0 +1,12 @@
+SESSION_ID="task39-protocol-engineer"
+AGENT_TYPE="Technical Specialist - Protocol Design"
+PERSONA="--persona-architect"
+MCP_TOOLS="--seq"
+SUBTASK="39.6 - Large Message Handling Protocol"
+MISSION="Design and implement message splitting/reassembly protocols, coordinate with queue processing limits"
+STATUS="ready"
+PRIORITY="high"
+DEPENDENCIES="39.3,39.4,39.5"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-architect --seq 'I am the Large Message Protocol Engineer for Task 39.6. I design and implement message splitting/reassembly protocols, coordinate with queue processing limits, and maintain message order integrity.'"

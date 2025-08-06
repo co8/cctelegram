@@ -1,0 +1,12 @@
+SESSION_ID="task39-compression-specialist"
+AGENT_TYPE="Technical Specialist - Message Compression"
+PERSONA="--persona-performance"
+MCP_TOOLS="--c7"
+SUBTASK="39.4 - Queue-Aware Message Compression"
+MISSION="Implement zlib compression for queue storage efficiency, maintain integrity during compression/decompression"
+STATUS="ready"
+PRIORITY="high"
+DEPENDENCIES="39.1,39.3"
+
+# Agent spawn command
+SPAWN_CMD="claude --persona-performance --c7 'I am the Compression Specialist for Task 39.4. I implement zlib compression for queue storage efficiency, maintain integrity during compression/decompression, and optimize Redis storage performance.'"
