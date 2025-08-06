@@ -559,95 +559,48 @@ impl TelegramBot {
         let mut status_parts = vec![];
         status_parts.push("*📋 Task Status Summary*".to_string());
         
-        // Check if MCP server is running
-        match self.check_mcp_server_status().await {
-            Ok(true) => {
-                // Try to get task status via MCP server
-                match self.query_mcp_tasks().await {
-                    Ok(task_data) => {
-                        status_parts.push("✅ Data source: MCP Server".to_string());
-                        status_parts.push("".to_string());
-                        
-                        // Parse and display task summary
-                        if let Some(claude_tasks) = task_data.get("claude_code_tasks") {
-                            if claude_tasks.get("available").and_then(|v| v.as_bool()).unwrap_or(false) {
-                                let summary = claude_tasks.get("summary").unwrap();
-                                status_parts.push("*Claude Code Session Tasks:*".to_string());
-                                status_parts.push(format!("📌 Pending: {}", summary.get("pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("🔄 In Progress: {}", summary.get("in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("✅ Completed: {}", summary.get("completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("🚧 Blocked: {}", summary.get("blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            } else {
-                                status_parts.push("ℹ️ Claude Code: No session tasks found".to_string());
-                            }
-                        }
-                        
-                        if let Some(taskmaster_tasks) = task_data.get("taskmaster_tasks") {
-                            if taskmaster_tasks.get("available").and_then(|v| v.as_bool()).unwrap_or(false) {
-                                let summary = taskmaster_tasks.get("summary").unwrap();
-                                let project_name = taskmaster_tasks.get("project_name").and_then(|v| v.as_str()).unwrap_or("Unknown");
-                                status_parts.push("".to_string());
-                                status_parts.push(format!("*TaskMaster \\({}\\):*", Self::escape_markdown_v2(project_name)));
-                                status_parts.push(format!("📌 Pending: {}", summary.get("pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("🔄 In Progress: {}", summary.get("in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("✅ Completed: {}", summary.get("completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                                status_parts.push(format!("🚧 Blocked: {}", summary.get("blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            } else {
-                                status_parts.push("ℹ️ TaskMaster: Not initialized in this project".to_string());
-                            }
-                        }
-                        
-                        // Combined summary if both available
-                        if let Some(combined) = task_data.get("combined_summary") {
-                            status_parts.push("".to_string());
-                            status_parts.push("*📊 Combined Total:*".to_string());
-                            status_parts.push(format!("📌 Total Pending: {}", combined.get("total_pending").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            status_parts.push(format!("🔄 Total In Progress: {}", combined.get("total_in_progress").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            status_parts.push(format!("✅ Total Completed: {}", combined.get("total_completed").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            status_parts.push(format!("🚧 Total Blocked: {}", combined.get("total_blocked").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                            status_parts.push(format!("📊 Grand Total: {}", combined.get("grand_total").unwrap_or(&serde_json::Value::Number(serde_json::Number::from(0)))));
-                        }
-                    }
-                    Err(e) => {
-                        status_parts.push("❌ MCP Server: Connection error".to_string());
-                        status_parts.push(format!("⚠️ Error: {}", Self::escape_markdown_v2(&e.to_string())));
-                        status_parts.push("".to_string());
-                        status_parts.push("💡 Try: Check if MCP server is running".to_string());
-                    }
-                }
-            }
-            _ => {
-                status_parts.push("⚠️ MCP Server not running".to_string());
+        // Try to read TaskMaster directly first (primary method)
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        
+        match self.read_taskmaster_tasks(&taskmaster_path).await {
+            Ok(Some(tasks_info)) => {
+                status_parts.push("✅ Data source: TaskMaster".to_string());
                 status_parts.push("".to_string());
+                status_parts.push("*📋 TaskMaster Project*".to_string());
+                status_parts.push(format!("*Project: {}*", Self::escape_markdown_v2(&tasks_info.project_name)));
+                status_parts.push(format!("📌 Pending: {}", tasks_info.pending));
+                status_parts.push(format!("🔄 In Progress: {}", tasks_info.in_progress));
+                status_parts.push(format!("✅ Completed: {}", tasks_info.completed));
+                status_parts.push(format!("🚧 Blocked: {}", tasks_info.blocked));
+                status_parts.push(format!("📊 Total: {}", tasks_info.total));
+            }
+            Ok(None) => {
+                status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
+                status_parts.push("💡 Initialize with TaskMaster to track tasks".to_string());
+            }
+            Err(e) => {
+                status_parts.push("❌ Error reading TaskMaster".to_string());
+                status_parts.push(format!("⚠️ {}", Self::escape_markdown_v2(&e.to_string())));
                 
-                // Fallback: Try to read TaskMaster directly
-                let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-                let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
-                
-                match self.read_taskmaster_tasks(&taskmaster_path).await {
-                    Ok(Some(tasks_info)) => {
-                        status_parts.push("📋 TaskMaster".to_string());
-                        status_parts.push(format!("*Project: {}*", Self::escape_markdown_v2(&tasks_info.project_name)));
-                        status_parts.push(format!("📌 Pending: {}", tasks_info.pending));
-                        status_parts.push(format!("🔄 In Progress: {}", tasks_info.in_progress));
-                        status_parts.push(format!("✅ Completed: {}", tasks_info.completed));
-                        status_parts.push(format!("🚧 Blocked: {}", tasks_info.blocked));
-                        status_parts.push(format!("📊 Total: {}", tasks_info.total));
+                // Secondary fallback: Check MCP server as backup
+                match self.check_mcp_server_status().await {
+                    Ok(true) => {
+                        status_parts.push("".to_string());
+                        status_parts.push("ℹ️ MCP Server available as fallback".to_string());
+                        status_parts.push("💡 For live updates, use Claude Code".to_string());
                     }
-                    Ok(None) => {
-                        status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
-                        status_parts.push("💡 Initialize with TaskMaster or start MCP server".to_string());
-                    }
-                    Err(e) => {
-                        status_parts.push("❌ Error reading TaskMaster".to_string());
-                        status_parts.push(format!("⚠️ {}", Self::escape_markdown_v2(&e.to_string())));
+                    _ => {
+                        status_parts.push("".to_string());
+                        status_parts.push("⚠️ MCP Server also unavailable".to_string());
+                        status_parts.push("💡 Start MCP server or initialize TaskMaster".to_string());
                     }
                 }
             }
         }
         
         status_parts.push("".to_string());
-        // status_parts.push("💡 For detailed task info, use MCP server with Claude Code".to_string());
+        status_parts.push("💡 For real\\-time updates, use Claude Code".to_string());
         
         status_parts.join("\n")
     }
@@ -683,6 +636,42 @@ impl TelegramBot {
         let content = fs::read_to_string(path).await?;
         let data: serde_json::Value = serde_json::from_str(&content)?;
         
+        // Try current TaskMaster AI data structure first (from MCP query)
+        // This is when the MCP server provides the tasks directly
+        if let Some(data_tasks) = data.get("data").and_then(|d| d.get("tasks")) {
+            if let Some(tasks_array) = data_tasks.as_array() {
+                // MCP API format
+                let project_name = "CCTelegram Project".to_string(); // From MCP context
+
+                let mut pending = 0;
+                let mut in_progress = 0;
+                let mut completed = 0;
+                let mut blocked = 0;
+
+                for task in tasks_array {
+                    match task.get("status").and_then(|s| s.as_str()) {
+                        Some("pending") => pending += 1,
+                        Some("in-progress") => in_progress += 1,
+                        Some("done") => completed += 1,
+                        Some("blocked") => blocked += 1,
+                        _ => {}
+                    }
+                }
+
+                let total = pending + in_progress + completed + blocked;
+
+                return Ok(Some(TaskMasterInfo {
+                    project_name,
+                    pending,
+                    in_progress,
+                    completed,
+                    blocked,
+                    total,
+                }));
+            }
+        }
+        
+        // Fallback to old format for backward compatibility
         let project_name = data
             .get("metadata")
             .and_then(|m| m.get("projectName"))
@@ -690,7 +679,7 @@ impl TelegramBot {
             .unwrap_or("Unknown Project")
             .to_string();
             
-        // Get tasks from the first tag (usually 'master')
+        // Get tasks from the first tag (usually 'master') - old format
         let empty_tasks = vec![];
         let tasks = data
             .get("tags")

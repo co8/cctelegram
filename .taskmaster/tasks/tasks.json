@@ -868,7 +868,7 @@
         "description": "Enhance testing infrastructure with comprehensive integration tests for the 3-tier cascading system, end-to-end workflow testing, performance benchmarking, and chaos engineering tests to achieve enterprise-grade testing coverage.",
         "details": "Implement comprehensive integration tests for the 3-tier cascading monitoring system using Jest and supertest, validating webhook response times (0-100ms), bridge processing (100-500ms), and file watcher fallbacks (1-5s) with real-time latency measurements. Create end-to-end workflow tests using Playwright to simulate complete user journeys from Telegram message receipt through Claude Code notifications, including error scenarios and recovery paths. Implement performance test suite using k6 and autocannon for load testing all components with configurable concurrency levels (10-1000 concurrent users), measuring response times, throughput, and resource utilization. Set up chaos engineering tests using chaos-monkey-lambda and toxiproxy to simulate network failures, service outages, and resource constraints, validating system resilience and automatic recovery mechanisms. Create comprehensive test data factories using factory-bot pattern for consistent test scenarios across integration and E2E tests. Implement test coverage reporting with nyc/istanbul targeting 95% code coverage for critical paths. Set up performance regression testing with baseline comparisons and automated alerts for performance degradation >10%. Create visual regression testing using percy.io or similar for UI components. Implement contract testing using Pact for API validation between MCP server and bridge components. Add mutation testing using Stryker.js to validate test quality and effectiveness.",
         "testStrategy": "Execute integration test suite with Docker Compose environment simulating production conditions, including Redis, file system, and mock Telegram API. Run E2E tests in headless browser environments across Chrome, Firefox, and Safari using Playwright test runner with parallel execution. Perform load testing scenarios: baseline (10 concurrent users), stress (100 users), spike (1000 users), and endurance (sustained load for 30 minutes). Execute chaos engineering tests with controlled failure injection: network partitions, service crashes, resource exhaustion, and dependency failures. Validate test coverage meets 95% threshold for critical components using automated coverage gates in CI/CD pipeline. Implement performance benchmarking with automated regression detection comparing against baseline metrics. Create test reporting dashboard using Allure or similar for comprehensive test result visualization and historical tracking.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           14,
           16,
@@ -884,7 +884,7 @@
             "description": "Create comprehensive integration tests for the 3-tier cascading monitoring system using Jest and supertest, validating webhook response times (0-100ms), bridge processing (100-500ms), and file watcher fallbacks (1-5s) with real-time latency measurements.",
             "dependencies": [],
             "details": "Set up Jest test environment with supertest for HTTP testing and mock implementations for each tier. Create test scenarios covering webhook receipt, bridge processing latency, and file watcher fallback mechanisms. Implement timing assertions for each tier with tolerance margins. Use Docker Compose for isolated test environment with Redis, file system mocks, and simulated Telegram API endpoints.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute integration tests in isolated Docker environment with timing assertions for each cascading tier. Validate latency measurements using high-resolution timers and statistical analysis of response times across multiple test runs."
           },
           {
@@ -895,7 +895,7 @@
               "25.1"
             ],
             "details": "Set up Playwright test environment with headless browsers for Chrome, Firefox, and Safari. Implement complete user journey tests including Telegram bot interaction simulation, bridge processing validation, and Claude Code notification verification. Create error scenario tests for network failures, API timeouts, and recovery mechanisms. Implement visual regression testing for UI components and notification displays.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run E2E tests in parallel across multiple browser engines with screenshot comparison for visual regression detection. Simulate network conditions and error states to validate resilience and recovery mechanisms."
           },
           {
@@ -906,7 +906,7 @@
               "25.1"
             ],
             "details": "Set up k6 scripts for distributed load testing with configurable user loads from 10 to 1000 concurrent users. Implement autocannon for HTTP benchmarking of webhook endpoints and bridge communications. Create resource utilization monitoring using system metrics collection. Implement baseline performance measurements and regression detection with automated alerting for >10% performance degradation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute graduated load tests starting from baseline performance measurements through peak load scenarios. Monitor CPU, memory, and network utilization with performance regression alerts and comparative analysis against baseline metrics."
           },
           {
@@ -926,7 +926,7 @@
             "description": "Implement comprehensive test data factories using factory-bot pattern for consistent test scenarios across integration and E2E tests, ensuring reproducible test environments.",
             "dependencies": [],
             "details": "Design factory-bot pattern implementation for generating consistent test data including Telegram message payloads, bridge configurations, and system state scenarios. Create fixture management system for test environment setup and teardown. Implement data seeding utilities for integration tests and mock API responses. Ensure test data isolation and cleanup between test runs.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Validate test data consistency across all test suites with automated fixture verification and data integrity checks. Implement test data versioning for reproducible test scenarios."
           },
           {
@@ -939,7 +939,7 @@
               "25.5"
             ],
             "details": "Configure nyc/istanbul for comprehensive code coverage reporting with branch, function, and line coverage metrics. Implement Stryker.js mutation testing to validate test effectiveness and identify weak test cases. Set up coverage thresholds with CI/CD integration and automated reporting. Create coverage trend analysis and quality gates for pull request validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute comprehensive coverage analysis with mutation testing validation. Implement automated quality gates requiring 95% coverage for critical paths and mutation score thresholds for test effectiveness validation."
           },
           {
@@ -950,7 +950,7 @@
               "25.3"
             ],
             "details": "Create performance baseline establishment system with automated benchmark collection and storage. Implement continuous performance monitoring with regression detection algorithms comparing current performance against historical baselines. Set up automated alerting for performance degradation exceeding 10% threshold. Integrate visual regression testing using percy.io or similar tools for UI component validation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute continuous performance monitoring with statistical analysis of performance trends and automated regression detection. Validate visual consistency across browser environments with pixel-perfect comparison algorithms."
           },
           {
@@ -961,7 +961,7 @@
               "25.5"
             ],
             "details": "Implement Pact contract testing framework for MCP server and bridge component API validation. Create consumer-driven contracts defining API specifications and expectations. Set up contract verification workflows in CI/CD pipeline with automated contract publishing and verification. Implement contract evolution tracking and breaking change detection.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute contract testing with consumer-driven contract validation and provider verification workflows. Implement automated contract compatibility checks and breaking change detection in CI/CD pipeline."
           }
         ]
@@ -1215,7 +1215,7 @@
         "id": 29,
         "title": "Phase 1: Diagnosis & Analysis - Command Implementation Investigation",
         "description": "URGENT: Comprehensive diagnostic analysis of current command routing architecture, MCP server configuration issues, and error patterns affecting /current_task vs /tasks command implementations. This is a high-priority command fix that can begin immediately.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [],
         "priority": "high",
         "details": "Conduct thorough investigation using structured debugging approach: 1) Command Implementation Analysis - Use `grep -r '/current_task\\|/tasks' src/` to locate all command definitions, examine command registration in MCP server initialization, analyze routing logic in command handlers, and document differences between /current_task and /tasks implementations including parameter handling, response formats, and error conditions. 2) MCP Server Configuration Audit - Review .mcp.json configuration files for syntax errors, validate environment variable references using `env | grep -E 'API_KEY|TOKEN'`, check server startup logs using `journalctl` or Docker logs, analyze MCP server health endpoints, and verify Node.js/npm dependency compatibility. 3) Error Pattern Analysis - Implement structured logging using winston with correlation IDs to track error propagation, create error taxonomy categorizing startup errors vs runtime errors vs configuration errors, analyze error frequency and timing patterns, and document exact error messages with stack traces. 4) Architecture Review - Map current command routing flow from Claude Code → MCP Server → Task Master, identify bottlenecks and failure points using distributed tracing, analyze async/await patterns and promise handling, and document service dependencies and communication protocols. Use debugging tools like Node.js inspector, chrome://inspect for heap analysis, and MCP debug mode flags.",
@@ -1227,7 +1227,7 @@
             "description": "Conduct systematic analysis of /current_task vs /tasks command implementations by locating all command definitions in the codebase and documenting their differences.",
             "status": "done",
             "dependencies": [],
-            "details": "Use `grep -r '/current_task\\|/tasks' src/` to locate all command definitions across the codebase. Examine command registration in MCP server initialization files, typically in server startup or routing configuration. Analyze routing logic in command handlers to understand how requests are processed. Document key differences between /current_task and /tasks implementations including parameter handling (required vs optional parameters, validation rules), response formats (JSON structure, error responses), and error conditions (timeout handling, validation failures, server errors). Create comparison matrix showing functionality overlap and gaps.\n<info added on 2025-08-06T11:41:26.186Z>\nCommand analysis completed - Found both /tasks and /current_task commands in src/telegram/bot.rs at lines 266-277. Both commands are identical and call the same method self.get_tasks_status().await, confirming suspected redundancy. The /current_task command appears to have been added as a workaround during MCP server reliability issues but was never removed. Both commands provide identical functionality: task status summary from MCP server with fallback to direct TaskMaster file reading. This duplication is now confirmed as the root cause of command confusion and maintenance overhead.\n</info added on 2025-08-06T11:41:26.186Z>",
+            "details": "Use `grep -r '/current_task\\|/tasks' src/` to locate all command definitions across the codebase. Examine command registration in MCP server initialization files, typically in server startup or routing configuration. Analyze routing logic in command handlers to understand how requests are processed. Document key differences between /current_task and /tasks implementations including parameter handling (required vs optional parameters, validation rules), response formats (JSON structure, error responses), and error conditions (timeout handling, validation failures, server errors). Create comparison matrix showing functionality overlap and gaps.\n<info added on 2025-08-06T11:41:26.186Z>\nCommand analysis completed - Found both /tasks and /current_task commands in src/telegram/bot.rs at lines 266-277. Both commands are identical and call the same method self.get_tasks_status().await, confirming suspected redundancy. The /current_task command appears to have been added as a workaround during MCP server reliability issues but was never removed. Both commands provide identical functionality: task status summary from MCP server with fallback to direct TaskMaster file reading. This duplication is now confirmed as the root cause of command confusion and maintenance overhead.\n</info added on 2025-08-06T11:41:26.186Z>\n<info added on 2025-08-06T12:28:05.397Z>\nRoot cause of /tasks command failures identified and resolved: Updated TaskMaster data parsing in read_taskmaster_tasks() function to handle both current MCP format (data.tasks) and legacy format (tags.master.tasks). Fixed status mapping to properly recognize TaskMaster AI statuses (\"done\", \"in-progress\", \"pending\", \"blocked\") versus legacy format. This addresses the underlying data format incompatibility causing command failures. Code compilation successful, awaiting integration testing to confirm fix resolves MCP server communication issues with TaskMaster data retrieval.\n</info added on 2025-08-06T12:28:05.397Z>",
             "testStrategy": "Create unit tests for command parsing and validation logic. Test parameter handling with various input combinations including edge cases, malformed data, and boundary conditions. Verify response format consistency using JSON schema validation."
           },
           {
@@ -1350,7 +1350,7 @@
         "id": 31,
         "title": "Phase 3: Command Consolidation - Refactor /tasks Command and MCP Server Integration",
         "description": "Refactor the /tasks command to work seamlessly with both MCP server and direct file access, implement graceful fallback mechanisms when MCP server is unavailable, and add clear status indicators for MCP server connectivity state. The redundant /current_task command has been successfully removed and the MCP server connectivity issues have been resolved.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           30,
           26,
@@ -1566,7 +1566,7 @@
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-06T12:10:06.353Z",
+      "updated": "2025-08-06T12:54:25.961Z",
       "description": "Tasks for master context"
     }
   }
