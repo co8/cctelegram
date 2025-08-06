@@ -436,7 +436,7 @@ export class BenchmarkSuite extends EventEmitter {
         // Generate some activity
         for (let i = 0; i < 10; i++) {
           pool.getAxiosConfig('health');
-          if (i % 3 === 0) pool.recordError('health');
+          // Removed artificial error injection - was contaminating production metrics
         }
       },
       fn: () => {

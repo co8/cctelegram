@@ -269,12 +269,6 @@ impl TelegramBot {
                                 .parse_mode(ParseMode::MarkdownV2)
                                 .await?;
                         }
-                        "/current_task" => {
-                            let tasks_message = self.get_tasks_status().await;
-                            bot.send_message(msg.chat.id, tasks_message)
-                                .parse_mode(ParseMode::MarkdownV2)
-                                .await?;
-                        }
                         "/restart" => {
                             let restart_message = self.restart_app().await;
                             bot.send_message(msg.chat.id, restart_message)
@@ -287,8 +281,7 @@ impl TelegramBot {
                                 "🤖 *CCTelegram Bridge*
 
 📋 *Available Commands:*
-• `/current_task` \\- Shows current task status
-• `/tasks` \\- Shows detailed task info
+• `/tasks` \\- Shows current task status and detailed info
 • `/bridge` \\- Shows bridge system status
 • `/help` \\- Shows all available commands
 • `/restart` \\- Restart Telegram app\n\n✅ *What CCTelegram Can Do:*\n• Receive notifications from Claude Code\n• Handle approval requests with buttons\n• Show current work status \\& task progress\n• Query both Claude Code session \\& TaskMaster tasks\n• Acknowledge your messages with ⚡\n\n❌ *What CCTelegram Cannot Do:*\n• Execute shell commands \\(/ls, /pwd, etc\\.\\)\n• Act as a remote terminal\n• Run system operations\n\n💡 *This is a notification bridge, not a command interface*"
