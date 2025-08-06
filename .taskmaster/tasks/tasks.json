@@ -1562,11 +1562,288 @@
             "testStrategy": "End-to-end testing using Docker Compose orchestration with real service dependencies. Cross-system integration testing with API contract validation and message flow tracing. Monitoring system validation using chaos engineering principles with failure injection. Deployment pipeline testing with automated rollback scenarios and health check validation."
           }
         ]
+      },
+      {
+        "id": 34,
+        "title": "Phase 1: Critical Message Delivery Fixes - Rate Limiting, Retry Logic, and Batch Processing",
+        "description": "Implement comprehensive rate limiting for Telegram API compliance (30 msg/sec global, 1 msg/sec per chat), HTTP 429 retry logic with exponential backoff, and fix immediate batch processing on startup to achieve 95%+ message delivery reliability.",
+        "details": "Implement Telegram API rate limiting using token bucket algorithm with two-tier approach: global rate limiter (30 messages/second) using bottleneck library with Redis backend for distributed rate limiting, and per-chat rate limiter (1 message/second) using Map-based tracking with chat ID keys. Create comprehensive retry mechanism for HTTP 429 errors using p-retry with exponential backoff (initial: 1s, max: 30s, factor: 2) and jitter to prevent thundering herd. Implement proper error categorization distinguishing retryable (429, 502, 503, 504) from non-retryable errors (400, 401, 403). Fix batch processing by implementing startup event queue management using bull queue with Redis, processing accumulated events with proper rate limiting instead of immediate burst sending. Add message delivery tracking with correlation IDs, delivery confirmations, and failure analysis. Implement circuit breaker pattern for Telegram API calls using opossum library to prevent cascade failures. Create monitoring dashboard tracking delivery rates, retry statistics, and rate limit adherence using Prometheus metrics. Add graceful degradation for high-volume scenarios with priority-based message queuing (critical, high, normal, low). Implement dead letter queue for permanently failed messages with manual retry capabilities.",
+        "testStrategy": "Create comprehensive test suite using Jest with Telegram API mock server to validate rate limiting accuracy under load conditions including burst scenarios, sustained high traffic, and mixed chat volumes. Implement integration tests for HTTP 429 retry logic using nock to simulate API responses with various error codes, response delays, and recovery patterns. Test batch processing fixes with simulated startup scenarios containing 1000+ accumulated events, validating proper rate limiting and delivery confirmation. Create load testing suite using k6 to simulate concurrent message sending from multiple chat contexts, validating per-chat rate limiting accuracy and global rate compliance. Implement chaos engineering tests using fault injection to validate circuit breaker behavior, retry exhaustion scenarios, and dead letter queue functionality. Monitor delivery rate improvements using automated testing with baseline measurements comparing current 70% delivery rate against target 95%+ rate. Validate Redis-based rate limiting persistence across service restarts and distributed deployments.",
+        "status": "pending",
+        "dependencies": [
+          17,
+          19,
+          22
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Two-Tier Rate Limiting with Token Bucket Algorithm",
+            "description": "Create global rate limiter (30 msg/sec) using bottleneck library with Redis backend and per-chat rate limiter (1 msg/sec) using Map-based tracking",
+            "dependencies": [],
+            "details": "Implement token bucket algorithm for Telegram API rate limiting compliance. Set up bottleneck library with Redis backend for distributed global rate limiting at 30 messages/second. Create per-chat rate limiter using Map-based tracking with chat ID keys enforcing 1 message/second per chat. Configure Redis connection for distributed environments and implement proper error handling for Redis failures with fallback to in-memory rate limiting.\n<info added on 2025-08-06T15:31:08.737Z>\nSubAgent Alpha (Rate Limiting Specialist) assigned to implement two-tier rate limiting system with technical focus on global rate limiter (30 msg/sec using bottleneck + Redis) and per-chat rate limiter (1 msg/sec using Map-based tracking) integrated with existing telegram/bot.rs and telegram/messages.rs. Deliverables include Redis backend setup, global rate limiter foundation, per-chat rate limiter with Map tracking, integration with existing message dispatch system, error handling and fallback mechanisms, configuration, comprehensive test suite and performance validation. Target files: src/telegram/rate_limiter.rs (new) and src/storage/queue.rs (enhance). Performance target: <5ms overhead per message with graceful Redis failover support. Will coordinate with SubAgent Gamma for queue management dependency and provide rate limiting interface.\n</info added on 2025-08-06T15:31:08.737Z>",
+            "status": "in-progress",
+            "testStrategy": "Create comprehensive test suite using Jest with mock Redis and Telegram API servers to validate rate limiting accuracy under various load conditions including burst scenarios, sustained high traffic, and mixed chat volumes. Test rate limiter recovery after Redis failures and verify fallback mechanisms."
+          },
+          {
+            "id": 2,
+            "title": "Implement HTTP 429 Retry Logic with Exponential Backoff",
+            "description": "Create comprehensive retry mechanism for HTTP 429 errors using p-retry with exponential backoff and proper error categorization",
+            "dependencies": [],
+            "details": "Implement retry logic using p-retry library with exponential backoff configuration (initial: 1s, max: 30s, factor: 2) and jitter to prevent thundering herd effects. Create error categorization system distinguishing retryable errors (429, 502, 503, 504) from non-retryable errors (400, 401, 403). Add proper timeout handling and connection pooling optimization. Implement circuit breaker pattern using opossum library to prevent cascade failures during sustained API issues.\n<info added on 2025-08-06T15:31:34.754Z>\nSubAgent Beta (Retry Logic Specialist) assigned to implement comprehensive HTTP 429 retry mechanism. Technical implementation focused on exponential backoff using p-retry library with initial 1s delay, max 30s, and factor 2 configuration. Will create error categorization system distinguishing retryable errors (429, 502, 503, 504) from non-retryable errors (400, 401, 403). Circuit breaker pattern implementation using opossum library to prevent cascade failures. Jitter implementation to prevent thundering herd effects during high-load scenarios. Target deliverables include: error categorization system and retry foundation, exponential backoff implementation with jitter, circuit breaker pattern with opossum integration, integration with existing HTTP client and error handling, comprehensive testing suite with failure scenario validation. Primary implementation in new src/telegram/retry_handler.rs file with enhancements to src/utils/errors.rs. Performance target: 95%+ eventual delivery success rate with resilient error handling. Independent implementation approach with coordination for integration testing with other subagents.\n</info added on 2025-08-06T15:31:34.754Z>",
+            "status": "pending",
+            "testStrategy": "Use nock to simulate various HTTP error responses and validate retry behavior. Test exponential backoff timing accuracy and jitter randomization. Verify circuit breaker activation and recovery patterns. Create integration tests with actual Telegram API mock server to validate end-to-end retry scenarios."
+          },
+          {
+            "id": 3,
+            "title": "Fix Batch Processing and Event Queue Management",
+            "description": "Implement startup event queue management using bull queue with Redis to process accumulated events with proper rate limiting instead of immediate burst sending",
+            "dependencies": [
+              "34.1"
+            ],
+            "details": "Implement bull queue with Redis backend for event queue management during startup and high-volume scenarios. Create event accumulation logic that respects rate limiting constraints instead of immediate burst sending. Implement priority-based message queuing (critical, high, normal, low) with graceful degradation for high-volume scenarios. Add dead letter queue for permanently failed messages with manual retry capabilities and administrative interface.\n<info added on 2025-08-06T15:31:52.541Z>\nSubAgent Gamma (Queue Management Specialist) has been assigned to implement startup event queue management with specific technical focus on Bull queue with Redis backend, priority-based message queuing, and coordination with SubAgent Alpha's rate limiting system. Key deliverables include: Bull queue setup with Redis backend, priority-based queueing system (critical, high, normal, low), rate limiting integration dependent on SubAgent Alpha's completion of task 34.1, dead letter queue with failure handling mechanisms, and load testing suite targeting 1000+ accumulated events on startup. Implementation will focus on src/events/queue_manager.rs (new file) and src/storage/queue.rs (enhancement). Direct coordination required with SubAgent Alpha for rate limiting system interface integration to ensure seamless operation across both components.\n</info added on 2025-08-06T15:31:52.541Z>",
+            "status": "pending",
+            "testStrategy": "Test startup scenarios with large accumulated message queues to verify proper rate-limited processing. Validate priority queue behavior under various load conditions. Test dead letter queue functionality and manual retry mechanisms. Create load tests simulating high-volume message scenarios to verify graceful degradation."
+          },
+          {
+            "id": 4,
+            "title": "Implement Message Delivery Tracking and Monitoring Dashboard",
+            "description": "Add message delivery tracking with correlation IDs, delivery confirmations, and create monitoring dashboard with Prometheus metrics",
+            "dependencies": [
+              "34.1",
+              "34.2",
+              "34.3"
+            ],
+            "details": "Implement message delivery tracking system with unique correlation IDs for each message. Add delivery confirmation handling and failure analysis capabilities. Create comprehensive monitoring dashboard using Prometheus metrics tracking delivery rates, retry statistics, rate limit adherence, and queue depths. Implement alerting for delivery failure thresholds and rate limit violations. Add performance metrics for processing latency and throughput analysis.\n<info added on 2025-08-06T15:32:10.918Z>\nSubAgent Delta (Monitoring Specialist) has been assigned to implement comprehensive message delivery tracking and monitoring system. This specialist will focus on developing the correlation ID infrastructure, Prometheus metrics collection, real-time monitoring dashboard, and alerting system for delivery failure thresholds.\n\nKey deliverables include: 1) Correlation ID system and basic tracking infrastructure implementation, 2) Prometheus metrics collection for delivery rates and retry statistics, 3) Dashboard development with real-time visualization capabilities, 4) Alerting system with configurable threshold settings, and 5) Integration testing with performance validation.\n\nTarget implementation files: src/utils/monitoring.rs (enhancement of existing monitoring), src/telegram/tracking.rs (new tracking module), and monitoring/dashboard/ (new dashboard components). This subagent serves as the final integration specialist, coordinating with SubAgents Alpha (34.1), Beta (34.2), and Gamma (34.3) to ensure complete system monitoring coverage.\n\nPerformance requirements: End-to-end message traceability system with less than 1% monitoring overhead impact on overall system performance. Full integration dependencies on completion of all preceding subagent assignments for comprehensive monitoring implementation.\n</info added on 2025-08-06T15:32:10.918Z>",
+            "status": "pending",
+            "testStrategy": "Validate correlation ID generation and tracking across the entire message lifecycle. Test delivery confirmation accuracy and failure analysis reporting. Verify Prometheus metrics collection and dashboard functionality. Create automated tests for alerting thresholds and performance monitoring accuracy."
+          }
+        ]
+      },
+      {
+        "id": 35,
+        "title": "Phase 2: Message Queue Implementation - Activate Message Queue System and Implement File Debouncing",
+        "description": "Activate the existing message queue system using queue.rs module and implement file debouncing with 500ms debounce window to improve message delivery rate to 98%+ through proper queue management and event batching.",
+        "details": "Implement comprehensive message queue activation and file debouncing system: 1) Queue System Activation - Activate queue.rs module by integrating Redis-backed message queue using bull library with priority queue support, implement queue processing with configurable concurrency (default: 5 workers), add queue monitoring dashboard using bull-board for real-time queue status and job management, implement dead letter queue for failed messages with exponential backoff retry (1s, 2s, 4s, 8s, 16s), and create queue persistence using Redis AOF for durability. 2) File Debouncing Implementation - Implement file event debouncing using the configured 500ms window with lodash.debounce or custom implementation, create file watcher using chokidar with configurable debounce intervals, batch file events within debounce window to reduce duplicate processing, implement file content hashing using crypto.createHash('sha256') to detect actual file changes vs timestamp updates, and add file event queue to handle batched file changes. 3) Queue Integration - Connect file debouncing system to message queue using standardized job format, implement queue job types (telegram_message, file_event, batch_process) with appropriate priority levels, add queue metrics collection including processing time, success rate, and failure count, implement circuit breaker pattern for queue processing using opossum library, and create queue health monitoring with automated failover. 4) Performance Optimization - Implement message deduplication using Redis sets with TTL to prevent duplicate messages, add batch processing for multiple file events within debounce window, implement queue partition strategy based on chat_id for improved parallelism, create queue monitoring alerts using configured alerting system, and optimize queue worker scaling based on queue depth and processing metrics.",
+        "testStrategy": "Create comprehensive test suite for message queue and file debouncing functionality: Queue system testing using Jest with Redis memory server to validate queue activation, job processing, priority handling, and failure scenarios including dead letter queue processing. File debouncing testing using mock file system events with fs-extra and chokidar mocks to verify 500ms debounce window accuracy, file change detection, and batch processing efficiency. Integration testing combining file events with queue processing to measure end-to-end delivery improvement from current baseline to 98%+ target. Performance testing using autocannon to simulate high-volume file events and measure queue throughput, processing latency, and memory usage under load. Create specific test scenarios for: queue worker scaling under load, Redis connection failure and recovery, file event deduplication, and batch processing optimization. Implement monitoring validation tests using bull-board metrics to verify queue health monitoring and alerting functionality.",
+        "status": "pending",
+        "dependencies": [
+          34,
+          17,
+          15
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Queue System Activation and Configuration",
+            "description": "Activate the queue.rs module by integrating Redis-backed message queue system with Bull library, configure priority queue support, implement queue processing with configurable concurrency (default: 5 workers), set up queue monitoring dashboard using bull-board, implement dead letter queue with exponential backoff retry strategy, and configure Redis AOF persistence for durability.",
+            "dependencies": [],
+            "details": "Integrate Redis-backed message queue using bull library with priority queue support. Configure queue processing with 5 default workers and configurable concurrency. Add bull-board dashboard for real-time queue monitoring and job management. Implement dead letter queue for failed messages with exponential backoff retry pattern (1s, 2s, 4s, 8s, 16s). Set up Redis AOF (Append Only File) persistence for queue durability. Create queue worker lifecycle management with graceful shutdown handling.",
+            "status": "pending",
+            "testStrategy": "Test queue activation with Redis memory server using Jest. Validate priority queue functionality with different job priorities. Test worker concurrency with load testing. Verify dead letter queue processing with intentionally failing jobs. Test exponential backoff retry mechanism. Validate Redis persistence with simulated restarts."
+          },
+          {
+            "id": 2,
+            "title": "File Debouncing System Implementation",
+            "description": "Implement file event debouncing using 500ms debounce window with chokidar file watcher, create batching mechanism for file events within debounce window, implement file content hashing using SHA256 to detect actual changes vs timestamp updates, and set up file event queue to handle batched file changes efficiently.",
+            "dependencies": [
+              "35.1"
+            ],
+            "details": "Implement file event debouncing using lodash.debounce or custom implementation with 500ms window. Set up chokidar file watcher with configurable debounce intervals. Create batching system for file events within debounce window to reduce duplicate processing. Implement SHA256 file content hashing using crypto.createHash to distinguish actual file changes from timestamp-only updates. Build file event queue system to process batched file changes efficiently.",
+            "status": "pending",
+            "testStrategy": "Test file debouncing with rapid file changes within 500ms window. Validate file content hashing with identical files having different timestamps. Test batching mechanism with multiple simultaneous file events. Verify chokidar integration with various file operations (create, modify, delete). Test debounce window configuration and behavior under high file activity."
+          },
+          {
+            "id": 3,
+            "title": "Queue Integration and Performance Optimization",
+            "description": "Connect file debouncing system to message queue using standardized job format, implement queue job types with priority levels, add queue metrics collection, implement circuit breaker pattern for queue processing, create queue health monitoring with automated failover, and optimize performance through message deduplication, batch processing, and queue partitioning strategies.",
+            "dependencies": [
+              "35.1",
+              "35.2"
+            ],
+            "details": "Connect file debouncing to message queue using standardized job format. Implement job types (telegram_message, file_event, batch_process) with appropriate priority levels. Add queue metrics collection for processing time, success rate, and failure count. Implement circuit breaker pattern using opossum library for queue resilience. Create health monitoring with automated failover capabilities. Implement message deduplication using Redis sets with TTL. Add batch processing for multiple file events. Create queue partition strategy based on chat_id for improved parallelism. Set up monitoring alerts and optimize worker scaling based on queue depth and processing metrics.",
+            "status": "pending",
+            "testStrategy": "Test job type processing with different priority levels. Validate circuit breaker functionality with simulated failures. Test message deduplication with duplicate events. Verify batch processing efficiency with multiple file events. Test queue partitioning strategy with different chat_ids. Validate health monitoring and failover mechanisms. Load test worker scaling based on queue metrics."
+          }
+        ]
+      },
+      {
+        "id": 36,
+        "title": "Phase 3: Architecture Improvements - Enhanced Tier Orchestrator with Monitoring and Error Handling",
+        "description": "Extend the existing 3-tier architecture orchestrator with advanced error classification, comprehensive monitoring using Prometheus metrics, and enhanced resilience features to achieve 99%+ message delivery rate.",
+        "details": "Implement comprehensive architecture improvements building on existing 3-tier message delivery system: 1) Tier Orchestrator Enhancement - Extend current orchestrator with intelligent tier selection algorithm based on message priority, recipient availability, and historical success rates, implement dynamic load balancing across tiers with circuit breaker pattern per tier, add tier health monitoring with automatic failover to backup tiers, and create tier performance analytics with response time tracking and throughput optimization. 2) Advanced Error Classification System - Implement comprehensive error taxonomy extending existing error handling with categories: transient errors (network timeouts, rate limits, temporary API failures), permanent errors (authentication failures, invalid recipients, blocked users), and critical errors (system failures, data corruption, security violations), create error severity scoring system (1-10 scale) with automatic escalation rules, implement error correlation engine to identify patterns and root causes, and add error recovery strategies with automatic retry policies per error category. 3) Production-Grade Monitoring with Prometheus - Deploy Prometheus metrics collection with custom collectors for message delivery metrics (success rate, latency percentiles, error rates by type), implement Grafana dashboards with SLA/SLO tracking (99% delivery rate target, <500ms P95 latency, <0.1% error rate), create alerting rules using AlertManager for threshold breaches with PagerDuty integration, add business metrics tracking (messages per hour, user engagement rates, system utilization), and implement distributed tracing using OpenTelemetry for end-to-end request tracking. 4) Resilience Engineering Features - Implement bulkhead pattern to isolate different message types, add timeout management with adaptive timeouts based on historical performance, create message priority queuing with weighted fair queuing algorithm, implement graceful degradation with reduced functionality modes during high load, and add automated recovery procedures with health check endpoints and self-healing capabilities.",
+        "testStrategy": "Create comprehensive validation framework for architecture improvements: Tier orchestrator testing using Jest with mock Telegram API to simulate tier failures and validate automatic failover mechanisms, load testing with k6 to verify 99% delivery rate under various load conditions (1K, 10K, 50K messages/hour), error classification testing using fault injection to validate proper categorization and recovery strategies across all error types. Prometheus monitoring validation using testcontainers to spin up Prometheus/Grafana stack and verify metric collection accuracy, alerting simulation tests to validate threshold detection and notification delivery, performance regression testing to ensure monitoring overhead stays below 2% of system resources. Resilience testing using chaos engineering principles with Chaos Monkey to simulate network partitions, service failures, and resource exhaustion scenarios, validate graceful degradation maintains core functionality, and verify automated recovery procedures restore full service within SLA targets.",
+        "status": "pending",
+        "dependencies": [
+          35,
+          34,
+          20,
+          17
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Tier Orchestrator Enhancement with Intelligent Selection",
+            "description": "Extend the existing orchestrator with intelligent tier selection algorithm based on message priority, recipient availability, and historical success rates. Implement dynamic load balancing and circuit breaker pattern per tier.",
+            "dependencies": [],
+            "details": "Implement intelligent tier selection algorithm using weighted scoring based on message priority (high/medium/low), recipient availability status, and historical success rates from performance analytics. Add dynamic load balancing across tiers using round-robin with health-based weighting. Implement circuit breaker pattern per tier with configurable failure thresholds and recovery timeouts. Create tier health monitoring with automatic failover to backup tiers. Integrate with existing 3-tier architecture without breaking current functionality.",
+            "status": "pending",
+            "testStrategy": "Unit tests for tier selection algorithm with various scenarios (high priority messages, failed tiers, balanced loads). Integration tests with mock Telegram API to simulate tier failures and validate circuit breaker behavior. Load testing to verify dynamic load balancing under different traffic patterns."
+          },
+          {
+            "id": 2,
+            "title": "Advanced Error Classification and Recovery System",
+            "description": "Implement comprehensive error taxonomy with automatic classification, severity scoring, and intelligent recovery strategies for different error types.",
+            "dependencies": [
+              "36.1"
+            ],
+            "details": "Create comprehensive error taxonomy with three main categories: transient errors (network timeouts, rate limits, temporary API failures), permanent errors (authentication failures, invalid recipients, blocked users), and critical errors (system failures, data corruption, security violations). Implement error severity scoring system (1-10 scale) with automatic escalation rules. Build error correlation engine to identify patterns and root causes using historical error data. Add error recovery strategies with automatic retry policies per error category, including exponential backoff for transient errors and immediate alerting for critical errors.",
+            "status": "pending",
+            "testStrategy": "Error simulation testing with controlled failure scenarios for each error category. Validation of error classification accuracy using historical error data. Testing of recovery strategies with automated retry verification and escalation path validation."
+          },
+          {
+            "id": 3,
+            "title": "Production-Grade Monitoring with Prometheus and Grafana",
+            "description": "Deploy comprehensive monitoring infrastructure using Prometheus metrics collection, Grafana dashboards, and AlertManager integration for SLA tracking and alerting.",
+            "dependencies": [
+              "36.1",
+              "36.2"
+            ],
+            "details": "Deploy Prometheus metrics collection with custom collectors for message delivery metrics including success rate, latency percentiles (P50, P95, P99), error rates by type and tier. Implement Grafana dashboards with SLA/SLO tracking targeting 99% delivery rate, <500ms P95 latency, and <0.1% error rate. Create alerting rules using AlertManager for threshold breaches with PagerDuty integration for critical alerts. Add business metrics tracking including messages per hour, user engagement rates, and system utilization. Implement distributed tracing using OpenTelemetry for end-to-end request tracking across all tiers.",
+            "status": "pending",
+            "testStrategy": "Metrics validation testing to ensure accurate data collection across all monitored components. Dashboard functionality testing with simulated high-load scenarios. Alerting system testing with controlled threshold breaches and PagerDuty integration validation."
+          },
+          {
+            "id": 4,
+            "title": "Resilience Engineering and Self-Healing Capabilities",
+            "description": "Implement advanced resilience patterns including bulkhead isolation, adaptive timeouts, priority queuing, and automated recovery procedures.",
+            "dependencies": [
+              "36.2",
+              "36.3"
+            ],
+            "details": "Implement bulkhead pattern to isolate different message types (notifications, alerts, system messages) preventing cascading failures. Add timeout management with adaptive timeouts based on historical performance data and current system load. Create message priority queuing with weighted fair queuing algorithm ensuring high-priority messages are processed first. Implement graceful degradation with reduced functionality modes during high load or partial system failures. Add automated recovery procedures with comprehensive health check endpoints and self-healing capabilities including automatic service restarts and resource cleanup.",
+            "status": "pending",
+            "testStrategy": "Resilience testing using chaos engineering principles to validate bulkhead isolation and graceful degradation. Load testing to verify priority queuing behavior under various message volumes. Automated recovery testing with simulated failures and validation of self-healing mechanisms."
+          }
+        ]
+      },
+      {
+        "id": 37,
+        "title": "Phase 4: Reliability Improvements - Message Persistence and Load Balancing",
+        "description": "Implement SQLite-based message persistence for crash recovery, message deduplication to prevent duplicates, and support for multiple Telegram bot tokens with failover capabilities to achieve 99.5%+ delivery rate.",
+        "details": "Implement comprehensive reliability improvements building on existing queue and architecture systems: 1) SQLite Message Persistence - Create SQLite database using better-sqlite3 with WAL mode for concurrent access, implement message_store table with fields (id, chat_id, message_text, timestamp, status, retry_count, telegram_message_id), add atomic transaction support for message lifecycle (pending -> sent -> confirmed), implement crash recovery mechanism that loads pending messages on startup and resumes processing, create message archival strategy with configurable retention (default: 30 days). 2) Message Deduplication - Implement content-based deduplication using SHA-256 hash of (chat_id + message_text + timestamp_window), create deduplication_cache table with TTL support (default: 24 hours), add duplicate detection middleware that checks hashes before queue insertion, implement configurable deduplication window (default: 5 minutes) to handle legitimate duplicate messages. 3) Multi-Token Load Balancing - Extend existing rate limiter to support multiple bot tokens with token rotation strategy, implement token health monitoring with automatic failover for rate-limited/banned tokens, create token pool management with weighted round-robin distribution based on token performance metrics, add token validation endpoint to verify token status and permissions, implement graceful token rotation without message loss. 4) Enhanced Monitoring - Add SQLite performance metrics (transaction time, database size, connection pool usage), implement message persistence success rate tracking, create token utilization and failover dashboards, add alerting for database corruption, token failures, and persistence issues. Integration with existing systems: leverage Task 35 queue system for message processing, extend Task 36 tier orchestrator for token selection, utilize Task 17 error handling for database failures and token issues.",
+        "testStrategy": "Create comprehensive test suite for reliability improvements: SQLite persistence testing using Jest with in-memory databases to validate message storage, retrieval, and crash recovery scenarios including database corruption simulation and transaction rollback testing. Message deduplication testing with controlled duplicate scenarios including hash collision edge cases, TTL expiration validation, and performance testing with 10K+ messages. Multi-token load balancing testing using mock Telegram APIs to simulate rate limiting, token bans, and failover scenarios with concurrent message sending across multiple tokens. Integration testing with existing queue system (Task 35) and tier orchestrator (Task 36) to validate end-to-end reliability improvements. Performance testing using k6 to validate 99.5% delivery rate under sustained load with token failures and database stress scenarios. Chaos engineering tests including database file corruption, token revocation during processing, and network partition scenarios to validate system resilience and recovery mechanisms.",
+        "status": "pending",
+        "dependencies": [
+          35,
+          36,
+          17,
+          20
+        ],
+        "priority": "low",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement SQLite Message Persistence System",
+            "description": "Create SQLite database with better-sqlite3 using WAL mode for concurrent access, implement message_store table with atomic transactions for message lifecycle management (pending -> sent -> confirmed), and build crash recovery mechanism that loads pending messages on startup with configurable retention policy.",
+            "dependencies": [],
+            "details": "Implement SQLite database using better-sqlite3 with WAL mode configuration for concurrent read/write access. Create message_store table schema with fields: id (primary key), chat_id, message_text, timestamp, status (enum: pending/sent/confirmed), retry_count, telegram_message_id. Implement atomic transaction support using database transactions for message lifecycle operations. Build crash recovery system that queries pending messages on startup and resumes processing. Create message archival system with configurable retention period (default: 30 days) using scheduled cleanup jobs. Add database connection pooling and error handling for database corruption scenarios.",
+            "status": "pending",
+            "testStrategy": "Create Jest test suite using in-memory SQLite databases to validate message storage, retrieval, and lifecycle transitions. Test crash recovery scenarios by simulating process interruption and verifying message restoration. Implement database corruption simulation tests and transaction rollback validation. Test concurrent access patterns and WAL mode effectiveness under load."
+          },
+          {
+            "id": 2,
+            "title": "Implement Message Deduplication System",
+            "description": "Build content-based deduplication using SHA-256 hashing of message content within configurable time windows, create deduplication_cache table with TTL support, and implement duplicate detection middleware that prevents duplicate messages from entering the processing queue.",
+            "dependencies": [
+              "37.1"
+            ],
+            "details": "Implement SHA-256 hash generation for message deduplication using crypto module, combining chat_id + message_text + timestamp_window for unique identification. Create deduplication_cache table with fields: hash, created_at, expires_at for TTL-based cleanup (default: 24 hours). Build duplicate detection middleware that checks message hashes before queue insertion and rejects duplicates within configurable time window (default: 5 minutes). Implement cleanup job for expired deduplication entries. Add configuration options for deduplication window size and cache retention. Handle edge cases for legitimate duplicate messages and batch message scenarios.",
+            "status": "pending",
+            "testStrategy": "Test deduplication accuracy by sending identical messages within and outside the deduplication window. Validate hash collision handling and TTL cleanup functionality. Test performance impact of deduplication checks under high message volumes. Verify legitimate duplicate message handling and configurable window sizing."
+          },
+          {
+            "id": 3,
+            "title": "Implement Multi-Token Load Balancing and Failover System",
+            "description": "Extend existing rate limiter to support multiple Telegram bot tokens with intelligent token rotation, implement token health monitoring with automatic failover for rate-limited tokens, and create token pool management with weighted round-robin distribution based on performance metrics.",
+            "dependencies": [
+              "37.1",
+              "37.2"
+            ],
+            "details": "Extend Task 36 tier orchestrator to support multiple bot tokens with weighted round-robin distribution algorithm based on token performance metrics (success rate, response time, rate limit status). Implement token health monitoring system that tracks token status, rate limit windows, and failure counts. Create automatic failover mechanism that rotates to healthy tokens when current token hits rate limits or fails. Build token validation endpoint to verify token permissions and status. Implement graceful token rotation without message loss using message persistence from subtask 37.1. Add token pool configuration management and performance metrics collection. Integrate with existing queue system from Task 35 for seamless token switching.",
+            "status": "pending",
+            "testStrategy": "Test token rotation logic under various failure scenarios including rate limiting, token bans, and network failures. Validate weighted distribution algorithm accuracy and performance metrics tracking. Test graceful failover without message loss using persistence layer. Verify token validation and health monitoring accuracy across different token states and permissions."
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "title": "Message Delivery Validation and Performance Testing - Comprehensive validation framework to measure and verify message delivery improvements from current 70% baseline to target 99.5%+ delivery rate across all four phases, including A/B testing infrastructure, performance benchmarking, and production monitoring setup",
+        "description": "Implement comprehensive validation framework with A/B testing infrastructure, performance benchmarking, and production monitoring to measure and verify message delivery improvements from 70% baseline to 99.5%+ target across all four implementation phases.",
+        "details": "Implement comprehensive message delivery validation and performance testing framework: 1) A/B Testing Infrastructure - Create A/B testing framework using feature flags with split.io or custom implementation to compare delivery rates between current system (baseline) and improved phases, implement statistical significance testing using chi-square tests and confidence intervals, create test group management with proper randomization and control groups, implement real-time A/B test monitoring dashboards with conversion tracking. 2) Performance Benchmarking System - Develop comprehensive benchmarking suite using k6 for load testing with scenarios simulating 1K, 10K, 50K messages per hour, implement delivery rate measurement using time-series database (InfluxDB) with Grafana visualization, create performance regression testing with automated baseline comparison, implement synthetic transaction monitoring for end-to-end delivery verification. 3) Validation Framework - Build message delivery tracking system using unique message IDs with PostgreSQL or SQLite persistence, implement delivery confirmation webhooks with timeout detection (30s, 5min, 15min thresholds), create delivery rate calculation engine with rolling window metrics (1min, 5min, 1hour, 24hour), implement automated alerting for delivery rate drops below thresholds (95%, 98%, 99.5%). 4) Production Monitoring Setup - Integrate with existing Prometheus/Grafana stack from Task 20 for real-time delivery metrics, implement custom Prometheus metrics (delivery_rate_percentage, message_latency_seconds, failed_delivery_count), create SLA/SLO dashboards with 99.5% uptime targets, implement PagerDuty integration for critical delivery failures. 5) Phase Validation Matrix - Create validation criteria for each phase (Phase 1: 95% target, Phase 2: 98% target, Phase 3: 99% target, Phase 4: 99.5% target), implement automated phase promotion gates requiring 7-day sustained delivery rate achievement, create rollback mechanisms for phases not meeting targets, implement comprehensive reporting with phase comparison analytics. Use Jest for unit testing, Playwright for E2E validation, and clinic.js for performance profiling.",
+        "testStrategy": "Create comprehensive validation test suite: A/B testing validation using Jest with mock feature flag scenarios to verify proper test group assignment and statistical calculation accuracy, implement load testing scenarios using k6 with message volumes of 1K, 10K, and 50K per hour to validate performance benchmarking accuracy. Delivery tracking testing using integration tests with mock Telegram API to verify message ID tracking, delivery confirmation processing, and timeout detection mechanisms. Monitoring integration testing using Prometheus client mocks to validate custom metrics collection and Grafana dashboard data accuracy. Phase validation testing using Jest with simulated delivery rates to verify promotion gate logic, rollback mechanisms, and phase comparison analytics. Performance regression testing using automated baseline comparison with configurable thresholds (±5% performance variance tolerance). End-to-end validation testing using Playwright to simulate complete message delivery workflows across all four phases with delivery rate verification. Statistical testing validation using chi-square test implementations with known datasets to verify A/B testing statistical significance calculations. Create synthetic monitoring tests using external services (Pingdom or similar) to validate delivery rate measurements from external perspective.",
+        "status": "pending",
+        "dependencies": [
+          15,
+          20,
+          25,
+          34,
+          35,
+          36,
+          37
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "A/B Testing Infrastructure Implementation",
+            "description": "Create comprehensive A/B testing framework using feature flags with split.io or custom implementation to compare delivery rates between current system (baseline) and improved phases, including statistical significance testing and real-time monitoring dashboards",
+            "dependencies": [],
+            "details": "Implement A/B testing framework with feature flag management using split.io or custom Redis-based solution for comparing delivery rates between baseline (70%) and improved phases. Create statistical significance testing using chi-square tests and confidence intervals with minimum sample size calculations. Implement test group management with proper randomization algorithms ensuring 50/50 split and control group isolation. Build real-time A/B test monitoring dashboards using React/Vue with WebSocket connections for live conversion tracking, statistical power analysis, and automated test conclusion recommendations. Include experiment configuration UI for defining test parameters, duration, and success metrics.",
+            "status": "pending",
+            "testStrategy": "A/B testing validation using Jest with mock feature flag scenarios to verify proper test group assignment and statistical calculation accuracy. Create unit tests for randomization algorithms, chi-square test calculations, and confidence interval computations. Implement integration tests using Playwright for dashboard functionality and real-time updates. Use synthetic data generation for statistical validation testing."
+          },
+          {
+            "id": 2,
+            "title": "Performance Benchmarking System",
+            "description": "Develop comprehensive benchmarking suite using k6 for load testing with scenarios simulating various message volumes, implement delivery rate measurement using time-series database, and create performance regression testing with automated baseline comparison",
+            "dependencies": [],
+            "details": "Build performance benchmarking system using k6 for load testing with predefined scenarios: 1K, 10K, 50K messages per hour with realistic payload sizes and delivery patterns. Implement delivery rate measurement using InfluxDB time-series database for storing metrics (delivery_success_rate, message_latency_p95, throughput_msg_per_sec) with Grafana visualization dashboards. Create performance regression testing framework with automated baseline comparison using statistical analysis to detect performance degradation >5%. Implement synthetic transaction monitoring for end-to-end delivery verification with configurable test message generation and delivery confirmation tracking. Include automated performance report generation with trend analysis and bottleneck identification.",
+            "status": "pending",
+            "testStrategy": "Create comprehensive benchmarking test suite using k6 with message volumes of 1K, 10K, and 50K per hour to validate performance measurement accuracy. Implement unit tests for InfluxDB metric storage and retrieval using Jest with mock time-series data. Use Playwright for Grafana dashboard validation and automated screenshot comparison for visual regression testing."
+          },
+          {
+            "id": 3,
+            "title": "Message Delivery Validation Framework",
+            "description": "Build comprehensive message delivery tracking system using unique message IDs with database persistence, implement delivery confirmation webhooks with timeout detection, and create automated alerting for delivery rate monitoring",
+            "dependencies": [
+              "38.1",
+              "38.2"
+            ],
+            "details": "Implement message delivery tracking system using UUID-based message identification with PostgreSQL or SQLite persistence for scalability. Build delivery confirmation webhook system with configurable timeout thresholds (30s, 5min, 15min) and exponential backoff retry mechanism. Create delivery rate calculation engine with rolling window metrics (1min, 5min, 1hour, 24hour) using sliding window algorithms for real-time rate computation. Implement automated alerting system with configurable thresholds (95%, 98%, 99.5%) using email, Slack, and PagerDuty integrations. Include message lifecycle tracking (sent, delivered, failed, retried) with detailed failure categorization and root cause analysis.",
+            "status": "pending",
+            "testStrategy": "Implement comprehensive validation test suite using Jest for message tracking accuracy, webhook delivery confirmation, and timeout handling scenarios. Create database integration tests for message persistence and retrieval using in-memory SQLite. Use mock webhook servers for testing delivery confirmation flows and timeout scenarios. Implement load testing for rolling window calculations with high message volumes."
+          },
+          {
+            "id": 4,
+            "title": "Production Monitoring and Phase Validation Setup",
+            "description": "Integrate with existing Prometheus/Grafana stack for real-time delivery metrics, implement custom metrics and SLA dashboards, and create automated phase promotion gates with rollback mechanisms",
+            "dependencies": [
+              "38.3"
+            ],
+            "details": "Integrate with existing Prometheus/Grafana infrastructure from Task 20 for real-time delivery metrics collection. Implement custom Prometheus metrics (delivery_rate_percentage, message_latency_seconds, failed_delivery_count, phase_success_rate) with proper labeling for phase tracking. Create comprehensive SLA/SLO dashboards with 99.5% uptime targets, P95/P99 latency tracking, and error rate monitoring. Implement automated phase validation matrix with specific criteria (Phase 1: 95%, Phase 2: 98%, Phase 3: 99%, Phase 4: 99.5%) and promotion gates requiring 7-day sustained delivery rate achievement. Build rollback mechanisms for phases not meeting targets with automated fallback to previous stable phase. Include PagerDuty integration for critical delivery failures and comprehensive phase comparison analytics with trend analysis and predictive alerting.",
+            "status": "pending",
+            "testStrategy": "Create integration tests for Prometheus metrics collection and Grafana dashboard functionality using automated API testing. Implement phase validation logic testing using Jest with mock metrics data for promotion gate scenarios. Use Playwright for end-to-end dashboard validation and PagerDuty webhook testing. Create comprehensive rollback scenario testing with simulated phase failures."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-06T14:59:43.020Z",
+      "updated": "2025-08-06T15:30:52.249Z",
       "description": "Tasks for master context"
     }
   }
