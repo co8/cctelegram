@@ -264,6 +264,7 @@ impl McpConnectionManager {
         
         let result = match command {
             "get_tasks" => self.query_tasks().await,
+            "todo" => self.query_todo().await,
             "health_check" => {
                 let healthy = self.check_mcp_health().await?;
                 Ok(serde_json::json!({"healthy": healthy}))
@@ -279,9 +280,230 @@ impl McpConnectionManager {
 
     /// Query MCP server for task information
     async fn query_tasks(&self) -> Result<serde_json::Value, McpError> {
-        // For now, this returns the current implementation behavior
-        // In the future, this would make actual MCP protocol calls
-        Err(McpError::NotImplemented("MCP task querying via stdio not implemented yet".to_string()))
+        // Try to call the MCP server's get_task_status function
+        // For now, we'll use a subprocess call to the MCP server
+        match self.call_mcp_function("get_task_status", serde_json::json!({})).await {
+            Ok(result) => Ok(result),
+            Err(_) => {
+                // Fallback: try to read TaskMaster file directly
+                self.fallback_query_tasks().await
+            }
+        }
+    }
+
+    /// Call MCP server function via subprocess
+    async fn call_mcp_function(&self, function: &str, args: serde_json::Value) -> Result<serde_json::Value, McpError> {
+        use tokio::process::Command;
+        use tokio::io::AsyncWriteExt;
+
+        let current_dir = std::env::current_dir()
+            .map_err(|e| McpError::ConfigurationError(format!("Cannot get current directory: {}", e)))?;
+        
+        let mcp_server_dir = current_dir.join("mcp-server");
+        
+        if !mcp_server_dir.exists() {
+            return Err(McpError::ConfigurationError("MCP server directory not found".to_string()));
+        }
+
+        // Create MCP request
+        let mcp_request = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": function,
+                "arguments": args
+            }
+        });
+
+        // Call the MCP server via node
+        let mut child = Command::new("node")
+            .arg("dist/index.js")
+            .current_dir(&mcp_server_dir)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| McpError::ConnectionTimeout(format!("Failed to spawn MCP server: {}", e)))?;
+
+        // Send the request
+        if let Some(stdin) = child.stdin.as_mut() {
+            let request_str = serde_json::to_string(&mcp_request)
+                .map_err(|e| McpError::SerializationError(e.to_string()))?;
+            
+            stdin.write_all(request_str.as_bytes()).await
+                .map_err(|e| McpError::ConnectionTimeout(format!("Failed to write to MCP server: {}", e)))?;
+            stdin.write_all(b"\n").await
+                .map_err(|e| McpError::ConnectionTimeout(format!("Failed to write newline: {}", e)))?;
+        }
+
+        // Wait for response with timeout
+        let output = tokio::time::timeout(
+            Duration::from_millis(self.config.connection_timeout_ms),
+            child.wait_with_output()
+        ).await
+        .map_err(|_| McpError::ConnectionTimeout("MCP server call timed out".to_string()))?
+        .map_err(|e| McpError::ConnectionTimeout(format!("MCP server process error: {}", e)))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(McpError::ConnectionTimeout(format!("MCP server error: {}", stderr)));
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        
+        // Parse the MCP response
+        for line in stdout.lines() {
+            if let Ok(response) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(result) = response.get("result") {
+                    if let Some(content) = result.get("content").and_then(|c| c.as_array()) {
+                        if let Some(first_content) = content.first() {
+                            if let Some(text) = first_content.get("text").and_then(|t| t.as_str()) {
+                                // Parse the text as JSON to get the actual task data
+                                let task_data: serde_json::Value = serde_json::from_str(text)
+                                    .map_err(|e| McpError::SerializationError(e.to_string()))?;
+                                
+                                // Transform TaskMaster data to bridge format
+                                return self.transform_taskmaster_response(task_data).await;
+                            }
+                        }
+                    }
+                } else if let Some(error) = response.get("error") {
+                    return Err(McpError::ProtocolError(error.to_string()));
+                }
+            }
+        }
+
+        Err(McpError::SerializationError("Invalid MCP response format".to_string()))
+    }
+
+    /// Transform TaskMaster MCP response to bridge format
+    async fn transform_taskmaster_response(&self, data: serde_json::Value) -> Result<serde_json::Value, McpError> {
+        // Extract TaskMaster data from the get_task_status response
+        if let Some(taskmaster_tasks) = data.get("taskmaster_tasks") {
+            if let Some(available) = taskmaster_tasks.get("available").and_then(|a| a.as_bool()) {
+                if available {
+                    // Extract counts from combined_summary
+                    let pending = data.get("combined_summary")
+                        .and_then(|s| s.get("total_pending"))
+                        .and_then(|p| p.as_u64())
+                        .unwrap_or(0);
+                    
+                    let in_progress = data.get("combined_summary")
+                        .and_then(|s| s.get("total_in_progress"))
+                        .and_then(|p| p.as_u64())
+                        .unwrap_or(0);
+                    
+                    let completed = data.get("combined_summary")
+                        .and_then(|s| s.get("total_completed"))
+                        .and_then(|p| p.as_u64())
+                        .unwrap_or(0);
+                    
+                    let blocked = data.get("combined_summary")
+                        .and_then(|s| s.get("total_blocked"))
+                        .and_then(|p| p.as_u64())
+                        .unwrap_or(0);
+                    
+                    let total = data.get("combined_summary")
+                        .and_then(|s| s.get("grand_total"))
+                        .and_then(|t| t.as_u64())
+                        .unwrap_or(0);
+                    
+                    let main_tasks_count = taskmaster_tasks.get("main_tasks_count")
+                        .and_then(|m| m.as_u64())
+                        .unwrap_or(0);
+                    
+                    let subtasks_count = taskmaster_tasks.get("subtasks_count")
+                        .and_then(|s| s.as_u64())
+                        .unwrap_or(0);
+                    
+                    let project_name = taskmaster_tasks.get("project_name")
+                        .and_then(|p| p.as_str())
+                        .unwrap_or("CCTelegram Project");
+
+                    return Ok(serde_json::json!({
+                        "source": "live_mcp",
+                        "project_name": project_name,
+                        "stats": {
+                            "pending": pending,
+                            "in_progress": in_progress,
+                            "completed": completed,
+                            "blocked": blocked,
+                            "total": total,
+                            "main_tasks": main_tasks_count,
+                            "subtasks": subtasks_count
+                        },
+                        "last_updated": chrono::Utc::now().to_rfc3339(),
+                        "is_fallback": false
+                    }));
+                }
+            }
+        }
+
+        // Fallback to original parsing logic
+        Err(McpError::SerializationError("Unable to parse TaskMaster MCP response".to_string()))
+    }
+
+    /// Fallback method to query tasks from file system
+    async fn fallback_query_tasks(&self) -> Result<serde_json::Value, McpError> {
+        use tokio::fs;
+
+        let current_dir = std::env::current_dir()
+            .map_err(|e| McpError::ConfigurationError(format!("Cannot get current directory: {}", e)))?;
+        
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        
+        if !taskmaster_path.exists() {
+            return Ok(serde_json::json!({
+                "source": "fallback",
+                "data": {
+                    "tasks": [],
+                    "stats": {
+                        "total": 0,
+                        "pending": 0,
+                        "in_progress": 0,
+                        "completed": 0,
+                        "blocked": 0
+                    }
+                }
+            }));
+        }
+
+        let content = fs::read_to_string(&taskmaster_path).await
+            .map_err(|e| McpError::ConfigurationError(format!("Cannot read TaskMaster file: {}", e)))?;
+        
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| McpError::SerializationError(format!("Invalid TaskMaster JSON: {}", e)))?;
+
+        Ok(serde_json::json!({
+            "source": "fallback",
+            "data": data
+        }))
+    }
+
+    /// Query MCP server for todo information
+    async fn query_todo(&self) -> Result<serde_json::Value, McpError> {
+        // Try to call the MCP server's todo function
+        match self.call_mcp_function("todo", serde_json::json!({})).await {
+            Ok(result) => {
+                // The todo function returns text content directly
+                if let Some(text) = result.as_str() {
+                    Ok(serde_json::json!({
+                        "content": [{
+                            "type": "text",
+                            "text": text
+                        }]
+                    }))
+                } else {
+                    Ok(result)
+                }
+            }
+            Err(_) => {
+                // Fallback todo response
+                let fallback_text = "*📋 Todo Status*\n\nℹ️ No active todo list found\n💡 Use Claude Code to create tasks\n\n*🚀 Available Commands:*\n• `/tasks` \\- View TaskMaster status\n• `/bridge` \\- View bridge status";
+                Ok(serde_json::json!(fallback_text))
+            }
+        }
     }
 
     /// Check MCP server health via HTTP endpoint

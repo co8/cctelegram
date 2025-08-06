@@ -24,10 +24,10 @@
 			"type": "stdio",
 			"command": "npx",
 			"args": [
+				"-y",
 				"tsx",
-				"src/index.ts"
+				"mcp-server/src/index.ts"
 			],
-			"cwd": "./mcp-server",
 			"env": {
 				"MCP_ENABLE_AUTH": "false",
 				"MCP_ENABLE_RATE_LIMIT": "false",

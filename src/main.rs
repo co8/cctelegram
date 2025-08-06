@@ -14,7 +14,7 @@ mod tier_orchestrator;
 mod mcp;
 
 use config::Config;
-use events::{EventWatcher, EventProcessor, QueueManager, QueueManagerConfig, DebouncedEventProcessor};
+use events::{EventWatcher, EventProcessor, QueueManager, QueueManagerConfig, DebouncedEventProcessor, DebouncedEventWatcher, DebounceConfig};
 use telegram::TelegramBot;
 use telegram::messages::MessageStyle;
 use telegram::rate_limiter::RateLimiterConfig;
@@ -141,6 +141,10 @@ async fn main() -> Result<()> {
     } else {
         info!("Rate limiting enabled successfully");
     }
+
+    // Enable MCP integration with default configuration
+    telegram_bot.enable_mcp_integration_default();
+    info!("MCP integration enabled for Telegram bot");
 
     let telegram_bot = Arc::new(telegram_bot);
 

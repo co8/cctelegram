@@ -480,6 +480,12 @@ impl TelegramBot {
                                 .parse_mode(ParseMode::MarkdownV2)
                                 .await?;
                         }
+                        "/todo" => {
+                            let todo_message = self.get_todo_status().await;
+                            bot.send_message(msg.chat.id, todo_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
+                        }
                         "/restart" => {
                             let restart_message = self.restart_app().await;
                             bot.send_message(msg.chat.id, restart_message)
@@ -487,16 +493,10 @@ impl TelegramBot {
                                 .await?;
                         }
                         "/help" => {
-                            bot.send_message(
-                                msg.chat.id,
-                                "🤖 *CCTelegram Bridge*
-
-📋 *Available Commands:*
-• `/tasks` \\- Shows current task status and detailed info
-• `/bridge` \\- Shows bridge system status
-• `/help` \\- Shows all available commands
-• `/restart` \\- Restart Telegram app\n\n✅ *What CCTelegram Can Do:*\n• Receive notifications from Claude Code\n• Handle approval requests with buttons\n• Show current work status \\& task progress\n• Query both Claude Code session \\& TaskMaster tasks\n• Acknowledge your messages with ⚡\n\n❌ *What CCTelegram Cannot Do:*\n• Execute shell commands \\(/ls, /pwd, etc\\.\\)\n• Act as a remote terminal\n• Run system operations\n\n💡 *This is a notification bridge, not a command interface*"
-                            ).parse_mode(ParseMode::MarkdownV2).await?;
+                            let help_message = self.get_help_message().await;
+                            bot.send_message(msg.chat.id, help_message)
+                                .parse_mode(ParseMode::MarkdownV2)
+                                .await?;
                         }
                         _ => {
                             // For regular messages, add lightning emoji reaction to acknowledge receipt
@@ -766,16 +766,90 @@ impl TelegramBot {
         status_parts.join("\n")
     }
 
+    async fn get_todo_status(&self) -> String {
+        // Use MCP integration to get live task status (both Claude Code and TaskMaster)
+        match &self.mcp_integration {
+            Some(_mcp) => {
+                // Try to get todo status via MCP server
+                match self.query_mcp_todo().await {
+                    Ok(todo_data) => {
+                        self.format_todo_response(&todo_data)
+                    }
+                    Err(_) => {
+                        // Fallback to file-based reading if MCP fails
+                        self.get_fallback_todo_status().await
+                    }
+                }
+            }
+            None => {
+                // No MCP integration, use fallback
+                self.get_fallback_todo_status().await
+            }
+        }
+    }
+
+    async fn query_mcp_todo(&self) -> Result<serde_json::Value> {
+        // Use MCP integration to get todo data
+        match &self.mcp_integration {
+            Some(mcp) => {
+                match mcp.get_todo_status().await {
+                    Ok(todo_text) => {
+                        Ok(serde_json::json!({
+                            "content": [{
+                                "type": "text", 
+                                "text": todo_text
+                            }]
+                        }))
+                    }
+                    Err(e) => {
+                        warn!("MCP todo query failed: {}", e);
+                        Err(anyhow::anyhow!("MCP todo query failed: {}", e))
+                    }
+                }
+            }
+            None => {
+                Err(anyhow::anyhow!("MCP integration not available"))
+            }
+        }
+    }
+
+    fn format_todo_response(&self, todo_data: &serde_json::Value) -> String {
+        // Extract text content from MCP response
+        if let Some(content) = todo_data.get("content").and_then(|c| c.as_array()) {
+            if let Some(first_content) = content.first() {
+                if let Some(text) = first_content.get("text").and_then(|t| t.as_str()) {
+                    return text.to_string();
+                }
+            }
+        }
+        
+        // Fallback formatting
+        "*📋 Todo Status*\n\n✅ MCP integration active\n💫 Live data available".to_string()
+    }
+
+    async fn get_fallback_todo_status(&self) -> String {
+        let mut status_parts = vec![];
+        status_parts.push("*📋 Todo Status*".to_string());
+        status_parts.push("".to_string());
+        status_parts.push("ℹ️ No active todo list found".to_string());
+        status_parts.push("💡 Use Claude Code to create tasks".to_string());
+        status_parts.push("".to_string());
+        status_parts.push("*🚀 Available Commands:*".to_string());
+        status_parts.push("• `/tasks` \\- View TaskMaster status".to_string());
+        status_parts.push("• `/bridge` \\- View bridge status".to_string());
+        
+        status_parts.join("\n")
+    }
+
     async fn get_tasks_status(&self) -> String {
         let mut status_parts = vec![];
         status_parts.push("*📋 TaskMaster Status*".to_string());
         
         // Try to get live TaskMaster data via MCP server first (highest priority)
-        // TODO: Fix MCP integration - temporarily disabled for now
-        match std::result::Result::<TaskMasterInfo, anyhow::Error>::Err(anyhow::anyhow!("MCP temporarily disabled")) {
+        match self.get_live_taskmaster_status().await {
             Ok(tasks_info) => {
                 // Enhanced display with visual progress bars
-                status_parts.push(format!("*🏗️ Project:* {}", Self::escape_markdown_v2(&tasks_info.project_name)));
+                status_parts.push(format!("🏗️ {}", Self::escape_markdown_v2(&tasks_info.project_name)));
                 status_parts.push("".to_string()); // Spacing
                 
                 // Calculate completion percentage
@@ -793,24 +867,26 @@ impl TelegramBot {
                 
                 // Main tasks progress bar
                 let progress_bar = Self::create_progress_bar(completion_percentage, 20);
-                status_parts.push(format!("*📊 Tasks Progress:* {}%", completion_percentage));
+                status_parts.push(format!("*📊 Tasks:* {}%", completion_percentage));
                 status_parts.push(format!("`{}`", progress_bar));
                 status_parts.push("".to_string()); // Spacing
                 
                 // Task breakdown with visual indicators
-                status_parts.push("*📈 Task Breakdown:*".to_string());
+                //status_parts.push("*📈 Breakdown:*".to_string());
+                //status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
+                status_parts.push(format!("✅ *Completed:* {}/{} {}", tasks_info.completed, tasks_info.total, Self::create_mini_bar(tasks_info.completed, tasks_info.total, 8)));
                 status_parts.push(format!("📌 *Pending:* {} {}", tasks_info.pending, Self::create_mini_bar(tasks_info.pending, tasks_info.total, 8)));
                 status_parts.push(format!("🔄 *In Progress:* {} {}", tasks_info.in_progress, Self::create_mini_bar(tasks_info.in_progress, tasks_info.total, 8)));
-                status_parts.push(format!("✅ *Completed:* {} {}", tasks_info.completed, Self::create_mini_bar(tasks_info.completed, tasks_info.total, 8)));
+                //status_parts.push(format!("✅ *Completed:* {} {}", tasks_info.completed, Self::create_mini_bar(tasks_info.completed, tasks_info.total, 8)));
                 if tasks_info.blocked > 0 {
                     status_parts.push(format!("🚧 *Blocked:* {} {}", tasks_info.blocked, Self::create_mini_bar(tasks_info.blocked, tasks_info.total, 8)));
                 }
-                status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
+                //status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
                 
                 // Subtasks progress if available
                 if tasks_info.subtasks_total > 0 {
                     status_parts.push("".to_string()); // Spacing
-                    status_parts.push("*🔍 Subtasks Progress:*".to_string());
+                    status_parts.push("*🔍 Subtasks:*".to_string());
                     let subtask_bar = Self::create_progress_bar(subtask_completion, 15);
                     status_parts.push(format!("`{}` {}%", subtask_bar, subtask_completion));
                     status_parts.push(format!("*Total Subtasks:* {} \\({} completed\\)", tasks_info.subtasks_total, tasks_info.subtasks_completed));
@@ -853,8 +929,8 @@ impl TelegramBot {
                         }
                         status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
                         status_parts.push("".to_string());
-                        status_parts.push("*⚠️ Data Source:* File System \\(Static\\)".to_string());
-                        status_parts.push("*💡 Tip:* Start MCP server for live updates".to_string());
+                        //status_parts.push("*⚠️ Data Source:* File System \\(Static\\)".to_string());
+                        //status_parts.push("*💡 Tip:* Start MCP server for live updates".to_string());
                     }
                     Ok(None) => {
                         status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
@@ -1128,83 +1204,61 @@ impl TelegramBot {
             Some(mcp) => {
                 let mcp_data = mcp.get_task_status_fresh().await?;
                 
-                // Parse the MCP response format
-                if let Some(data_obj) = mcp_data.get("data") {
-                    if let Some(tasks_array) = data_obj.get("tasks").and_then(|t| t.as_array()) {
-                        let project_name = "CCTelegram Project".to_string(); // Could be extracted from MCP context
-                        
-                        let mut pending = 0;
-                        let mut in_progress = 0;
-                        let mut completed = 0;
-                        let mut blocked = 0;
-                        let mut subtasks_total = 0;
-                        let mut subtasks_completed = 0;
-                        
-                        // Count main tasks and subtasks
-                        for task in tasks_array {
-                            // Count main task
-                            match task.get("status").and_then(|s| s.as_str()) {
-                                Some("pending") => pending += 1,
-                                Some("in-progress") => in_progress += 1,
-                                Some("done") => completed += 1,
-                                Some("blocked") => blocked += 1,
-                                _ => {}
-                            }
+                // Parse the actual MCP response format from get_task_status tool
+                // The response has: taskmaster_tasks, combined_summary, etc.
+                if let Some(taskmaster_tasks) = mcp_data.get("taskmaster_tasks") {
+                    if let Some(available) = taskmaster_tasks.get("available").and_then(|a| a.as_bool()) {
+                        if available {
+                            // Extract project name
+                            let project_name = taskmaster_tasks.get("project_name")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("CCTelegram Project")
+                                .to_string();
                             
-                            // Count subtasks if present
-                            if let Some(subtasks_array) = task.get("subtasks").and_then(|st| st.as_array()) {
-                                for subtask in subtasks_array {
-                                    subtasks_total += 1;
-                                    if let Some("done") = subtask.get("status").and_then(|s| s.as_str()) {
-                                        subtasks_completed += 1;
-                                    }
-                                }
+                            // Extract task counts directly from taskmaster_tasks
+                            let main_tasks_count = taskmaster_tasks.get("main_tasks_count")
+                                .and_then(|m| m.as_u64()).unwrap_or(0) as u32;
+                            let subtasks_count = taskmaster_tasks.get("subtasks_count")
+                                .and_then(|s| s.as_u64()).unwrap_or(0) as u32;
+                            
+                            // Extract status counts from combined_summary
+                            if let Some(combined_summary) = mcp_data.get("combined_summary") {
+                                let pending = combined_summary.get("total_pending")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let in_progress = combined_summary.get("total_in_progress")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let completed = combined_summary.get("total_completed")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let blocked = combined_summary.get("total_blocked")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let total = combined_summary.get("grand_total")
+                                    .and_then(|t| t.as_u64()).unwrap_or(0) as u32;
+                                
+                                // Calculate subtasks completed based on completion percentage
+                                let subtasks_completed = if subtasks_count > 0 && total > 0 {
+                                    // Estimate based on overall completion rate
+                                    let completion_rate = completed as f64 / main_tasks_count as f64;
+                                    (subtasks_count as f64 * completion_rate).round() as u32
+                                } else {
+                                    completed.saturating_sub(main_tasks_count)
+                                };
+                                
+                                return Ok(TaskMasterInfo {
+                                    project_name,
+                                    pending,
+                                    in_progress,
+                                    completed: main_tasks_count.min(completed), // Main tasks only
+                                    blocked,
+                                    total: main_tasks_count,
+                                    subtasks_total: subtasks_count,
+                                    subtasks_completed: subtasks_completed.min(subtasks_count),
+                                });
                             }
                         }
-                        
-                        let total = pending + in_progress + completed + blocked;
-                        
-                        return Ok(TaskMasterInfo {
-                            project_name,
-                            pending,
-                            in_progress,
-                            completed,
-                            blocked,
-                            total,
-                            subtasks_total,
-                            subtasks_completed,
-                        });
-                    }
-                    
-                    // Try to parse from stats field if available
-                    if let Some(stats) = data_obj.get("stats") {
-                        let pending = stats.get("pending").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let in_progress = stats.get("inProgress").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let completed = stats.get("completed").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let blocked = stats.get("blocked").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let total = stats.get("total").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        
-                        let subtasks_total = stats.get("subtasks")
-                            .and_then(|st| st.get("total"))
-                            .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        let subtasks_completed = stats.get("subtasks")
-                            .and_then(|st| st.get("completed"))
-                            .and_then(|v| v.as_u64()).unwrap_or(0) as u32;
-                        
-                        return Ok(TaskMasterInfo {
-                            project_name: "CCTelegram Project".to_string(),
-                            pending,
-                            in_progress,
-                            completed,
-                            blocked,
-                            total,
-                            subtasks_total,
-                            subtasks_completed,
-                        });
                     }
                 }
                 
-                Err(anyhow::anyhow!("Invalid MCP response format"))
+                Err(anyhow::anyhow!("Invalid MCP response format or TaskMaster unavailable"))
             }
             None => Err(anyhow::anyhow!("MCP integration not available"))
         }
@@ -1247,5 +1301,68 @@ impl TelegramBot {
     /// Get current timestamp for status updates
     fn get_current_timestamp() -> String {
         chrono::Utc::now().format("%H:%M:%S UTC").to_string()
+    }
+
+    /// Get dynamic help message based on MCP integration status
+    async fn get_help_message(&self) -> String {
+        let mut help_parts = vec![];
+        
+        help_parts.push("🤖 *CCTelegram Bridge*".to_string());
+        help_parts.push("".to_string());
+        
+        // Check MCP integration status
+        let mcp_status = match &self.mcp_integration {
+            Some(_mcp) => {
+                match self.check_mcp_server_status().await {
+                    Ok(true) => "✅ Live MCP integration active",
+                    Ok(false) => "⚠️ MCP server offline \\(fallback mode\\)",
+                    Err(_) => "❌ MCP connection error"
+                }
+            }
+            None => "⚠️ MCP integration disabled"
+        };
+        
+        help_parts.push(format!("🔗 *Connection Status:* {}", mcp_status));
+        help_parts.push("".to_string());
+        
+        help_parts.push("📋 *Available Commands:*".to_string());
+        help_parts.push("• `/todo` \\- Shows current Claude Code session todos".to_string());
+        help_parts.push("• `/tasks` \\- Shows TaskMaster status and detailed info".to_string());
+        help_parts.push("• `/bridge` \\- Shows bridge system status".to_string());
+        help_parts.push("• `/help` \\- Shows all available commands".to_string());
+        help_parts.push("• `/restart` \\- Restart Telegram app".to_string());
+        help_parts.push("".to_string());
+        
+        help_parts.push("✅ *What CCTelegram Can Do:*".to_string());
+        help_parts.push("• Receive notifications from Claude Code".to_string());
+        help_parts.push("• Handle approval requests with buttons".to_string());
+        help_parts.push("• Show current work status \\& task progress".to_string());
+        
+        if matches!(mcp_status, "✅ Live MCP integration active") {
+            help_parts.push("• Query live Claude Code session tasks".to_string());
+            help_parts.push("• Access real\\-time TaskMaster data".to_string());
+        } else {
+            help_parts.push("• Query TaskMaster files \\(when available\\)".to_string());
+        }
+        
+        help_parts.push("• Acknowledge your messages with ⚡".to_string());
+        help_parts.push("".to_string());
+        
+        help_parts.push("❌ *What CCTelegram Cannot Do:*".to_string());
+        help_parts.push("• Execute shell commands \\(/ls, /pwd, etc\\.\\)".to_string());
+        help_parts.push("• Act as a remote terminal".to_string());
+        help_parts.push("• Run system operations".to_string());
+        help_parts.push("".to_string());
+        
+        help_parts.push("💡 *This is a notification bridge, not a command interface*".to_string());
+        
+        // Add timestamp
+        let utc_now = Utc::now();
+        let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
+        let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M:%S").to_string());
+        help_parts.push("".to_string());
+        help_parts.push(format!("🕐 Status checked: {}", timestamp));
+        
+        help_parts.join("\n")
     }
 }

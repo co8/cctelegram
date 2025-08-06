@@ -317,4 +317,63 @@ impl McpIntegration {
     pub async fn manual_fallback(&self) -> Result<serde_json::Value, McpError> {
         self.try_file_system_fallback().await
     }
+
+    /// Get todo status from MCP server
+    pub async fn get_todo_status(&self) -> Result<String, McpError> {
+        let start_time = std::time::Instant::now();
+        let operation_id = uuid::Uuid::new_v4().to_string();
+
+        // Execute MCP todo query
+        let result = self.connection_manager
+            .execute_with_retry("todo", serde_json::Value::Null)
+            .await;
+
+        match result {
+            Ok(data) => {
+                // Record successful operation
+                if self.config.enable_telemetry {
+                    self.telemetry.record_success(&operation_id, start_time.elapsed()).await;
+                }
+
+                // Extract text content from MCP response
+                if let Some(text) = data.as_str() {
+                    return Ok(text.to_string());
+                } else if let Some(content) = data.get("content").and_then(|c| c.as_array()) {
+                    if let Some(first_content) = content.first() {
+                        if let Some(text) = first_content.get("text").and_then(|t| t.as_str()) {
+                            return Ok(text.to_string());
+                        }
+                    }
+                }
+                
+                // Fallback: return JSON formatted text
+                Ok(serde_json::to_string_pretty(&data)
+                    .unwrap_or_else(|_| "Error formatting todo data".to_string()))
+            }
+            Err(error) => {
+                // Try fallback based on strategy
+                match self.config.fallback_strategy {
+                    FallbackStrategy::Automatic => {
+                        // Return a fallback todo message
+                        if self.config.enable_telemetry {
+                            self.telemetry.record_success(&operation_id, start_time.elapsed()).await;
+                        }
+                        Ok("*📋 Todo Status*\n\nℹ️ No active todo list found\n💡 Use Claude Code to create tasks\n\n*🚀 Available Commands:*\n• `/tasks` \\- View TaskMaster status\n• `/bridge` \\- View bridge status".to_string())
+                    }
+                    FallbackStrategy::Manual => {
+                        if self.config.enable_telemetry {
+                            self.telemetry.record_error(&operation_id, &error, start_time.elapsed()).await;
+                        }
+                        Err(McpError::ServerUnavailable("MCP server unavailable for todo. Try manual fallback.".to_string()))
+                    }
+                    FallbackStrategy::Disabled => {
+                        if self.config.enable_telemetry {
+                            self.telemetry.record_error(&operation_id, &error, start_time.elapsed()).await;
+                        }
+                        Err(error)
+                    }
+                }
+            }
+        }
+    }
 }

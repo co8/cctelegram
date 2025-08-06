@@ -32,12 +32,9 @@ echo "📦 Installing dependencies..."
 cd "$SCRIPT_DIR"
 npm install
 
-# Build the TypeScript code
-echo "🔨 Building TypeScript..."
-npm run build
-
-# Make the binary executable
-chmod +x dist/index.js
+# Note: Using development mode due to TypeScript compilation issues
+echo "🔨 Setting up development mode..."
+echo "⚠️  Note: Using development mode (tsx) due to TypeScript compilation complexity"
 
 echo "📝 Creating MCP configuration..."
 
@@ -54,8 +51,8 @@ if [ -f "$CLAUDE_CONFIG" ]; then
     echo ""
     cat << 'EOF'
     "cctelegram": {
-      "command": "node",
-      "args": ["FULL_PATH_TO/cc-telegram/mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["tsx", "FULL_PATH_TO/cc-telegram/mcp-server/src/index.ts"],
       "env": {
         "CC_TELEGRAM_EVENTS_DIR": "~/.cc_telegram/events",
         "CC_TELEGRAM_RESPONSES_DIR": "~/.cc_telegram/responses",
@@ -71,8 +68,8 @@ else
 {
   "mcpServers": {
     "cctelegram": {
-      "command": "node",
-      "args": ["$SCRIPT_DIR/dist/index.js"],
+      "command": "npx",
+      "args": ["tsx", "$SCRIPT_DIR/src/index.ts"],
       "env": {
         "CC_TELEGRAM_EVENTS_DIR": "~/.cc_telegram/events",
         "CC_TELEGRAM_RESPONSES_DIR": "~/.cc_telegram/responses",
@@ -111,5 +108,7 @@ echo "   - send_approval_request: Request user approval"
 echo "   - get_telegram_responses: Get user responses"
 echo "   - get_bridge_status: Check bridge health"
 echo "   - list_event_types: List available event types"
+echo "   - get_task_status: Get TaskMaster and Claude Code task status"
+echo "   - todo: Display organized todo list with completed, current, and upcoming tasks"
 echo ""
 echo "🎉 Happy coding with remote Telegram monitoring!"
