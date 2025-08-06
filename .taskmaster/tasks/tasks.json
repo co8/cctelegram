@@ -994,7 +994,76 @@
           17
         ],
         "priority": "medium",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up documentation framework and infrastructure",
+            "description": "Initialize and configure VitePress documentation framework with automated TypeScript interface generation, JSDoc comment parsing, and custom theming to support the comprehensive documentation overhaul",
+            "dependencies": [],
+            "details": "Install and configure VitePress with TypeScript support, set up automated documentation generation pipeline using TypeDoc for API interfaces, configure custom themes and styling, implement hot-reload development environment, and establish documentation build process integrated with the existing CI/CD pipeline",
+            "status": "done",
+            "testStrategy": "Verify documentation framework builds successfully, validate TypeScript interface extraction accuracy, test hot-reload functionality during development, and ensure proper integration with existing build systems"
+          },
+          {
+            "id": 2,
+            "title": "Create comprehensive API documentation with OpenAPI 3.0",
+            "description": "Generate complete API documentation using OpenAPI 3.0 specification with Swagger UI integration, documenting all 16 MCP tools, webhook endpoints, and bridge communication protocols",
+            "dependencies": [
+              "27.1"
+            ],
+            "details": "Create OpenAPI 3.0 specification files for all MCP server endpoints, document request/response schemas for 16 MCP tools, implement Swagger UI integration with interactive examples, document webhook endpoints with payload specifications, and create bridge communication protocol documentation with authentication flows",
+            "status": "done",
+            "testStrategy": "Validate OpenAPI specifications against actual API endpoints using automated tools, test Swagger UI functionality and interactive examples, verify webhook documentation accuracy through payload validation, and run Postman collections generated from OpenAPI specs"
+          },
+          {
+            "id": 3,
+            "title": "Develop deployment and operations guides",
+            "description": "Create comprehensive deployment guides covering Docker containerization, Kubernetes deployment with Helm charts, CI/CD pipeline setup, environment configuration, and SSL certificate management",
+            "dependencies": [
+              "27.1"
+            ],
+            "details": "Write step-by-step Docker containerization guide with multi-stage builds, create Kubernetes deployment manifests and Helm charts with configurable values, document CI/CD pipeline setup using GitHub Actions with deployment strategies, provide environment configuration templates for development/staging/production, and create SSL certificate management procedures including Let's Encrypt automation",
+            "status": "done",
+            "testStrategy": "Execute deployment guides in clean Docker environments to verify accuracy, test Kubernetes deployments in staging clusters, validate CI/CD pipeline configurations through test deployments, and verify SSL certificate procedures in sandbox environments"
+          },
+          {
+            "id": 4,
+            "title": "Create troubleshooting documentation and diagnostic resources",
+            "description": "Develop comprehensive troubleshooting documentation with categorized error codes, diagnostic commands, log analysis guides, and recovery procedures for the 3-tier cascading system",
+            "dependencies": [
+              "27.2"
+            ],
+            "details": "Create categorized error code reference with descriptions and solutions, develop diagnostic command reference for each tier (webhook→bridge→file watcher), write log analysis guides with common patterns and interpretation, document recovery procedures for system failures, and create troubleshooting flowcharts for systematic problem resolution",
+            "status": "done",
+            "testStrategy": "Validate error codes against actual system errors, test diagnostic commands across different failure scenarios, verify log analysis accuracy through controlled error injection, and validate recovery procedures through simulated system failures"
+          },
+          {
+            "id": 5,
+            "title": "Update architecture diagrams and system documentation",
+            "description": "Create and update architecture diagrams using Mermaid.js showing current system design including MCP server architecture, 3-tier cascading monitoring system, Telegram integration, and security layers",
+            "dependencies": [
+              "27.1"
+            ],
+            "details": "Design comprehensive architecture diagrams using Mermaid.js embedded in documentation, illustrate MCP server architecture with tool relationships, document 3-tier cascading system flow (webhook→bridge→file watcher), create Telegram bot integration diagrams, show Claude Code notification flow, and document security layers with data flow patterns",
+            "status": "pending",
+            "testStrategy": "Verify diagram accuracy against actual system architecture, validate Mermaid.js rendering across different browsers and devices, ensure diagrams update automatically with documentation builds, and test diagram clarity through user feedback"
+          },
+          {
+            "id": 6,
+            "title": "Implement documentation versioning and quality assurance",
+            "description": "Set up documentation versioning aligned with semantic release strategy, implement automated link checking, and create interactive examples using CodeSandbox embeds for MCP tool usage scenarios",
+            "dependencies": [
+              "27.1",
+              "27.2",
+              "27.3",
+              "27.4",
+              "27.5"
+            ],
+            "details": "Configure documentation versioning system synchronized with semantic releases, implement linkinator for automated link validation, set up markdown-link-check for CI/CD integration, create CodeSandbox embedded examples for MCP tool configurations, develop interactive usage scenarios, and establish documentation quality metrics and monitoring",
+            "status": "pending",
+            "testStrategy": "Test versioning system with release cycles, validate link checking automation through broken link injection, verify CodeSandbox embeds load correctly and remain functional, and monitor documentation quality metrics including user engagement and feedback"
+          }
+        ]
       },
       {
         "id": 28,
@@ -1009,12 +1078,86 @@
           20
         ],
         "priority": "low",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Memory Profiling and Leak Detection Setup",
+            "description": "Set up comprehensive memory profiling tools and implement monitoring for memory leaks and garbage collection patterns",
+            "dependencies": [],
+            "details": "Install and configure clinic.js and 0x profiler for Node.js heap profiling. Implement process.memoryUsage() monitoring with automated alerts when memory usage exceeds defined thresholds (e.g., 80% of available heap). Create memory leak detection mechanisms using WeakMap for automatic garbage collection of unused references. Set up periodic memory monitoring intervals using setInterval with proper clearInterval cleanup on shutdown.",
+            "status": "pending",
+            "testStrategy": "Create memory stress tests that intentionally create objects and verify proper cleanup. Use clinic.js doctor to analyze memory growth patterns and validate leak detection alerts trigger correctly at threshold levels."
+          },
+          {
+            "id": 2,
+            "title": "Async File Operations Migration",
+            "description": "Replace all synchronous file operations with async alternatives and implement proper error handling",
+            "dependencies": [],
+            "details": "Audit codebase to identify all synchronous file operations (fs.readFileSync, fs.writeFileSync, fs.existsSync). Replace with async alternatives using fs.promises (readFile, writeFile, access) and implement comprehensive error handling with try-catch blocks. Update all calling code to use async/await patterns. Implement stream processing for large file operations to reduce memory footprint and add backpressure handling.",
+            "status": "pending",
+            "testStrategy": "Create unit tests for each converted file operation with error scenarios. Test large file handling with memory monitoring to ensure stream processing reduces memory usage. Validate proper error handling and recovery for file system failures."
+          },
+          {
+            "id": 3,
+            "title": "HTTP Connection Pooling and Caching",
+            "description": "Implement HTTP connection pooling and request/response caching for improved response times",
+            "dependencies": [],
+            "details": "Implement HTTP connection pooling using undici or node-fetch with keepAlive configuration. Set up request/response caching using node-cache with TTL policies for frequently accessed data. Configure connection pool sizes based on expected load patterns. Implement cache invalidation strategies for dynamic data and cache warming for critical endpoints.",
+            "status": "pending",
+            "testStrategy": "Load test HTTP endpoints using autocannon to measure response time improvements with and without connection pooling. Monitor connection pool utilization and cache hit rates. Validate cache TTL policies and invalidation work correctly."
+          },
+          {
+            "id": 4,
+            "title": "Database Query Optimization and Connection Pooling",
+            "description": "Optimize database operations with connection pooling and query performance improvements",
+            "dependencies": [],
+            "details": "Implement database connection pooling with configurable pool sizes and connection lifecycle management. Analyze and optimize slow queries using database profiling tools. Implement query result caching for frequently accessed data. Add query timeout handling and connection retry logic with exponential backoff.",
+            "status": "pending",
+            "testStrategy": "Benchmark database operations before and after optimization using load testing tools. Monitor connection pool metrics (active, idle, waiting connections). Create stress tests for connection pool exhaustion scenarios and validate proper error handling."
+          },
+          {
+            "id": 5,
+            "title": "Performance Monitoring Dashboard",
+            "description": "Create comprehensive performance monitoring dashboard with Prometheus metrics collection",
+            "dependencies": [
+              "28.1"
+            ],
+            "details": "Implement performance monitoring using prom-client for Prometheus metrics collection. Track key metrics: memory usage, response times, request throughput, error rates, and garbage collection statistics. Create custom metrics for business-specific performance indicators. Set up metric scraping endpoints and configure retention policies.",
+            "status": "pending",
+            "testStrategy": "Validate all metrics are correctly collected and exposed via Prometheus endpoints. Create load scenarios to verify metrics accuracy under stress. Test metric retention and aggregation rules work as expected."
+          },
+          {
+            "id": 6,
+            "title": "Resource Cleanup and Graceful Shutdown",
+            "description": "Implement comprehensive resource cleanup utilities and graceful shutdown mechanisms",
+            "dependencies": [
+              "28.2",
+              "28.3",
+              "28.4"
+            ],
+            "details": "Create resource cleanup utilities using process.on('exit') and process.on('SIGTERM') handlers for graceful shutdown. Implement proper resource deallocation for file handles, database connections, HTTP connections, and timer cleanup. Add timeout mechanisms for shutdown processes to prevent hanging. Create resource tracking to ensure all resources are properly cleaned up.",
+            "status": "pending",
+            "testStrategy": "Test graceful shutdown scenarios including SIGTERM and SIGKILL signals. Validate all resources (connections, timers, file handles) are properly cleaned up during shutdown. Create tests for ungraceful shutdown scenarios and resource leak detection."
+          },
+          {
+            "id": 7,
+            "title": "Performance Regression Testing and Benchmarking",
+            "description": "Implement automated performance regression testing with comprehensive benchmarking suite",
+            "dependencies": [
+              "28.1",
+              "28.3",
+              "28.5"
+            ],
+            "details": "Set up automated performance regression testing using clinic.js flame graphs for CPU profiling analysis. Implement benchmarking suite using autocannon for load testing with configurable test scenarios. Create performance baseline establishment and regression detection with automated alerts. Integrate performance tests into CI/CD pipeline with performance budget enforcement.",
+            "status": "pending",
+            "testStrategy": "Create comprehensive load test scenarios covering different usage patterns. Establish performance baselines and validate regression detection triggers correctly. Test CI/CD integration and verify performance budget violations prevent deployments."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-05T23:21:47.204Z",
+      "updated": "2025-08-06T08:50:06.967Z",
       "description": "Tasks for master context"
     }
   }

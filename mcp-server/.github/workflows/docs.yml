@@ -1,0 +1,156 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+
+env:
+  NODE_VERSION: '20.x'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    name: 📚 Build Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+
+      - name: Install main dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Install docs dependencies
+        run: npm run docs:install
+
+      - name: Generate API documentation
+        run: npm run docs:api
+
+      - name: Build VitePress documentation
+        run: npm run docs:build
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/.vitepress/dist
+          retention-days: 30
+
+  deploy-docs:
+    name: 🚀 Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    steps:
+      - name: Download documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: dist
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  validate-docs:
+    name: 🔍 Validate Documentation
+    runs-on: ubuntu-latest
+    needs: build-docs
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download documentation
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: docs-build
+
+      - name: Validate documentation structure
+        run: |
+          echo "🔍 Validating documentation structure..."
+          
+          # Check required files exist
+          test -f docs-build/index.html || { echo "❌ Missing index.html"; exit 1; }
+          test -d docs-build/guide || { echo "❌ Missing guide directory"; exit 1; }
+          test -d docs-build/api || { echo "❌ Missing api directory"; exit 1; }
+          test -d docs-build/examples || { echo "❌ Missing examples directory"; exit 1; }
+          
+          # Check for empty files
+          if [ -z "$(find docs-build -name '*.html' -size +1c)" ]; then
+            echo "❌ No HTML files found or all are empty"
+            exit 1
+          fi
+          
+          echo "✅ Documentation structure validation passed"
+
+      - name: Check documentation quality
+        run: |
+          echo "📊 Documentation quality report:"
+          
+          # Count pages
+          HTML_COUNT=$(find docs-build -name '*.html' | wc -l)
+          echo "HTML pages: $HTML_COUNT"
+          
+          # Check for broken internal links (basic check)
+          if grep -r "404" docs-build/ | grep -v "404.html"; then
+            echo "⚠️  Potential broken links detected"
+          else
+            echo "✅ No obvious broken links found"
+          fi
+          
+          # Check bundle size
+          BUNDLE_SIZE=$(du -sh docs-build | cut -f1)
+          echo "Total bundle size: $BUNDLE_SIZE"
+          
+          echo "✅ Documentation quality check completed"

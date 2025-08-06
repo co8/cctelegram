@@ -1,0 +1,27 @@
+# VitePress build output
+.vitepress/dist
+.vitepress/cache
+
+# TypeDoc generated API docs
+api/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

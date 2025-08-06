@@ -1,0 +1,87 @@
+/**
+ * Minimal custom theme for fast loading and clean appearance
+ */
+
+:root {
+  /* Primary brand color */
+  --vp-c-brand-1: #646cff;
+  --vp-c-brand-2: #747bff; 
+  --vp-c-brand-3: #5b64e5;
+  
+  /* Optimized font stack for performance */
+  --vp-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Helvetica Neue", sans-serif;
+  --vp-font-family-mono: "JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, Monaco, "Courier New", monospace;
+}
+
+/* Performance optimizations */
+.VPDoc {
+  contain: layout style paint;
+}
+
+.VPContent {
+  contain: layout;
+}
+
+/* Code block enhancements */
+.vp-code-group .tabs {
+  background-color: var(--vp-c-bg-soft);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .VPHero .name {
+    font-size: 2rem;
+  }
+  
+  .VPHero .text {
+    font-size: 1.2rem; 
+  }
+}
+
+/* Custom badge styles */
+.custom-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  background-color: var(--vp-c-brand-1);
+  color: white;
+  margin-left: 0.5rem;
+}
+
+.custom-badge.warning {
+  background-color: #f59e0b;
+}
+
+.custom-badge.danger {
+  background-color: #ef4444;
+}
+
+.custom-badge.success {
+  background-color: #10b981;
+}
+
+/* API documentation enhancements */
+.api-method {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.875rem;
+  padding: 0.125rem 0.25rem;
+  background-color: var(--vp-c-bg-soft);
+  border-radius: 0.25rem;
+}
+
+/* Example code blocks */
+.example-container {
+  border: 1px solid var(--vp-c-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.example-container .example-header {
+  background-color: var(--vp-c-bg-soft);
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--vp-c-border);
+}

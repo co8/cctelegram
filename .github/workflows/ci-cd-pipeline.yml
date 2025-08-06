@@ -650,3 +650,48 @@ jobs:
         run: |
           echo "🎉 Production deployment successful!"
           echo "Version: ${{ needs.build-and-package.outputs.package-version }}"
+
+  # ===== Documentation Build =====
+  build-documentation:
+    name: 📚 Build Documentation
+    runs-on: ubuntu-latest
+    needs: [lint-and-format]
+    if: needs.lint-and-format.outputs.lint-passed == 'success'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: ./mcp-server
+        run: npm run build
+
+      - name: Install docs dependencies
+        working-directory: ./mcp-server
+        run: npm run docs:install
+
+      - name: Generate API documentation
+        working-directory: ./mcp-server
+        run: npm run docs:api
+
+      - name: Build documentation
+        working-directory: ./mcp-server
+        run: npm run docs:build
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-build
+          path: mcp-server/docs/.vitepress/dist
+          retention-days: 7
