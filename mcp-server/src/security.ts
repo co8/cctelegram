@@ -343,6 +343,16 @@ export const inputSchemas = {
     task_system: Joi.string().valid('claude-code', 'taskmaster', 'both').default('both'),
     status_filter: Joi.string().valid('pending', 'in_progress', 'completed', 'blocked').optional(),
     summary_only: Joi.boolean().default(false)
+  }),
+
+  todo: Joi.object({
+    project_root: Joi.string().max(500).optional(),
+    task_system: Joi.string().valid('claude-code', 'taskmaster', 'both').default('taskmaster'),
+    sections: Joi.array().items(
+      Joi.string().valid('completed', 'current', 'upcoming', 'blocked')
+    ).default(['completed', 'current', 'upcoming']),
+    limit_completed: Joi.number().integer().min(1).max(50).default(5),
+    show_subtasks: Joi.boolean().default(true)
   })
 };
 

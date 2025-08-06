@@ -343,6 +343,44 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: 'todo',
+        description: 'Display current todo list with completed tasks, current work, and upcoming tasks in organized sections',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            project_root: {
+              type: 'string',
+              description: 'Path to project root (defaults to current directory)'
+            },
+            task_system: {
+              type: 'string',
+              enum: ['claude-code', 'taskmaster', 'both'],
+              description: 'Which task system to query (default: taskmaster)',
+              default: 'taskmaster'
+            },
+            sections: {
+              type: 'array',
+              items: {
+                type: 'string',
+                enum: ['completed', 'current', 'upcoming', 'blocked']
+              },
+              description: 'Sections to display (default: ["completed", "current", "upcoming"])',
+              default: ['completed', 'current', 'upcoming']
+            },
+            limit_completed: {
+              type: 'number',
+              description: 'Maximum number of completed tasks to show (default: 5)',
+              default: 5
+            },
+            show_subtasks: {
+              type: 'boolean',
+              description: 'Whether to include subtasks in the display (default: true)',
+              default: true
+            }
+          }
+        }
       }
     ]
   };
@@ -834,6 +872,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           clientId: securityContext.clientId,
           data: args,
           schemaKey: 'getTaskStatus'
+        });
+      }
+      case 'todo': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'todo');
+          const { 
+            project_root, 
+            task_system = 'taskmaster', 
+            sections = ['completed', 'current', 'upcoming'],
+            limit_completed = 5,
+            show_subtasks = true 
+          } = validatedArgs;
+          
+          const todoDisplay = await client.getTodoDisplay(
+            project_root, 
+            task_system, 
+            sections,
+            limit_completed,
+            show_subtasks
+          );
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: todoDisplay
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'todo'
         });
       }
 

@@ -1068,7 +1068,8 @@ export class BenchmarkSuite extends EventEmitter {
       clear_old_responses: 'clearOldResponses',
       process_pending_responses: 'processPendingResponses',
       list_event_types: 'listEventTypes',
-      get_task_status: 'getTaskStatus'
+      get_task_status: 'getTaskStatus',
+      todo: 'todo'
     };
     
     return schemaMap[toolName] || null;
