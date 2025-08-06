@@ -1,4 +1,4 @@
-import * as Joi from 'joi';
+import Joi from 'joi';
 import * as CryptoJS from 'crypto-js';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import * as fs from 'fs-extra';

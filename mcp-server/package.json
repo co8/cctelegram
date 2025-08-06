@@ -6,6 +6,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc --project tsconfig.build.json --noErrorTruncation false --skipLibCheck true",
+    "build:core": "npm run build",
+    "test:core": "node test-build.js && node test-server.js", 
+    "quality:gates": "npm run build:core && npm run test:core",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "docs:install": "cd docs && npm install",
