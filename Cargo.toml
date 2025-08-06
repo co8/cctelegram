@@ -17,6 +17,10 @@ path = "src/lib.rs"
 name = "cctelegram-bridge"
 path = "src/main.rs"
 
+[[example]]
+name = "monitoring_demo"
+path = "examples/monitoring_demo.rs"
+
 
 [dependencies]
 # Tokio for async runtime

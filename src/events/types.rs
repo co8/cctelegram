@@ -785,6 +785,17 @@ impl Event {
         })
     }
 
+    /// Create a default event with a specific task_id (for queue manager)
+    pub fn default_with_task_id(task_id: String) -> Self {
+        Self::new(
+            EventType::InfoNotification,
+            "queue_manager",
+            task_id,
+            "Queued Event",
+            "Event loaded from startup queue"
+        )
+    }
+
     // Task Management Event Builders
     pub fn task_completed(
         source: impl Into<String>,

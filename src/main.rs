@@ -14,10 +14,12 @@ mod tier_orchestrator;
 mod mcp;
 
 use config::Config;
-use events::{EventWatcher, EventProcessor};
+use events::{EventWatcher, EventProcessor, QueueManager, QueueManagerConfig};
 use telegram::TelegramBot;
 use telegram::messages::MessageStyle;
-use storage::FileStore;
+use telegram::rate_limiter::RateLimiterConfig;
+use telegram::retry_handler::{RetryConfig, CircuitBreakerConfig};
+use storage::{FileStore, EnhancedEventQueue};
 use utils::{PerformanceMonitor, HealthServer};
 use internal_processor::InternalProcessor;
 use tier_orchestrator::TierOrchestrator;
@@ -142,9 +144,50 @@ async fn main() -> Result<()> {
 
     let telegram_bot = Arc::new(telegram_bot);
 
-    // Process any unsent events from previous sessions
+    // Initialize Queue Manager for startup burst handling (SubAgent Gamma)
+    let queue_manager = if let Some(ref redis_url) = std::env::var("REDIS_URL").ok() {
+        info!("🎯 Initializing Queue Manager (SubAgent Gamma) with Redis");
+        
+        let queue_config = QueueManagerConfig {
+            redis_url: redis_url.clone(),
+            max_workers: 3,
+            max_retry_attempts: 3,
+            startup_batch_size: 10,
+            processing_timeout: std::time::Duration::from_secs(30),
+            queue_prefix: "cctelegram:queue".to_string(),
+        };
+        
+        let rate_limiter_config = config.security.rate_limiter.to_rate_limiter_config();
+        let retry_config = RetryConfig::default();
+        let circuit_breaker_config = CircuitBreakerConfig::default();
+        
+        match QueueManager::new(queue_config, rate_limiter_config, retry_config, circuit_breaker_config).await {
+            Ok(qm) => {
+                info!("✅ Queue Manager (SubAgent Gamma) initialized with Alpha+Beta integration");
+                Some(Arc::new(qm))
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to initialize Queue Manager: {}, falling back to traditional queue", e);
+                None
+            }
+        }
+    } else {
+        info!("ℹ️  Redis URL not configured, using traditional queue (no startup burst protection)");
+        None
+    };
+
+    // Initialize Enhanced Event Queue with QueueManager integration
+    let mut enhanced_queue = EnhancedEventQueue::new(1000, queue_manager.clone());
+
+    // Process accumulated startup events through queue manager
+    info!("🚀 Processing startup events (accumulated while bridge was offline)");
+    if let Err(e) = enhanced_queue.process_startup_burst(&config.paths.events_dir).await {
+        warn!("Failed to process startup events through queue manager: {}", e);
+    }
+
+    // Process any unsent events from previous sessions (legacy method)
     if let Err(e) = telegram_bot.process_unsent_events().await {
-        warn!("Failed to process unsent events: {}", e);
+        warn!("Failed to process legacy unsent events: {}", e);
     }
 
     // Send startup message to all allowed users
@@ -249,6 +292,14 @@ async fn main() -> Result<()> {
                 error!("Telegram dispatcher error: {}", e);
             }
         }
+    }
+
+    // Graceful shutdown of queue manager workers
+    info!("🛑 Shutting down queue manager workers...");
+    if let Err(e) = enhanced_queue.shutdown().await {
+        warn!("Error during queue manager shutdown: {}", e);
+    } else {
+        info!("✅ Queue manager shutdown complete");
     }
 
     info!("CC Telegram Bridge stopped");

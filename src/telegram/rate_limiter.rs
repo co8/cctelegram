@@ -28,7 +28,7 @@ impl Default for RateLimiterConfig {
 }
 
 /// Rate limiting metrics for telemetry
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct RateLimiterMetrics {
     pub global_requests: u64,
     pub per_chat_requests: HashMap<i64, u64>,

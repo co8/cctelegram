@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTelegram - Message Delivery Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .status-excellent { color: #28a745; }
+        .status-good { color: #17a2b8; }
+        .status-degraded { color: #ffc107; }
+        .status-critical { color: #dc3545; }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .alert-critical {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        .trace-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .trace-item {
+            padding: 0.8rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .trace-item:last-child {
+            border-bottom: none;
+        }
+
+        .trace-id {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #666;
+            background: #f1f1f1;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .status-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-queued { background: #e3f2fd; color: #1976d2; }
+        .status-sending { background: #fff3e0; color: #f57c00; }
+        .status-delivered { background: #e8f5e8; color: #2e7d32; }
+        .status-failed { background: #ffebee; color: #c62828; }
+        .status-retrying { background: #fff8e1; color: #f9a825; }
+
+        .refresh-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            margin-left: 0.5rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .wide-card {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CCTelegram Monitoring Dashboard</h1>
+        <p>Real-time message delivery tracking and system health monitoring<span class="refresh-indicator" id="refreshIndicator"></span></p>
+    </div>
+
+    <div class="container">
+        <div id="errorContainer"></div>
+        <div id="dashboardContent" class="loading">
+            <p>Loading dashboard data...</p>
+        </div>
+    </div>
+
+    <script>
+        class MonitoringDashboard {
+            constructor() {
+                this.charts = {};
+                this.refreshInterval = null;
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.fetchAndRenderDashboard();
+                    this.startAutoRefresh();
+                } catch (error) {
+                    this.showError(`Failed to initialize dashboard: ${error.message}`);
+                }
+            }
+
+            async fetchAndRenderDashboard() {
+                try {
+                    // In a real implementation, this would fetch from /api/monitoring/dashboard
+                    const response = await this.fetchDashboardData();
+                    this.renderDashboard(response);
+                    this.hideError();
+                } catch (error) {
+                    console.error('Dashboard fetch error:', error);
+                    this.showError(`Failed to fetch dashboard data: ${error.message}`);
+                }
+            }
+
+            async fetchDashboardData() {
+                // Mock data for demonstration - replace with actual API call
+                return {
+                    timestamp: new Date().toISOString(),
+                    delivery_metrics: {
+                        total_messages: 15420,
+                        delivered_messages: 14650,
+                        failed_messages: 595,
+                        dead_letter_messages: 175,
+                        circuit_breaker_blocked: 45,
+                        average_delivery_time_ms: 245.3,
+                        peak_delivery_time_ms: 2340,
+                        delivery_rate_percent: 95.1,
+                        current_queue_depth: 23,
+                        rate_limited_messages: 892,
+                        retry_attempts_total: 1205,
+                        active_correlations: 12
+                    },
+                    rate_limiter_metrics: {
+                        global_requests: 15420,
+                        global_throttled: 892,
+                        avg_processing_time_micros: 150,
+                        peak_processing_time_micros: 980
+                    },
+                    queue_stats: {
+                        pending_jobs: 23,
+                        processing_jobs: 5,
+                        completed_jobs: 14650,
+                        failed_jobs: 595,
+                        dead_letter_jobs: 175,
+                        average_processing_time: { secs: 0, nanos: 245300000 },
+                        worker_utilization: 0.68
+                    },
+                    system_health: {
+                        overall_status: "Good",
+                        delivery_rate_status: "Healthy",
+                        queue_health_status: "Healthy",
+                        rate_limiter_status: "Active",
+                        circuit_breaker_status: "Closed",
+                        monitoring_overhead_percent: 0.3
+                    },
+                    active_traces: this.generateMockTraces(12),
+                    recent_deliveries: this.generateMockRecentDeliveries(),
+                    recent_failures: this.generateMockRecentFailures(),
+                    alerts: [
+                        {
+                            id: "alert-1",
+                            severity: "Warning",
+                            message: "Rate limiting active: 892 messages throttled in the last hour",
+                            timestamp: new Date().toISOString()
+                        }
+                    ]
+                };
+            }
+
+            generateMockTraces(count) {
+                const statuses = ['Queued', 'RateChecking', 'Sending', 'Delivered', { Failed: { reason: 'Timeout' } }];
+                const traces = [];
+                
+                for (let i = 0; i < count; i++) {
+                    traces.push({
+                        correlation_id: `trace-${Math.random().toString(36).substr(2, 9)}`,
+                        chat_id: Math.floor(Math.random() * 1000000000),
+                        status: statuses[Math.floor(Math.random() * statuses.length)],
+                        created_at: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+                        processing_duration: { secs: Math.floor(Math.random() * 30), nanos: 0 },
+                        retry_attempts: Math.floor(Math.random() * 3)
+                    });
+                }
+                
+                return traces;
+            }
+
+            generateMockRecentDeliveries() {
+                return this.generateMockTraces(10).map(trace => ({
+                    ...trace,
+                    status: 'Delivered'
+                }));
+            }
+
+            generateMockRecentFailures() {
+                return this.generateMockTraces(5).map(trace => ({
+                    ...trace,
+                    status: { Failed: { reason: 'Rate limit timeout' } }
+                }));
+            }
+
+            renderDashboard(data) {
+                const container = document.getElementById('dashboardContent');
+                container.innerHTML = `
+                    <div class="dashboard-grid">
+                        ${this.renderSystemHealthCard(data.system_health)}
+                        ${this.renderDeliveryMetricsCard(data.delivery_metrics)}
+                        ${this.renderRateLimiterCard(data.rate_limiter_metrics, data.delivery_metrics)}
+                        ${this.renderQueueStatsCard(data.queue_stats)}
+                        ${this.renderAlertsCard(data.alerts)}
+                        ${this.renderActiveTracesCard(data.active_traces)}
+                        ${this.renderChartsCard(data)}
+                        ${this.renderRecentActivityCard(data.recent_deliveries, data.recent_failures)}
+                    </div>
+                `;
+
+                this.initCharts(data);
+            }
+
+            renderSystemHealthCard(health) {
+                const statusClass = this.getStatusClass(health.overall_status);
+                
+                return `
+                    <div class="card">
+                        <h3>System Health</h3>
+                        <div class="metric">
+                            <span class="metric-label">Overall Status</span>
+                            <span class="metric-value ${statusClass}">${health.overall_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Delivery Rate</span>
+                            <span class="metric-value">${health.delivery_rate_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Queue Health</span>
+                            <span class="metric-value">${health.queue_health_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Rate Limiter</span>
+                            <span class="metric-value">${health.rate_limiter_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Circuit Breaker</span>
+                            <span class="metric-value">${health.circuit_breaker_status}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Monitoring Overhead</span>
+                            <span class="metric-value">${health.monitoring_overhead_percent.toFixed(2)}%</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderDeliveryMetricsCard(metrics) {
+                return `
+                    <div class="card">
+                        <h3>Delivery Metrics</h3>
+                        <div class="metric">
+                            <span class="metric-label">Total Messages</span>
+                            <span class="metric-value">${metrics.total_messages.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Delivered</span>
+                            <span class="metric-value status-excellent">${metrics.delivered_messages.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Failed</span>
+                            <span class="metric-value status-critical">${metrics.failed_messages.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Delivery Rate</span>
+                            <span class="metric-value ${metrics.delivery_rate_percent >= 95 ? 'status-excellent' : metrics.delivery_rate_percent >= 90 ? 'status-good' : 'status-critical'}">${metrics.delivery_rate_percent.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Delivery Time</span>
+                            <span class="metric-value">${metrics.average_delivery_time_ms.toFixed(1)}ms</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Active Correlations</span>
+                            <span class="metric-value">${metrics.active_correlations}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderRateLimiterCard(rateLimiter, delivery) {
+                return `
+                    <div class="card">
+                        <h3>Rate Limiter (Alpha)</h3>
+                        <div class="metric">
+                            <span class="metric-label">Total Requests</span>
+                            <span class="metric-value">${rateLimiter.global_requests.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Rate Limited</span>
+                            <span class="metric-value">${delivery.rate_limited_messages.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Avg Processing</span>
+                            <span class="metric-value">${rateLimiter.avg_processing_time_micros}μs</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Peak Processing</span>
+                            <span class="metric-value">${rateLimiter.peak_processing_time_micros}μs</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Circuit Breaker Blocked</span>
+                            <span class="metric-value">${delivery.circuit_breaker_blocked}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderQueueStatsCard(queue) {
+                return `
+                    <div class="card">
+                        <h3>Queue Manager (Gamma)</h3>
+                        <div class="metric">
+                            <span class="metric-label">Pending Jobs</span>
+                            <span class="metric-value">${queue.pending_jobs}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Processing Jobs</span>
+                            <span class="metric-value">${queue.processing_jobs}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Completed Jobs</span>
+                            <span class="metric-value status-excellent">${queue.completed_jobs.toLocaleString()}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Dead Letter</span>
+                            <span class="metric-value status-critical">${queue.dead_letter_jobs}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Worker Utilization</span>
+                            <span class="metric-value">${(queue.worker_utilization * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAlertsCard(alerts) {
+                const alertsHtml = alerts.length > 0 
+                    ? alerts.map(alert => `
+                        <div class="alert alert-${alert.severity.toLowerCase()}">
+                            <strong>${alert.severity}:</strong> ${alert.message}
+                            <br><small>${new Date(alert.timestamp).toLocaleString()}</small>
+                        </div>
+                    `).join('')
+                    : '<p style="color: #28a745; text-align: center;">✅ No active alerts</p>';
+
+                return `
+                    <div class="card">
+                        <h3>Alerts</h3>
+                        ${alertsHtml}
+                    </div>
+                `;
+            }
+
+            renderActiveTracesCard(traces) {
+                const tracesHtml = traces.length > 0
+                    ? traces.map(trace => {
+                        const status = typeof trace.status === 'string' ? trace.status : Object.keys(trace.status)[0];
+                        const statusClass = this.getStatusBadgeClass(status);
+                        
+                        return `
+                            <div class="trace-item">
+                                <div>
+                                    <span class="trace-id">${trace.correlation_id}</span>
+                                    <br><small>Chat: ${trace.chat_id}</small>
+                                </div>
+                                <div>
+                                    <span class="status-badge ${statusClass}">${status}</span>
+                                    <br><small>${trace.retry_attempts} retries</small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')
+                    : '<p style="text-align: center; color: #666;">No active traces</p>';
+
+                return `
+                    <div class="card">
+                        <h3>Active Message Traces</h3>
+                        <div class="trace-list">
+                            ${tracesHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderChartsCard(data) {
+                return `
+                    <div class="card wide-card">
+                        <h3>Performance Charts</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div>
+                                <h4>Message Flow</h4>
+                                <div class="chart-container">
+                                    <canvas id="messageFlowChart"></canvas>
+                                </div>
+                            </div>
+                            <div>
+                                <h4>Delivery Rate Trend</h4>
+                                <div class="chart-container">
+                                    <canvas id="deliveryTrendChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderRecentActivityCard(deliveries, failures) {
+                return `
+                    <div class="card wide-card">
+                        <h3>Recent Activity</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div>
+                                <h4>Recent Deliveries</h4>
+                                <div class="trace-list" style="max-height: 250px;">
+                                    ${deliveries.slice(0, 5).map(trace => `
+                                        <div class="trace-item">
+                                            <span class="trace-id">${trace.correlation_id}</span>
+                                            <small>${new Date(trace.created_at).toLocaleTimeString()}</small>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h4>Recent Failures</h4>
+                                <div class="trace-list" style="max-height: 250px;">
+                                    ${failures.slice(0, 5).map(trace => `
+                                        <div class="trace-item">
+                                            <span class="trace-id">${trace.correlation_id}</span>
+                                            <small>${new Date(trace.created_at).toLocaleTimeString()}</small>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            initCharts(data) {
+                // Message Flow Pie Chart
+                const messageFlowCtx = document.getElementById('messageFlowChart');
+                if (messageFlowCtx) {
+                    this.charts.messageFlow = new Chart(messageFlowCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Delivered', 'Failed', 'Dead Letter', 'Circuit Blocked'],
+                            datasets: [{
+                                data: [
+                                    data.delivery_metrics.delivered_messages,
+                                    data.delivery_metrics.failed_messages,
+                                    data.delivery_metrics.dead_letter_messages,
+                                    data.delivery_metrics.circuit_breaker_blocked
+                                ],
+                                backgroundColor: ['#28a745', '#dc3545', '#6c757d', '#ffc107']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Delivery Rate Trend (mock data)
+                const trendCtx = document.getElementById('deliveryTrendChart');
+                if (trendCtx) {
+                    const last24Hours = Array.from({ length: 24 }, (_, i) => {
+                        const time = new Date(Date.now() - (23 - i) * 3600000);
+                        return time.getHours() + ':00';
+                    });
+
+                    const deliveryRates = Array.from({ length: 24 }, () => 
+                        85 + Math.random() * 15 // Mock data between 85-100%
+                    );
+
+                    this.charts.deliveryTrend = new Chart(trendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: last24Hours,
+                            datasets: [{
+                                label: 'Delivery Rate %',
+                                data: deliveryRates,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 80,
+                                    max: 100
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            getStatusClass(status) {
+                const statusLower = status.toLowerCase();
+                if (statusLower.includes('excellent') || statusLower.includes('healthy')) return 'status-excellent';
+                if (statusLower.includes('good')) return 'status-good';
+                if (statusLower.includes('degraded') || statusLower.includes('warning')) return 'status-degraded';
+                if (statusLower.includes('critical') || statusLower.includes('unhealthy')) return 'status-critical';
+                return '';
+            }
+
+            getStatusBadgeClass(status) {
+                const statusLower = status.toLowerCase();
+                if (statusLower.includes('queued')) return 'status-queued';
+                if (statusLower.includes('sending')) return 'status-sending';
+                if (statusLower.includes('delivered')) return 'status-delivered';
+                if (statusLower.includes('failed')) return 'status-failed';
+                if (statusLower.includes('retrying')) return 'status-retrying';
+                return 'status-queued';
+            }
+
+            startAutoRefresh() {
+                // Refresh every 5 seconds
+                this.refreshInterval = setInterval(() => {
+                    this.fetchAndRenderDashboard();
+                }, 5000);
+            }
+
+            stopAutoRefresh() {
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+            }
+
+            showError(message) {
+                const container = document.getElementById('errorContainer');
+                container.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            hideError() {
+                const container = document.getElementById('errorContainer');
+                container.innerHTML = '';
+            }
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new MonitoringDashboard();
+        });
+    </script>
+</body>
+</html>

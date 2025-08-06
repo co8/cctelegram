@@ -122,7 +122,7 @@ impl FailureWindow {
 }
 
 /// Circuit breaker implementation
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CircuitBreaker {
     config: CircuitBreakerConfig,
     state: Arc<RwLock<CircuitState>>,
@@ -263,6 +263,7 @@ impl CircuitBreaker {
 }
 
 /// Retry handler with exponential backoff and circuit breaker
+#[derive(Clone)]
 pub struct RetryHandler {
     retry_config: RetryConfig,
     circuit_breaker: CircuitBreaker,
@@ -369,7 +370,7 @@ impl RetryHandler {
     pub async fn send_telegram_message_with_retry<T, F, Fut>(
         &self, 
         chat_id: i64,
-        mut operation: F
+        operation: F
     ) -> Result<T>
     where
         F: FnMut() -> Fut,
