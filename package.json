@@ -1,1 +1,28 @@
-{}
+{
+  "name": "cctelegram",
+  "version": "1.0.0",
+  "description": "![CCTelegram GitHub Header](@docs/assets/cctelegram-github-header-optimized.jpg)",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/co8/cctelegram.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/co8/cctelegram/issues"
+  },
+  "homepage": "https://github.com/co8/cctelegram#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.1"
+  }
+}

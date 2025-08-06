@@ -19,6 +19,7 @@ pub struct Config {
     pub monitoring: MonitoringConfig,
     pub timeouts: TimeoutConfig,
     pub tier_configuration: TierConfiguration,
+    pub file_debouncing: FileDebouncingConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -193,6 +194,81 @@ pub struct TierPriorities {
     pub file_watcher: u8,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct FileDebouncingConfig {
+    #[serde(default = "default_debounce_enabled")]
+    pub enabled: bool,
+    
+    #[serde(default = "default_debounce_duration")]
+    pub debounce_duration_ms: u64,
+    
+    #[serde(default = "default_max_batch_size")]
+    pub max_batch_size: usize,
+    
+    #[serde(default = "default_processing_timeout")]
+    pub processing_timeout_ms: u64,
+    
+    #[serde(default = "default_auto_cleanup")]
+    pub auto_cleanup: bool,
+    
+    #[serde(default = "default_max_concurrent")]
+    pub max_concurrent_processing: usize,
+    
+    #[serde(default = "default_content_hashing")]
+    pub enable_content_hashing: bool,
+    
+    #[serde(default = "default_file_types")]
+    pub monitored_file_extensions: Vec<String>,
+}
+
+// Default file debouncing values
+fn default_debounce_enabled() -> bool { true }
+fn default_debounce_duration() -> u64 { 500 }
+fn default_max_batch_size() -> usize { 100 }
+fn default_processing_timeout() -> u64 { 5000 }
+fn default_auto_cleanup() -> bool { true }
+fn default_max_concurrent() -> usize { 10 }
+fn default_content_hashing() -> bool { true }
+fn default_file_types() -> Vec<String> {
+    vec!["json".to_string()]
+}
+
+impl Default for FileDebouncingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_debounce_enabled(),
+            debounce_duration_ms: default_debounce_duration(),
+            max_batch_size: default_max_batch_size(),
+            processing_timeout_ms: default_processing_timeout(),
+            auto_cleanup: default_auto_cleanup(),
+            max_concurrent_processing: default_max_concurrent(),
+            enable_content_hashing: default_content_hashing(),
+            monitored_file_extensions: default_file_types(),
+        }
+    }
+}
+
+impl FileDebouncingConfig {
+    /// Convert to DebounceConfig for the watcher
+    pub fn to_debounce_config(&self) -> crate::events::DebounceConfig {
+        crate::events::DebounceConfig {
+            debounce_duration: Duration::from_millis(self.debounce_duration_ms),
+            max_batch_size: self.max_batch_size,
+            processing_timeout: Duration::from_millis(self.processing_timeout_ms),
+        }
+    }
+    
+    /// Convert to DebouncedProcessorConfig
+    pub fn to_processor_config(&self, events_dir: PathBuf) -> crate::events::DebouncedProcessorConfig {
+        crate::events::DebouncedProcessorConfig {
+            events_dir,
+            debounce_config: Some(self.to_debounce_config()),
+            auto_cleanup: self.auto_cleanup,
+            max_concurrent_processing: self.max_concurrent_processing,
+        }
+    }
+}
+
 // Default timeout values (as per requirements)
 fn default_webhook_timeout() -> u64 { 100 }
 fn default_bridge_timeout() -> u64 { 500 }
@@ -282,6 +358,7 @@ impl Default for Config {
                 enable_auto_recovery: default_auto_recovery(),
                 enable_performance_based_selection: default_performance_monitoring(),
             },
+            file_debouncing: FileDebouncingConfig::default(),
         }
     }
 }

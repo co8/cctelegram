@@ -14,7 +14,7 @@ mod tier_orchestrator;
 mod mcp;
 
 use config::Config;
-use events::{EventWatcher, EventProcessor, QueueManager, QueueManagerConfig};
+use events::{EventWatcher, EventProcessor, QueueManager, QueueManagerConfig, DebouncedEventProcessor};
 use telegram::TelegramBot;
 use telegram::messages::MessageStyle;
 use telegram::rate_limiter::RateLimiterConfig;
@@ -197,9 +197,9 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Initialize file watcher
-    let mut event_watcher = EventWatcher::new(&config.paths.events_dir)?;
-    info!("File watcher initialized for: {}", config.paths.events_dir.display());
+    // Initialize file processing system (debounced or standard)
+    let use_debounced = config.file_debouncing.enabled;
+    info!("Initializing file processing system - Debounced: {}", use_debounced);
 
     // Start Telegram message dispatcher
     let telegram_dispatcher = {
@@ -212,67 +212,169 @@ async fn main() -> Result<()> {
         })
     };
 
-    // Start main event loop
+    // Start main event loop based on configuration
     info!("Starting main event processing loop");
     
     let bot_clone = telegram_bot.clone();
     let monitor_clone = performance_monitor.clone();
-    let main_loop = tokio::spawn(async move {
-        loop {
-            if let Some(file_event) = event_watcher.next_event().await {
-                // Record file watcher event
+    let config_clone = config.clone();
+    
+    let main_loop = if use_debounced {
+        // Use debounced event processing with simplified approach
+        info!("🚀 Starting DEBOUNCED event processing with {}ms debounce window", 
+              config.file_debouncing.debounce_duration_ms);
+              
+        tokio::spawn(async move {
+            // Create debounced file watcher directly  
+            let debounce_config = config_clone.file_debouncing.to_debounce_config();
+            let mut debounced_watcher = match DebouncedEventWatcher::new(&config_clone.paths.events_dir, Some(debounce_config)) {
+                Ok(watcher) => watcher,
+                Err(e) => {
+                    error!("Failed to create debounced watcher: {}", e);
+                    return;
+                }
+            };
+            
+            // Start debounced processing in background
+            let mut processing_watcher = match DebouncedEventWatcher::new(&config_clone.paths.events_dir, Some(config_clone.file_debouncing.to_debounce_config())) {
+                Ok(watcher) => watcher,
+                Err(e) => {
+                    error!("Failed to create processing watcher: {}", e);
+                    return;
+                }
+            };
+            
+            tokio::spawn(async move {
+                if let Err(e) = processing_watcher.start_processing().await {
+                    error!("Debounced processing failed: {}", e);
+                }
+            });
+            
+            // Process debounced event batches
+            while let Some(batch) = debounced_watcher.next_batch().await {
+                // Record batch processing
                 monitor_clone.record_file_watcher_event();
+                let batch_size = batch.events.len();
+                info!("📦 Processing debounced batch with {} events (from {} raw events)", batch_size, batch.raw_event_count);
                 
-                if event_watcher.is_relevant_event(&file_event) {
-                    info!("Processing file event: {:?}", file_event);
+                let start_time = Instant::now();
+                
+                for file_event in &batch.events {
+                    if !file_event.content_changed {
+                        continue; // Skip timestamp-only changes
+                    }
                     
-                    for path in &file_event.paths {
-                        if path.is_file() {
-                            // Measure event processing time
-                            let start_time = Instant::now();
+                    // Process the file event into a parsed Event
+                    match event_processor.process_event_file(&file_event.path).await {
+                        Ok(event) => {
+                            info!("Processing debounced event: {} - {}", event.task_id, event.title);
                             
-                            match event_processor.process_event_file(path).await {
-                                Ok(event) => {
-                                    // Record successful event processing
-                                    monitor_clone.record_event_processed(start_time.elapsed());
-                                    info!("Processed event: {} - {}", event.task_id, event.title);
-                                    
-                                    // Send notification to all allowed users
-                                    for &user_id in &config.telegram.telegram_allowed_users {
-                                        let telegram_start = Instant::now();
-                                        
-                                        match bot_clone.send_event_notification(user_id, &event).await {
-                                            Ok(_) => {
-                                                // Record successful Telegram message
-                                                monitor_clone.record_telegram_message(telegram_start.elapsed());
-                                            }
-                                            Err(e) => {
-                                                // Record error
-                                                monitor_clone.record_error("telegram_notification");
-                                                error!("Failed to send notification: {}", e);
-                                            }
-                                        }
+                            // Send notification to all allowed users
+                            for &user_id in &config_clone.telegram.telegram_allowed_users {
+                                let telegram_start = Instant::now();
+                                
+                                match bot_clone.send_event_notification(user_id, &event).await {
+                                    Ok(_) => {
+                                        // Record successful Telegram message
+                                        monitor_clone.record_telegram_message(telegram_start.elapsed());
                                     }
-                                    
-                                    // Clean up processed file
-                                    if let Err(e) = event_processor.cleanup_processed_file(path).await {
-                                        monitor_clone.record_error("file_cleanup");
-                                        warn!("Failed to cleanup file {}: {}", path.display(), e);
+                                    Err(e) => {
+                                        // Record error
+                                        monitor_clone.record_error("telegram_notification");
+                                        error!("Failed to send notification: {}", e);
                                     }
                                 }
-                                Err(e) => {
-                                    // Record error and processing time
-                                    monitor_clone.record_error("event_processing");
-                                    monitor_clone.record_event_processed(start_time.elapsed());
-                                    error!("Failed to process event file {}: {}", path.display(), e);
+                            }
+                            
+                            // Clean up processed file if auto-cleanup enabled
+                            if config_clone.file_debouncing.auto_cleanup {
+                                if let Err(e) = event_processor.cleanup_processed_file(&file_event.path).await {
+                                    monitor_clone.record_error("file_cleanup");
+                                    warn!("Failed to cleanup file {}: {}", file_event.path.display(), e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to process debounced file {}: {}", file_event.path.display(), e);
+                            monitor_clone.record_error("event_processing");
+                        }
+                    }
+                }
+                
+                // Record successful batch processing
+                monitor_clone.record_event_processed(start_time.elapsed());
+                info!("✅ Completed debounced batch processing for {} events", batch_size);
+            }
+        })
+    } else {
+        // Use standard event processing
+        info!("🚀 Starting STANDARD event processing");
+        
+        tokio::spawn(async move {
+            let mut event_watcher = match EventWatcher::new(&config_clone.paths.events_dir) {
+                Ok(watcher) => watcher,
+                Err(e) => {
+                    error!("Failed to create event watcher: {}", e);
+                    return;
+                }
+            };
+            
+            loop {
+                if let Some(file_event) = event_watcher.next_event().await {
+                    // Record file watcher event
+                    monitor_clone.record_file_watcher_event();
+                    
+                    if event_watcher.is_relevant_event(&file_event) {
+                        info!("Processing file event: {:?}", file_event);
+                        
+                        for path in &file_event.paths {
+                            if path.is_file() {
+                                // Measure event processing time
+                                let start_time = Instant::now();
+                                
+                                match event_processor.process_event_file(path).await {
+                                    Ok(event) => {
+                                        // Record successful event processing
+                                        monitor_clone.record_event_processed(start_time.elapsed());
+                                        info!("Processed event: {} - {}", event.task_id, event.title);
+                                        
+                                        // Send notification to all allowed users
+                                        for &user_id in &config_clone.telegram.telegram_allowed_users {
+                                            let telegram_start = Instant::now();
+                                            
+                                            match bot_clone.send_event_notification(user_id, &event).await {
+                                                Ok(_) => {
+                                                    // Record successful Telegram message
+                                                    monitor_clone.record_telegram_message(telegram_start.elapsed());
+                                                }
+                                                Err(e) => {
+                                                    // Record error
+                                                    monitor_clone.record_error("telegram_notification");
+                                                    error!("Failed to send notification: {}", e);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Clean up processed file
+                                        if let Err(e) = event_processor.cleanup_processed_file(path).await {
+                                            monitor_clone.record_error("file_cleanup");
+                                            warn!("Failed to cleanup file {}: {}", path.display(), e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        // Record error and processing time
+                                        monitor_clone.record_error("event_processing");
+                                        monitor_clone.record_event_processed(start_time.elapsed());
+                                        error!("Failed to process event file {}: {}", path.display(), e);
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-    });
+        })
+    };
 
     // Wait for shutdown signal
     info!("CC Telegram Bridge is running. Press Ctrl+C to stop.");
