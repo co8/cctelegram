@@ -1,11 +1,19 @@
 {
   "versions": [
     {
-      "version": "v1.6.0",
-      "label": "v1.6.0 (Latest)",
+      "version": "v1.7.0",
+      "label": "v1.7.0 (Latest)",
       "path": "/docs/",
       "isLatest": true,
       "releaseDate": "2024-12-20",
+      "status": "stable"
+    },
+    {
+      "version": "v1.6.0",
+      "label": "v1.6.0",
+      "path": "/docs/v1.6.0/",
+      "isLatest": false,
+      "releaseDate": "2024-12-15",
       "status": "stable"
     },
     {
@@ -40,7 +48,7 @@
     "beta": "beta",
     "alpha": "alpha"
   },
-  "defaultVersion": "v1.6.0",
-  "supportedVersions": ["v1.6.0", "v1.5.0"],
+  "defaultVersion": "v1.7.0",
+  "supportedVersions": ["v1.7.0", "v1.6.0"],
   "archivedVersions": ["v1.4.0"]
 }

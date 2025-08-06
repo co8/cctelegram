@@ -62,7 +62,7 @@ sendBasicNotification()
   \"version\": \"1.0.0\",
   \"type\": \"module\",
   \"dependencies\": {
-    \"@cctelegram/mcp-client\": \"^1.6.0\",
+    \"@cctelegram/mcp-client\": \"^1.7.0\",
     \"axios\": \"^1.6.0\"
   }
 }`,

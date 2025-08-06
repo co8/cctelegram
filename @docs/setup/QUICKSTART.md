@@ -39,7 +39,7 @@ Get up and running with CC Telegram Bridge in under 10 minutes!
 
 ```bash
 # Download the latest release
-curl -L https://github.com/co8/cctelegram/releases/download/v0.4.4/cctelegram-bridge -o cctelegram-bridge
+curl -L https://github.com/co8/cctelegram/releases/latest/download/cctelegram-bridge -o cctelegram-bridge
 chmod +x cctelegram-bridge
 
 # Verify the download

@@ -82,7 +82,7 @@ docker run --rm ghcr.io/user/cctelegram-mcp-server:latest --version
 
 Expected output:
 ```
-cctelegram-mcp-server v1.6.0
+cctelegram-mcp-server v1.7.0
 Node.js v20.x.x
 ```
 

@@ -92,8 +92,8 @@ onMounted(async () => {
     versions.value = {
       versions: [
         {
-          version: "v1.6.0",
-          label: "v1.6.0 (Latest)",
+          version: "v1.7.0",
+          label: "v1.7.0 (Latest)",
           path: "/docs/",
           isLatest: true,
           releaseDate: "2024-12-20",
@@ -101,7 +101,7 @@ onMounted(async () => {
         }
       ],
       preReleases: [],
-      defaultVersion: "v1.6.0"
+      defaultVersion: "v1.7.0"
     }
   }
 })
@@ -116,8 +116,8 @@ const currentVersion = computed(() => {
   )
   
   return version || allVersions[0] || { 
-    version: "v1.6.0", 
-    label: "v1.6.0", 
+    version: "v1.7.0", 
+    label: "v1.7.0", 
     status: "stable",
     releaseDate: "2024-12-20"
   }

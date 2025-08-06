@@ -93,7 +93,7 @@ metadata:
   namespace: cctelegram
   labels:
     app: cctelegram-mcp-server
-    version: v1.6.0
+    version: v1.7.0
 spec:
   replicas: 3
   strategy:
@@ -108,7 +108,7 @@ spec:
     metadata:
       labels:
         app: cctelegram-mcp-server
-        version: v1.6.0
+        version: v1.7.0
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "3000"
@@ -127,7 +127,7 @@ spec:
       
       containers:
       - name: mcp-server
-        image: ghcr.io/your-org/cctelegram-mcp-server:v1.6.0
+        image: ghcr.io/your-org/cctelegram-mcp-server:v1.7.0
         imagePullPolicy: Always
         
         ports:
