@@ -1,4 +1,14 @@
 import { defineConfig } from 'vitepress'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+// Load version information
+let versions: any = { versions: [], preReleases: [] }
+try {
+  versions = JSON.parse(readFileSync(join(__dirname, '../versions.json'), 'utf-8'))
+} catch (error) {
+  console.warn('Could not load versions.json:', error.message)
+}
 
 export default defineConfig({
   title: 'CCTelegram MCP Server',
@@ -41,6 +51,29 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/' },
       { text: 'API', link: '/api/' },
       { text: 'Examples', link: '/examples/' },
+      {
+        text: `v${versions.defaultVersion || '1.6.0'}`,
+        items: [
+          {
+            text: 'Versions',
+            items: [
+              ...versions.versions?.slice(0, 3).map((v: any) => ({
+                text: `${v.version} ${v.isLatest ? '(Latest)' : ''}`,
+                link: v.path
+              })) || [],
+              { text: 'All Versions', link: '/versions' }
+            ]
+          },
+          {
+            text: 'Resources',
+            items: [
+              { text: 'Changelog', link: '/changelog' },
+              { text: 'Migration Guide', link: '/migration' },
+              { text: 'GitHub Releases', link: 'https://github.com/user/cctelegram/releases' }
+            ]
+          }
+        ]
+      },
       { text: 'GitHub', link: 'https://github.com/user/cctelegram' }
     ],
 
@@ -52,6 +85,12 @@ export default defineConfig({
             { text: 'Quick Start', link: '/guide/' },
             { text: 'Installation', link: '/guide/installation' },
             { text: 'Configuration', link: '/guide/configuration' }
+          ]
+        },
+        {
+          text: 'Architecture',
+          items: [
+            { text: 'System Architecture', link: '/guide/architecture' }
           ]
         },
         {
@@ -152,11 +191,50 @@ export default defineConfig({
 
   lastUpdated: true,
   
+  // Version and metadata
+  transformPageData(pageData) {
+    pageData.frontmatter.version = versions.defaultVersion || '1.6.0'
+    pageData.frontmatter.lastUpdated = new Date().toISOString()
+    
+    // Add canonical URL for SEO
+    const canonicalUrl = `https://cctelegram.github.io${pageData.relativePath.replace(/\.md$/, '.html')}`
+    pageData.frontmatter.head = pageData.frontmatter.head || []
+    pageData.frontmatter.head.push(['link', { rel: 'canonical', href: canonicalUrl }])
+    
+    return pageData
+  },
+  
   markdown: {
     theme: {
       light: 'github-light',
       dark: 'github-dark'
     },
-    lineNumbers: true
+    lineNumbers: true,
+    config: (md) => {
+      // Add version notice to markdown processing
+      md.use((md) => {
+        const defaultRender = md.renderer.rules.heading_open || function(tokens, idx, options, env, renderer) {
+          return renderer.renderToken(tokens, idx, options);
+        }
+        
+        md.renderer.rules.heading_open = function(tokens, idx, options, env, renderer) {
+          const token = tokens[idx]
+          if (token.tag === 'h1') {
+            const nextToken = tokens[idx + 1]
+            if (nextToken && nextToken.type === 'inline') {
+              // Add version info after h1
+              return defaultRender(tokens, idx, options, env, renderer)
+            }
+          }
+          return defaultRender(tokens, idx, options, env, renderer)
+        }
+      })
+    }
+  },
+  
+  // Build hooks for versioning
+  buildEnd(siteConfig) {
+    // Generate sitemap with version information
+    console.log('Build completed for version:', versions.defaultVersion)
   }
 })

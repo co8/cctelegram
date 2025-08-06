@@ -1,0 +1,46 @@
+{
+  "versions": [
+    {
+      "version": "v1.6.0",
+      "label": "v1.6.0 (Latest)",
+      "path": "/docs/",
+      "isLatest": true,
+      "releaseDate": "2024-12-20",
+      "status": "stable"
+    },
+    {
+      "version": "v1.5.0",
+      "label": "v1.5.0",
+      "path": "/docs/v1.5.0/",
+      "isLatest": false,
+      "releaseDate": "2024-11-15",
+      "status": "stable"
+    },
+    {
+      "version": "v1.4.0",
+      "label": "v1.4.0",
+      "path": "/docs/v1.4.0/",
+      "isLatest": false,
+      "releaseDate": "2024-10-10",
+      "status": "archived"
+    }
+  ],
+  "preReleases": [
+    {
+      "version": "v2.0.0-beta.1",
+      "label": "v2.0.0-beta.1",
+      "path": "/docs/beta/",
+      "isLatest": false,
+      "releaseDate": "2024-12-18",
+      "status": "beta"
+    }
+  ],
+  "branches": {
+    "main": "stable",
+    "beta": "beta",
+    "alpha": "alpha"
+  },
+  "defaultVersion": "v1.6.0",
+  "supportedVersions": ["v1.6.0", "v1.5.0"],
+  "archivedVersions": ["v1.4.0"]
+}

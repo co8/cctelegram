@@ -1,0 +1,194 @@
+# CSpell Configuration for Documentation
+version: "0.2"
+language: "en"
+words:
+  # Technical Terms
+  - codesandbox
+  - linkinator
+  - vitepress
+  - cctelegram
+  - telemetry
+  - webhook
+  - webhooks
+  - runtime
+  - middleware
+  - semver
+  - changelog
+  - versioning
+  - observability
+  - tracing
+  - jaeger
+  - prometheus
+  - grafana
+  - kubernetes
+  - dockerfile
+  - containerization
+  - microservices
+  - endian
+  - mutex
+  - async
+  - await
+  - typescript
+  - javascript
+  - nodejs
+  - openapi
+  - redoc
+  - swagger
+  - yaml
+  - json
+  - toml
+  - dockerfile
+  - nginx
+  - redis
+  - postgresql
+  - mongodb
+  - sqlite
+  - uuid
+  - bcrypt
+  - hmac
+  - sha256
+  - jwt
+  - oauth
+  - cors
+  - csrf
+  - xss
+  - sanitization
+  - eslint
+  - prettier
+  - jest
+  - playwright
+  - stryker
+  - nyc
+  - codecov
+  - semgrep
+  - snyk
+  - dependabot
+  - renovate
+  - github
+  - gitlab
+  - bitbucket
+  - aws
+  - azure
+  - gcp
+  - heroku
+  - vercel
+  - netlify
+  
+  # MCP Specific Terms
+  - mcp
+  - modelcontextprotocol
+  - anthropic
+  - claude
+  
+  # Project Specific Terms
+  - cctelegram
+  - telegram
+  - bot
+  - api
+  - cli
+  - gui
+  - tui
+  - cpu
+  - gpu
+  - ram
+  - ssd
+  - hdd
+  - url
+  - uri
+  - http
+  - https
+  - tcp
+  - udp
+  - websocket
+  - graphql
+  - restful
+  - rpc
+  - grpc
+  - protobuf
+  - avro
+  - msgpack
+  - bson
+  
+  # Common Abbreviations
+  - auth
+  - config
+  - env
+  - db
+  - ui
+  - ux
+  - ci
+  - cd
+  - qa
+  - seo
+  - cdn
+  - dns
+  - ssl
+  - tls
+  - vpn
+  - ssh
+  - sftp
+  - ftp
+  - smtp
+  - imap
+  - pop3
+  - ldap
+  - saml
+  - oidc
+  
+  # Version specific
+  - v1
+  - v2
+  - beta
+  - alpha
+  - rc
+  - lts
+  - eol
+  - esr
+
+ignoreWords: []
+
+ignorePaths:
+  - "node_modules/**"
+  - ".vitepress/dist/**"
+  - ".vitepress/cache/**"
+  - "coverage/**"
+  - "*.log"
+  - "package-lock.json"
+  - "*.min.js"
+  - "*.min.css"
+
+enableFiletypes:
+  - "md"
+  - "mdx"
+  - "vue"
+  - "ts"
+  - "js"
+  - "json"
+  - "yaml"
+  - "yml"
+
+overrides:
+  - filename: "**/*.md"
+    ignoreRegExpList:
+      - "/```[\\s\\S]*?```/g"  # Code blocks
+      - "/`[^`]*`/g"           # Inline code
+      - "/https?:\\/\\/[^\\s)]*/g"  # URLs
+      - "/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi"  # Email addresses
+
+dictionaries:
+  - en-US
+  - typescript
+  - node
+  - bash
+  - cpp
+
+useGitignore: true
+gitignoreRoot: "./"
+
+reportTypes:
+  - "error"
+  - "warning"
+
+cache:
+  useCache: true
+  cacheLocation: ".cspell-cache"

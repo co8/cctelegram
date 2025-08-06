@@ -1,0 +1,495 @@
+name: Documentation Quality Gates
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mcp-server/docs/**'
+      - '.github/workflows/docs-quality-gates.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mcp-server/docs/**'
+      - '.github/workflows/docs-quality-gates.yml'
+
+env:
+  NODE_VERSION: '20.x'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===== Documentation Quality Analysis =====
+  docs-quality-check:
+    name: 📚 Documentation Quality Analysis
+    runs-on: ubuntu-latest
+    outputs:
+      quality-passed: ${{ steps.quality-gate.outputs.passed }}
+      average-quality: ${{ steps.metrics.outputs.average-quality }}
+      broken-links: ${{ steps.links.outputs.broken-links }}
+      spell-errors: ${{ steps.spelling.outputs.total-errors }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/docs/package-lock.json
+
+      - name: Install documentation dependencies
+        working-directory: ./mcp-server/docs
+        run: npm ci
+
+      - name: Build documentation
+        working-directory: ./mcp-server/docs
+        run: |
+          npm run docs:build
+        env:
+          NODE_ENV: production
+
+      - name: Run link checker
+        id: links
+        working-directory: ./mcp-server/docs
+        run: |
+          echo "🔗 Checking links..."
+          npm run links:check:ci || true
+          npm run links:markdown:ci || true
+          
+          # Parse results
+          BROKEN_LINKS=0
+          if [ -f "link-check-results.csv" ]; then
+            BROKEN_LINKS=$(grep -c "^[45]" link-check-results.csv || echo "0")
+          fi
+          
+          echo "broken-links=$BROKEN_LINKS" >> $GITHUB_OUTPUT
+          echo "📊 Found $BROKEN_LINKS broken links"
+
+      - name: Run spell checker
+        id: spelling
+        working-directory: ./mcp-server/docs
+        run: |
+          echo "🔤 Checking spelling..."
+          npm run spell:check:ci || true
+          
+          # Parse results
+          SPELL_ERRORS=0
+          if [ -f "spell-check-results.json" ]; then
+            SPELL_ERRORS=$(cat spell-check-results.json | jq '[.[] | .issues // []] | flatten | length' || echo "0")
+          fi
+          
+          echo "total-errors=$SPELL_ERRORS" >> $GITHUB_OUTPUT
+          echo "📊 Found $SPELL_ERRORS spelling errors"
+
+      - name: Generate documentation metrics
+        id: metrics
+        working-directory: ./mcp-server/docs
+        run: |
+          echo "📊 Generating quality metrics..."
+          npm run metrics:generate
+          
+          # Extract key metrics
+          if [ -f "reports/docs-metrics.json" ]; then
+            AVG_QUALITY=$(cat reports/docs-metrics.json | jq '.summary.averageQualityScore')
+            TOTAL_PAGES=$(cat reports/docs-metrics.json | jq '.summary.totalPages')
+            LOW_QUALITY=$(cat reports/docs-metrics.json | jq '.summary.lowQualityPages')
+            
+            echo "average-quality=$AVG_QUALITY" >> $GITHUB_OUTPUT
+            echo "total-pages=$TOTAL_PAGES" >> $GITHUB_OUTPUT
+            echo "low-quality-pages=$LOW_QUALITY" >> $GITHUB_OUTPUT
+            
+            echo "📊 Quality Metrics:"
+            echo "   Average Quality Score: $AVG_QUALITY/100"
+            echo "   Total Pages: $TOTAL_PAGES"
+            echo "   Low Quality Pages: $LOW_QUALITY"
+          fi
+
+      - name: Documentation quality gate
+        id: quality-gate
+        working-directory: ./mcp-server/docs
+        run: |
+          BROKEN_LINKS="${{ steps.links.outputs.broken-links }}"
+          SPELL_ERRORS="${{ steps.spelling.outputs.total-errors }}"
+          AVG_QUALITY="${{ steps.metrics.outputs.average-quality }}"
+          LOW_QUALITY="${{ steps.metrics.outputs.low-quality-pages }}"
+          
+          echo "🚦 Documentation Quality Gate Check:"
+          echo "   Broken Links: $BROKEN_LINKS (max: 5)"
+          echo "   Spelling Errors: $SPELL_ERRORS (max: 20)"
+          echo "   Average Quality: $AVG_QUALITY (min: 75)"
+          echo "   Low Quality Pages: $LOW_QUALITY (max: 3)"
+          
+          GATE_PASSED=true
+          ISSUES=()
+          
+          # Check thresholds
+          if [ "$BROKEN_LINKS" -gt 5 ]; then
+            GATE_PASSED=false
+            ISSUES+=("Too many broken links: $BROKEN_LINKS (max: 5)")
+          fi
+          
+          if [ "$SPELL_ERRORS" -gt 20 ]; then
+            GATE_PASSED=false
+            ISSUES+=("Too many spelling errors: $SPELL_ERRORS (max: 20)")
+          fi
+          
+          if [ "$(echo "$AVG_QUALITY < 75" | bc -l)" -eq 1 ]; then
+            GATE_PASSED=false
+            ISSUES+=("Average quality too low: $AVG_QUALITY (min: 75)")
+          fi
+          
+          if [ "$LOW_QUALITY" -gt 3 ]; then
+            GATE_PASSED=false
+            ISSUES+=("Too many low quality pages: $LOW_QUALITY (max: 3)")
+          fi
+          
+          if [ "$GATE_PASSED" = true ]; then
+            echo "✅ Documentation quality gate PASSED"
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Documentation quality gate FAILED"
+            printf '%s\n' "${ISSUES[@]}"
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload quality reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-quality-reports
+          path: |
+            mcp-server/docs/reports/
+            mcp-server/docs/link-check-results.csv
+            mcp-server/docs/markdown-link-results.txt
+            mcp-server/docs/spell-check-results.json
+          retention-days: 30
+
+      - name: Create quality summary comment
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const brokenLinks = '${{ steps.links.outputs.broken-links }}';
+            const spellErrors = '${{ steps.spelling.outputs.total-errors }}';
+            const avgQuality = '${{ steps.metrics.outputs.average-quality }}';
+            const totalPages = '${{ steps.metrics.outputs.total-pages }}';
+            const gatePassed = '${{ steps.quality-gate.outputs.passed }}';
+            
+            const status = gatePassed === 'true' ? '✅ PASSED' : '❌ FAILED';
+            const statusIcon = gatePassed === 'true' ? '✅' : '❌';
+            
+            const body = `## ${statusIcon} Documentation Quality Report
+            
+            | Metric | Value | Status |
+            |--------|-------|--------|
+            | **Overall Quality Gate** | ${status} | ${statusIcon} |
+            | **Average Quality Score** | ${avgQuality}/100 | ${parseFloat(avgQuality) >= 75 ? '✅' : '❌'} |
+            | **Total Pages** | ${totalPages} | ℹ️ |
+            | **Broken Links** | ${brokenLinks} | ${parseInt(brokenLinks) <= 5 ? '✅' : '❌'} |
+            | **Spelling Errors** | ${spellErrors} | ${parseInt(spellErrors) <= 20 ? '✅' : '❌'} |
+            
+            ### Quality Thresholds
+            - **Minimum Average Quality**: 75/100
+            - **Maximum Broken Links**: 5
+            - **Maximum Spelling Errors**: 20
+            - **Maximum Low Quality Pages**: 3
+            
+            ${gatePassed === 'false' ? '### ⚠️ Action Required\nPlease review and fix the quality issues above before merging.' : '### 🎉 Great job!\nDocumentation quality meets all requirements.'}
+            
+            📊 [View detailed metrics dashboard](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # ===== Accessibility Testing =====
+  docs-accessibility-check:
+    name: ♿ Accessibility Testing
+    runs-on: ubuntu-latest
+    needs: [docs-quality-check]
+    if: needs.docs-quality-check.outputs.quality-passed == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server/docs
+        run: |
+          npm ci
+          npx playwright install chromium
+
+      - name: Build documentation
+        working-directory: ./mcp-server/docs
+        run: npm run docs:build
+
+      - name: Start documentation server
+        working-directory: ./mcp-server/docs
+        run: |
+          npm run docs:preview &
+          sleep 5
+          
+          # Wait for server to be ready
+          timeout 30 bash -c 'until curl -f http://localhost:4173/docs/ > /dev/null 2>&1; do sleep 1; done'
+
+      - name: Run accessibility tests
+        working-directory: ./mcp-server/docs
+        run: |
+          cat > accessibility-test.js << 'EOF'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          
+          (async () => {
+            const browser = await chromium.launch();
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            
+            // Inject axe-core
+            await page.addScriptTag({
+              url: 'https://unpkg.com/axe-core@4.8.2/axe.min.js'
+            });
+            
+            const results = [];
+            const pages = [
+              '/docs/',
+              '/docs/guide/',
+              '/docs/api/',
+              '/docs/examples/',
+              '/docs/examples/mcp-tools-interactive'
+            ];
+            
+            for (const pagePath of pages) {
+              try {
+                await page.goto(`http://localhost:4173${pagePath}`);
+                await page.waitForLoadState('networkidle');
+                
+                const axeResults = await page.evaluate(() => {
+                  return new Promise((resolve) => {
+                    axe.run((err, results) => {
+                      if (err) throw err;
+                      resolve(results);
+                    });
+                  });
+                });
+                
+                results.push({
+                  url: pagePath,
+                  violations: axeResults.violations,
+                  passes: axeResults.passes.length,
+                  incomplete: axeResults.incomplete.length
+                });
+                
+                console.log(`✅ Tested ${pagePath}: ${axeResults.violations.length} violations`);
+              } catch (error) {
+                console.log(`❌ Failed to test ${pagePath}: ${error.message}`);
+              }
+            }
+            
+            await browser.close();
+            
+            // Generate report
+            const totalViolations = results.reduce((sum, r) => sum + r.violations.length, 0);
+            const report = {
+              timestamp: new Date().toISOString(),
+              totalPages: results.length,
+              totalViolations,
+              results
+            };
+            
+            fs.writeFileSync('accessibility-report.json', JSON.stringify(report, null, 2));
+            
+            console.log(`\n📊 Accessibility Summary:`);
+            console.log(`   Pages tested: ${results.length}`);
+            console.log(`   Total violations: ${totalViolations}`);
+            
+            if (totalViolations > 10) {
+              console.log(`❌ Too many accessibility violations: ${totalViolations} (max: 10)`);
+              process.exit(1);
+            } else {
+              console.log(`✅ Accessibility check passed`);
+            }
+          })();
+          EOF
+          
+          node accessibility-test.js
+
+      - name: Upload accessibility report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-report
+          path: mcp-server/docs/accessibility-report.json
+          retention-days: 30
+
+  # ===== Performance Testing =====
+  docs-performance-check:
+    name: ⚡ Performance Testing
+    runs-on: ubuntu-latest
+    needs: [docs-quality-check]
+    if: needs.docs-quality-check.outputs.quality-passed == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/docs/package-lock.json
+
+      - name: Install dependencies and Lighthouse
+        working-directory: ./mcp-server/docs
+        run: |
+          npm ci
+          npm install -g @lhci/cli
+
+      - name: Build documentation
+        working-directory: ./mcp-server/docs
+        run: npm run docs:build
+
+      - name: Create Lighthouse CI config
+        working-directory: ./mcp-server/docs
+        run: |
+          cat > lighthouserc.js << 'EOF'
+          module.exports = {
+            ci: {
+              collect: {
+                staticDistDir: '.vitepress/dist',
+                url: [
+                  '/docs/',
+                  '/docs/guide/',
+                  '/docs/api/',
+                  '/docs/examples/'
+                ]
+              },
+              assert: {
+                assertions: {
+                  'categories:performance': ['error', {minScore: 0.9}],
+                  'categories:accessibility': ['error', {minScore: 0.95}],
+                  'categories:best-practices': ['error', {minScore: 0.9}],
+                  'categories:seo': ['error', {minScore: 0.9}]
+                }
+              },
+              upload: {
+                target: 'temporary-public-storage'
+              }
+            }
+          };
+          EOF
+
+      - name: Run Lighthouse CI
+        working-directory: ./mcp-server/docs
+        run: lhci autorun
+
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: mcp-server/docs/.lighthouseci/
+          retention-days: 30
+
+  # ===== Version Documentation =====
+  docs-versioning:
+    name: 📋 Documentation Versioning
+    runs-on: ubuntu-latest
+    needs: [docs-quality-check, docs-accessibility-check, docs-performance-check]
+    if: |
+      always() &&
+      needs.docs-quality-check.outputs.quality-passed == 'true' &&
+      (needs.docs-accessibility-check.result == 'success' || needs.docs-accessibility-check.result == 'skipped') &&
+      (needs.docs-performance-check.result == 'success' || needs.docs-performance-check.result == 'skipped') &&
+      github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: mcp-server/docs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./mcp-server/docs
+        run: npm ci
+
+      - name: Create versioned documentation
+        working-directory: ./mcp-server/docs
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(node -p "require('../package.json').version")
+          echo "📋 Creating versioned docs for v$CURRENT_VERSION"
+          
+          # Run versioning script
+          npm run docs:version -- --version=v$CURRENT_VERSION
+
+      - name: Generate quality dashboard
+        working-directory: ./mcp-server/docs
+        run: npm run metrics:dashboard
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./mcp-server/docs/.vitepress/dist
+          cname: cctelegram-docs.example.com
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'docs: deploy documentation v${{ github.sha }}'
+
+  # ===== Quality Summary =====
+  docs-quality-summary:
+    name: 📊 Quality Summary
+    runs-on: ubuntu-latest
+    needs: [docs-quality-check, docs-accessibility-check, docs-performance-check]
+    if: always()
+    
+    steps:
+      - name: Create workflow summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # 📚 Documentation Quality Gate Results
+          
+          ## Overall Status
+          | Gate | Status | Details |
+          |------|--------|---------|
+          | 📚 **Quality Check** | ${{ needs.docs-quality-check.outputs.quality-passed == 'true' && '✅ PASSED' || '❌ FAILED' }} | Average: ${{ needs.docs-quality-check.outputs.average-quality }}/100 |
+          | ♿ **Accessibility** | ${{ needs.docs-accessibility-check.result == 'success' && '✅ PASSED' || needs.docs-accessibility-check.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED' }} | WCAG compliance testing |
+          | ⚡ **Performance** | ${{ needs.docs-performance-check.result == 'success' && '✅ PASSED' || needs.docs-performance-check.result == 'skipped' && '⏭️ SKIPPED' || '❌ FAILED' }} | Lighthouse auditing |
+          
+          ## Quality Metrics
+          - **Broken Links**: ${{ needs.docs-quality-check.outputs.broken-links }}
+          - **Spelling Errors**: ${{ needs.docs-quality-check.outputs.spell-errors }}
+          - **Average Quality Score**: ${{ needs.docs-quality-check.outputs.average-quality }}/100
+          
+          ## Actions Taken
+          ${{ github.ref == 'refs/heads/main' && needs.docs-quality-check.outputs.quality-passed == 'true' && '- ✅ Documentation deployed to GitHub Pages' || '- ⏸️ Deployment skipped (quality gate failed or not on main branch)' }}
+          
+          ${{ needs.docs-quality-check.outputs.quality-passed == 'true' && '🎉 **All quality gates passed!**' || '⚠️ **Quality issues detected - please review and fix before merging.**' }}
+          EOF

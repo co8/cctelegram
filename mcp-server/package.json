@@ -120,7 +120,14 @@
     "pact:verify": "pact-broker verify --provider cctelegram-bridge --provider-app-version=$(git rev-parse --short HEAD)",
     "pact:can-deploy": "pact-broker can-i-deploy --pacticipant cctelegram-mcp-server --version=$(git rev-parse --short HEAD)",
     "pact:webhooks": "pact-broker create-webhook --provider cctelegram-bridge --consumer cctelegram-mcp-server",
-    "validate": "npm run type-check && npm run lint:check && npm run format:check && npm run test:ci"
+    "validate": "npm run type-check && npm run lint:check && npm run format:check && npm run test:ci",
+    "docs:version": "cd docs && npm run docs:version",
+    "docs:deploy": "cd docs && npm run docs:deploy",
+    "docs:quality": "cd docs && npm run quality:check",
+    "docs:quality:ci": "cd docs && npm run quality:check:ci",
+    "docs:metrics": "cd docs && npm run metrics:generate",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run"
   },
   "keywords": [
     "mcp",
@@ -207,7 +214,16 @@
     "@pact-foundation/pact-node": "^13.2.1",
     "@pact-foundation/pact-web": "^13.2.0",
     "pact-broker-cli": "^1.1.0",
-    "semver": "^7.5.4"
+    "semver": "^7.5.4",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^11.1.0",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.2.6",
+    "@semantic-release/npm": "^11.0.2",
+    "@semantic-release/release-notes-generator": "^12.1.0",
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "semantic-release": "^22.0.12"
   },
   "overrides": {
     "d3-color": "^3.1.0",
