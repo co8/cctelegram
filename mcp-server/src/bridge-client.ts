@@ -1050,6 +1050,64 @@ export class CCTelegramBridgeClient {
   }
 
   /**
+   * Generate task summary from task array
+   */
+  private generateTaskSummary(tasks: any[]): { pending: number; in_progress: number; completed: number; blocked: number } {
+    const statusCounts = {
+      pending: 0,
+      in_progress: 0,
+      completed: 0,
+      blocked: 0
+    };
+
+    for (const task of tasks) {
+      if (task.status && statusCounts.hasOwnProperty(task.status)) {
+        statusCounts[task.status as keyof typeof statusCounts]++;
+      }
+    }
+
+    return statusCounts;
+  }
+
+  /**
+   * Generate combined task summary from multiple task systems
+   */
+  private generateCombinedTaskSummary(
+    claudeSummary?: { pending: number; in_progress: number; completed: number; blocked: number },
+    taskmasterSummary?: { pending: number; in_progress: number; completed: number; blocked: number }
+  ): any {
+    const defaultSummary = { pending: 0, in_progress: 0, completed: 0, blocked: 0 };
+    const claude = claudeSummary || defaultSummary;
+    const taskmaster = taskmasterSummary || defaultSummary;
+    
+    const combined = {
+      total_pending: claude.pending + taskmaster.pending,
+      total_in_progress: claude.in_progress + taskmaster.in_progress,
+      total_completed: claude.completed + taskmaster.completed,
+      total_blocked: claude.blocked + taskmaster.blocked
+    };
+
+    // Calculate totals dynamically
+    const claudeTotal = Object.values(claude).reduce((sum, count) => sum + count, 0);
+    const taskmasterTotal = Object.values(taskmaster).reduce((sum, count) => sum + count, 0);
+    
+    return {
+      ...combined,
+      grand_total: claudeTotal + taskmasterTotal,
+      breakdown: {
+        claude_code: {
+          ...claude,
+          total: claudeTotal
+        },
+        taskmaster: {
+          ...taskmaster,
+          total: taskmasterTotal
+        }
+      }
+    };
+  }
+
+  /**
    * Get task status from Claude Code session tasks and/or TaskMaster project tasks
    */
   async getTaskStatus(
@@ -1105,12 +1163,7 @@ export class CCTelegramBridgeClient {
               source: 'session_todos',
               total_count: claudeTasks.length,
               filtered_count: filteredTasks.length,
-              summary: {
-                pending: claudeTasks.filter((t: any) => t.status === 'pending').length,
-                in_progress: claudeTasks.filter((t: any) => t.status === 'in_progress').length,
-                completed: claudeTasks.filter((t: any) => t.status === 'completed').length,
-                blocked: claudeTasks.filter((t: any) => t.status === 'blocked').length
-              }
+              summary: this.generateTaskSummary(claudeTasks)
             };
 
             if (!summaryOnly) {
@@ -1154,12 +1207,7 @@ export class CCTelegramBridgeClient {
               project_name: tasksData.metadata?.projectName || 'Unknown',
               total_count: allTasks.length,
               filtered_count: filteredTasks.length,
-              summary: {
-                pending: allTasks.filter((t: any) => t.status === 'pending').length,
-                in_progress: allTasks.filter((t: any) => t.status === 'in_progress').length,
-                completed: allTasks.filter((t: any) => t.status === 'completed').length,
-                blocked: allTasks.filter((t: any) => t.status === 'blocked').length
-              }
+              summary: this.generateTaskSummary(allTasks)
             };
 
             if (!summaryOnly) {
@@ -1191,17 +1239,10 @@ export class CCTelegramBridgeClient {
 
       // Generate combined summary if both systems are queried
       if (taskSystem === 'both') {
-        const claudeSummary = result.claude_code_tasks?.summary || { pending: 0, in_progress: 0, completed: 0, blocked: 0 };
-        const taskmasterSummary = result.taskmaster_tasks?.summary || { pending: 0, in_progress: 0, completed: 0, blocked: 0 };
-        
-        result.combined_summary = {
-          total_pending: claudeSummary.pending + taskmasterSummary.pending,
-          total_in_progress: claudeSummary.in_progress + taskmasterSummary.in_progress,
-          total_completed: claudeSummary.completed + taskmasterSummary.completed,
-          total_blocked: claudeSummary.blocked + taskmasterSummary.blocked,
-          grand_total: (claudeSummary.pending + claudeSummary.in_progress + claudeSummary.completed + claudeSummary.blocked) +
-                      (taskmasterSummary.pending + taskmasterSummary.in_progress + taskmasterSummary.completed + taskmasterSummary.blocked)
-        };
+        result.combined_summary = this.generateCombinedTaskSummary(
+          result.claude_code_tasks?.summary,
+          result.taskmaster_tasks?.summary
+        );
       }
 
       secureLog('info', 'Task status retrieved', {
