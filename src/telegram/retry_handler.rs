@@ -470,7 +470,6 @@ impl Default for RetryHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::time::timeout;
     
     #[tokio::test]
     async fn test_circuit_breaker_opens_after_failures() {
@@ -516,10 +515,7 @@ mod tests {
             attempt_count += 1;
             async move {
                 if attempt_count < 2 {
-                    Err(BridgeError::Http(reqwest::Error::from(std::io::Error::new(
-                        std::io::ErrorKind::ConnectionRefused,
-                        "connection refused"
-                    ))))
+                    Err(BridgeError::Timeout("connection timeout".to_string()))
                 } else {
                     Ok("success".to_string())
                 }
@@ -536,7 +532,7 @@ mod tests {
         let handler = RetryHandler::new();
         
         let mut attempt_count = 0;
-        let result = handler.execute_with_retry(|| {
+        let result: Result<String, anyhow::Error> = handler.execute_with_retry(|| {
             attempt_count += 1;
             async move {
                 Err(BridgeError::Authentication("invalid token".to_string()))
@@ -558,13 +554,10 @@ mod tests {
         let handler = RetryHandler::with_config(retry_config, CircuitBreakerConfig::default());
         
         let mut attempt_count = 0;
-        let result = handler.execute_with_retry(|| {
+        let result: Result<String, anyhow::Error> = handler.execute_with_retry(|| {
             attempt_count += 1;
             async move {
-                Err(BridgeError::Http(reqwest::Error::from(std::io::Error::new(
-                    std::io::ErrorKind::TimedOut,
-                    "timeout"
-                ))))
+                Err(BridgeError::Timeout("timeout".to_string()))
             }
         }).await;
         
@@ -572,6 +565,6 @@ mod tests {
         assert_eq!(attempt_count, 2);
         
         let error_str = result.unwrap_err().to_string();
-        assert!(error_str.contains("RetryExhausted"));
+        assert!(error_str.contains("Retry exhausted error"));
     }
 }

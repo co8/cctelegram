@@ -274,11 +274,6 @@ async fn handle_rejection(err: warp::Rejection) -> Result<impl Reply, std::conve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::telegram::rate_limiter::{RateLimiter, RateLimiterConfig};
-    use crate::telegram::retry_handler::{RetryHandler, RetryConfig, CircuitBreakerConfig};
-    use crate::events::queue_manager::{QueueManager, QueueManagerConfig};
-    use crate::telegram::tracking::{MessageTracker, TrackingConfig};
-    use crate::utils::monitoring::TierMonitor;
 
     #[tokio::test]
     async fn test_monitoring_server_creation() {

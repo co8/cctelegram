@@ -608,10 +608,9 @@ mod tests {
             parent_event_id: None,
             retry_count: 0,
             processing_status: ProcessingStatus::Pending,
-            priority: None,
-            chat_id: Some(123456789),
-            processing_metadata: None,
-            validation_errors: None,
+            schema_version: "1.0".to_string(),
+            created_at: Utc::now(),
+            processed_at: None,
         }
     }
 
