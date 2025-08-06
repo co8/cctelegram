@@ -1,0 +1,77 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "reporters": [
+    "html",
+    "clear-text",
+    "progress",
+    "json",
+    "dashboard"
+  ],
+  "testRunner": "jest",
+  "jest": {
+    "projectType": "custom",
+    "configFile": "jest.config.js",
+    "enableFindRelatedTests": true
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/*.d.ts",
+    "!src/**/*.test.ts",
+    "!src/**/*.spec.ts",
+    "!src/**/index.ts",
+    "!src/**/__tests__/**",
+    "!src/**/__mocks__/**"
+  ],
+  "mutator": {
+    "name": "typescript",
+    "excludedMutations": [
+      "ArrayDeclaration",
+      "ArrowFunction",
+      "BlockStatement",
+      "BooleanLiteral",
+      "StringLiteral"
+    ]
+  },
+  "checkers": ["typescript"],
+  "tsconfigFile": "tsconfig.json",
+  "thresholds": {
+    "high": 90,
+    "low": 70,
+    "break": 60
+  },
+  "timeoutMS": 60000,
+  "timeoutFactor": 1.5,
+  "maxConcurrentTestRunners": 2,
+  "disableTypeChecks": false,
+  "commandRunner": {
+    "command": "npm test"
+  },
+  "htmlReporter": {
+    "baseDir": "reports/mutation"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation-report.json"
+  },
+  "dashboard": {
+    "project": "github.com/enrique/cctelegram",
+    "version": "main",
+    "module": "mcp-server"
+  },
+  "plugins": [
+    "@stryker-mutator/jest-runner",
+    "@stryker-mutator/typescript-checker"
+  ],
+  "ignorePatterns": [
+    "coverage/**",
+    "reports/**",
+    "node_modules/**",
+    "dist/**",
+    "tests/**",
+    "*.config.js",
+    "*.config.ts"
+  ],
+  "incremental": true,
+  "incrementalFile": ".stryker-tmp/incremental.json"
+}

@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-08-06T00:03:45.627Z",
+  "status": "PASSED",
+  "summary": {
+    "successes": 28,
+    "warnings": 3,
+    "errors": 0
+  },
+  "details": {
+    "successes": [
+      "[2025-08-06T00:03:44.646Z] Directory exists: src",
+      "[2025-08-06T00:03:44.646Z] Directory exists: tests",
+      "[2025-08-06T00:03:44.646Z] Directory exists: scripts",
+      "[2025-08-06T00:03:44.646Z] Directory exists: docs",
+      "[2025-08-06T00:03:44.646Z] Output directory ready: coverage",
+      "[2025-08-06T00:03:44.647Z] Output directory ready: reports",
+      "[2025-08-06T00:03:44.647Z] Output directory ready: reports/coverage",
+      "[2025-08-06T00:03:44.647Z] Output directory ready: reports/mutation",
+      "[2025-08-06T00:03:44.647Z] Output directory ready: reports/ci",
+      "[2025-08-06T00:03:44.870Z] nyc is available",
+      "[2025-08-06T00:03:45.426Z] Stryker is available",
+      "[2025-08-06T00:03:45.626Z] Jest is available",
+      "[2025-08-06T00:03:45.626Z] package.json scripts and dependencies are valid",
+      "[2025-08-06T00:03:45.626Z] nyc configuration exists: .nycrc.json",
+      "[2025-08-06T00:03:45.626Z] nyc configuration is valid",
+      "[2025-08-06T00:03:45.626Z] Stryker configuration exists: stryker.conf.json",
+      "[2025-08-06T00:03:45.626Z] Stryker configuration is valid",
+      "[2025-08-06T00:03:45.626Z] Jest configuration exists: jest.config.js",
+      "[2025-08-06T00:03:45.626Z] Jest configuration appears valid",
+      "[2025-08-06T00:03:45.626Z] Coverage analysis script exists: scripts/coverage-analysis.js",
+      "[2025-08-06T00:03:45.626Z] Mutation testing analysis script exists: scripts/mutation-testing-analysis.js",
+      "[2025-08-06T00:03:45.626Z] CI quality gates script exists: scripts/ci-quality-gates.js",
+      "[2025-08-06T00:03:45.626Z] All analysis scripts are present and valid",
+      "[2025-08-06T00:03:45.627Z] GitHub Actions workflow exists: ../.github/workflows/coverage-quality-gates.yml",
+      "[2025-08-06T00:03:45.627Z] GitHub workflow includes CodeCov integration",
+      "[2025-08-06T00:03:45.627Z] GitHub Actions workflow is valid",
+      "[2025-08-06T00:03:45.627Z] Coverage documentation exists: docs/COVERAGE_AND_QUALITY_METRICS.md",
+      "[2025-08-06T00:03:45.627Z] Documentation is present and appears complete"
+    ],
+    "warnings": [
+      "[2025-08-06T00:03:45.627Z] Documentation missing section: ## Quick Start",
+      "[2025-08-06T00:03:45.627Z] Documentation missing section: ## Configuration",
+      "[2025-08-06T00:03:45.627Z] Documentation missing section: ## CI/CD Pipeline"
+    ],
+    "errors": []
+  }
+}

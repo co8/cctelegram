@@ -1,0 +1,325 @@
+name: Coverage and Quality Gates
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-server/**'
+      - '.github/workflows/coverage-quality-gates.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'mcp-server/**'
+      - '.github/workflows/coverage-quality-gates.yml'
+
+env:
+  NODE_VERSION: '20'
+  CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+  ENABLE_MUTATION_TESTING: 'true'
+
+jobs:
+  coverage-analysis:
+    runs-on: ubuntu-latest
+    name: Code Coverage Analysis
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+
+    - name: Run coverage analysis
+      working-directory: mcp-server
+      run: |
+        npm run test:coverage:ci
+        npm run coverage:analyze
+
+    - name: Upload coverage to Codecov
+      if: env.CODECOV_TOKEN != ''
+      uses: codecov/codecov-action@v3
+      with:
+        file: mcp-server/coverage/lcov.info
+        flags: mcp-server
+        name: mcp-server-coverage
+        fail_ci_if_error: false
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: |
+          mcp-server/coverage/
+          mcp-server/reports/coverage/
+        retention-days: 30
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          const summaryPath = 'mcp-server/reports/coverage/coverage-report.md';
+          if (fs.existsSync(summaryPath)) {
+            const summary = fs.readFileSync(summaryPath, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Coverage Report\n\n${summary}`
+            });
+          }
+
+  mutation-testing:
+    runs-on: ubuntu-latest
+    name: Mutation Testing Analysis
+    needs: coverage-analysis
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'mutation-test')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+
+    - name: Run mutation testing
+      working-directory: mcp-server
+      run: |
+        npm run test:mutation:ci
+        npm run mutation:analyze
+      continue-on-error: true
+
+    - name: Upload mutation testing artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mutation-reports
+        path: |
+          mcp-server/reports/mutation/
+        retention-days: 15
+
+    - name: Comment mutation results on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          const reportPath = 'mcp-server/reports/mutation/mutation-report.md';
+          if (fs.existsSync(reportPath)) {
+            const report = fs.readFileSync(reportPath, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🧬 Mutation Testing Report\n\n${report}`
+            });
+          }
+
+  quality-gates:
+    runs-on: ubuntu-latest
+    name: Quality Gates Check
+    needs: [coverage-analysis]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-reports
+        path: mcp-server/
+
+    - name: Download mutation artifacts (if available)
+      uses: actions/download-artifact@v4
+      with:
+        name: mutation-reports
+        path: mcp-server/
+      continue-on-error: true
+
+    - name: Run quality gates
+      working-directory: mcp-server
+      run: npm run ci:quality-gates
+
+    - name: Generate quality badges
+      working-directory: mcp-server
+      run: |
+        mkdir -p reports/badges
+        node -e "
+          const fs = require('fs');
+          const badges = JSON.parse(fs.readFileSync('reports/ci/badges.json', 'utf8'));
+          badges.forEach(badge => {
+            const url = \`https://img.shields.io/badge/\${encodeURIComponent(badge.label)}-\${encodeURIComponent(badge.message)}-\${badge.color}\`;
+            console.log(\`![]()\${url})]()\`);
+          });
+        " > reports/badges/README.md
+
+    - name: Upload quality reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: quality-reports
+        path: |
+          mcp-server/reports/ci/
+          mcp-server/reports/badges/
+        retention-days: 30
+
+    - name: Update PR with quality gates status
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          const summaryPath = 'mcp-server/reports/ci/summary.md';
+          if (fs.existsSync(summaryPath)) {
+            const summary = fs.readFileSync(summaryPath, 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+          }
+
+    - name: Set PR status check
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let status = 'success';
+          let description = 'All quality gates passed';
+          
+          try {
+            const reportPath = 'mcp-server/reports/ci/quality-gates-report.json';
+            if (fs.existsSync(reportPath)) {
+              const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+              
+              if (report.summary.status === 'failed') {
+                status = 'failure';
+                description = `Quality gates failed: ${report.summary.failed} failures`;
+              } else if (report.summary.status === 'warning') {
+                status = 'success';
+                description = `Quality gates passed with ${report.summary.warnings} warnings`;
+              }
+            }
+          } catch (error) {
+            status = 'error';
+            description = 'Could not read quality gates report';
+          }
+          
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.payload.pull_request.head.sha,
+            state: status,
+            target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            description: description,
+            context: 'quality-gates/coverage-and-mutation'
+          });
+
+  performance-benchmarks:
+    runs-on: ubuntu-latest
+    name: Performance Benchmarks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+
+    - name: Run performance benchmarks
+      working-directory: mcp-server
+      run: |
+        npm run test:performance
+        npm run perf:baseline:record
+      continue-on-error: true
+
+    - name: Upload performance reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-reports
+        path: |
+          mcp-server/tests/performance/baselines/
+          mcp-server/reports/performance/
+        retention-days: 30
+
+  security-audit:
+    runs-on: ubuntu-latest
+    name: Security Audit
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: mcp-server
+      run: npm ci
+
+    - name: Run security audit
+      working-directory: mcp-server
+      run: |
+        npm audit --audit-level=moderate
+        npm run security:scan
+      continue-on-error: true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          mcp-server/security-audit-full.json
+        retention-days: 30

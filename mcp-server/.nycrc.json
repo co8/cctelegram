@@ -1,0 +1,62 @@
+{
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": [
+    "src/**/*.d.ts",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/**/index.ts",
+    "src/**/__tests__/**",
+    "src/**/__mocks__/**",
+    "coverage/**",
+    "tests/**",
+    "node_modules/**",
+    "dist/**",
+    "*.config.js",
+    "*.config.ts"
+  ],
+  "extension": [
+    ".ts",
+    ".tsx"
+  ],
+  "reporter": [
+    "text",
+    "text-summary",
+    "lcov",
+    "html",
+    "json",
+    "json-summary",
+    "clover",
+    "cobertura"
+  ],
+  "report-dir": "coverage/nyc",
+  "temp-dir": ".nyc_output",
+  "cache": true,
+  "check-coverage": true,
+  "lines": 95,
+  "statements": 95,
+  "functions": 95,
+  "branches": 90,
+  "per-file": true,
+  "skip-full": false,
+  "all": true,
+  "instrument": true,
+  "sourceMap": true,
+  "produceSourceMap": true,
+  "require": [
+    "ts-node/register"
+  ],
+  "watermarks": {
+    "lines": [80, 95],
+    "functions": [80, 95],
+    "branches": [70, 90],
+    "statements": [80, 95]
+  },
+  "hooks": {
+    "hook-require": true,
+    "hook-run-in-context": true,
+    "hook-run-in-this-context": true
+  }
+}

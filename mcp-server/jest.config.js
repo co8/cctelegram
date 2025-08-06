@@ -48,7 +48,11 @@ export default {
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
-    '!src/**/index.ts'
+    '!src/**/*.test.ts',
+    '!src/**/*.spec.ts',
+    '!src/**/index.ts',
+    '!src/**/__tests__/**',
+    '!src/**/__mocks__/**'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: [
@@ -56,20 +60,35 @@ export default {
     'text-summary',
     'lcov',
     'html',
-    'json-summary'
+    'json',
+    'json-summary',
+    'clover',
+    'cobertura'
   ],
   coverageThreshold: {
     global: {
-      branches: 85,
-      functions: 90,
-      lines: 90,
-      statements: 90
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95
     },
     './src/security.ts': {
       branches: 95,
       functions: 95,
       lines: 95,
       statements: 95
+    },
+    './src/bridge-client.ts': {
+      branches: 90,
+      functions: 95,
+      lines: 95,
+      statements: 95
+    },
+    './src/types.ts': {
+      branches: 85,
+      functions: 90,
+      lines: 90,
+      statements: 90
     }
   },
   

@@ -316,3 +316,20 @@ export function createFileSystemMocks() {
     responseData: createResponseBatch(3)
   };
 }
+
+/**
+ * @deprecated Use Factory.build('event', options, traits) instead
+ * Legacy compatibility wrapper for the new factory-bot system
+ */
+export const LegacyFactoryCompatibility = {
+  createEvent,
+  createResponse,
+  createBridgeStatus,
+  createEventBatch,
+  createResponseBatch,
+  createInvalidEvent,
+  createInvalidResponse,
+  createTimeBasedResponses,
+  createTaskStatusData,
+  createFileSystemMocks
+};
