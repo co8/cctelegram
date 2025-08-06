@@ -45,8 +45,8 @@ Together, they provide real-time notifications, interactive approvals, and compr
 
 | Component | Version | Role | Status |
 |-----------|---------|------|--------|
-| **MCP Server** | v1.5.0 | Claude Code integration, event processing | ✅ Claude Code Ready |
-| **Bridge** | v0.6.0 | Background service, Telegram communication | ✅ Production Ready |
+| **MCP Server** | v1.7.0 | Claude Code integration, event processing | ✅ Claude Code Ready |
+| **Bridge** | v0.8.0 | Background service, Telegram communication | ✅ Production Ready |
 
 ### 🔄 How They Work Together
 

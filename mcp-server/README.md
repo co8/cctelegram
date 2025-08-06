@@ -1,4 +1,4 @@
-# CCTelegram MCP Server v1.5.0
+# CCTelegram MCP Server v1.7.0
 
 **🔌 Primary Claude Code Interface for Development Notifications via [Telegram](https://telegram.org/)**
 
@@ -16,7 +16,7 @@ The **MCP Server** is your primary interface with the CCTelegram notification ec
 - **Intelligent Bridge Management**: Automatic start, monitor, restart of CCTelegram Bridge process
 - **Smart Discovery**: Automatically locates bridge executable across installation paths
 
-### ⚡ Performance Optimization System (NEW in v1.5.0)
+### ⚡ Performance Optimization System (NEW in v1.7.0)
 - **Advanced Caching**: Security config caching with 70-90% hit rates
 - **Connection Pooling**: HTTP connection optimization reducing overhead by 40-60%
 - **File System Batching**: Intelligent I/O batching reducing operations by 30-90%
