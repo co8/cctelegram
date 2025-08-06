@@ -198,11 +198,14 @@ impl LargeMessageQueueIntegration {
         info!("🔗 Initializing Large Message Queue Integration");
         
         // Create compression service
-        let compression_service = Arc::new(IntegrityAwareCompressionService::new_optimized());
+        let integrity_compression_service = Arc::new(IntegrityAwareCompressionService::new_optimized());
+        
+        // Extract the base compression service for Redis
+        let base_compression_service = integrity_compression_service.get_compression_service();
         
         // Create Redis compression service
         let redis_service = Arc::new(
-            RedisCompressionService::new(compression_service.clone(), config.redis_config.clone())
+            RedisCompressionService::new(base_compression_service, config.redis_config.clone())
                 .await
                 .context("Failed to initialize Redis compression service")?
         );
@@ -211,7 +214,7 @@ impl LargeMessageQueueIntegration {
         let integrity_validator = Box::new(DefaultIntegrityValidator::new_default());
         let protocol = Arc::new(LargeMessageProtocol::new(
             config.lmp_config.clone(),
-            compression_service,
+            integrity_compression_service,
             integrity_validator,
         ));
         
@@ -438,7 +441,7 @@ impl LargeMessageQueueIntegration {
                     queue_key: format!("redis:{}:{}", fragment.metadata.correlation_id, fragment.metadata.sequence_number),
                 };
                 
-                let storage_key = self.redis_service
+                let _storage_key = self.redis_service
                     .store_raw_data(&fragment.payload, Some(queue_fragment.queue_key.clone())).await
                     .context("Failed to store fragment in Redis")?;
                     
@@ -511,21 +514,21 @@ impl LargeMessageQueueIntegration {
                 // Process fragments in priority order
                 let fragment = {
                     let mut queues = fragment_queues.write().await;
+                    let mut found_fragment = None;
                     
                     // Check each priority level
                     for priority in [FragmentPriority::Critical, FragmentPriority::High, 
                                    FragmentPriority::Normal, FragmentPriority::Low] {
                         if let Some(queue) = queues.get_mut(&priority) {
                             if !queue.is_empty() {
-                                Some(queue.remove(0))
-                            } else {
-                                None
+                                found_fragment = Some(queue.remove(0));
+                                break;
                             }
-                        } else {
-                            None
                         }
                     }
-                }.flatten();
+                    
+                    found_fragment
+                };
                 
                 if let Some(queue_fragment) = fragment {
                     // Process fragment
@@ -689,6 +692,12 @@ mod tests {
     
     #[tokio::test]
     async fn test_queue_integration_initialization() {
+        // Skip if no Redis available
+        if std::env::var("REDIS_URL").is_err() {
+            println!("Skipping Redis-dependent test (REDIS_URL not set)");
+            return;
+        }
+        
         let config = LargeMessageQueueConfig::default();
         
         // Create event queue directly
@@ -708,6 +717,12 @@ mod tests {
     
     #[tokio::test]
     async fn test_fragment_priority_determination() {
+        // Skip if no Redis available
+        if std::env::var("REDIS_URL").is_err() {
+            println!("Skipping Redis-dependent test (REDIS_URL not set)");
+            return;
+        }
+        
         let config = LargeMessageQueueConfig::default();
         
         let event_queue = Arc::new(

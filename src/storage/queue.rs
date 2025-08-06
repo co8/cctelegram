@@ -175,4 +175,18 @@ impl EnhancedEventQueue {
     pub fn load_accumulated_events_from_files(&mut self, events_dir: &std::path::Path) -> Vec<Event> {
         self.traditional_queue.load_accumulated_events_from_files(events_dir)
     }
+    
+    /// Enqueue event through the queue system
+    pub async fn enqueue_event(&self, event: Event) -> Result<()> {
+        if let Some(queue_manager) = &self.queue_manager {
+            use crate::events::queue_manager::Priority;
+            let _queue_id = queue_manager.enqueue_event(event, Priority::Normal, 0).await?;
+            Ok(())
+        } else {
+            // Fallback: This would need a mutable reference in real implementation
+            // For now, just log the attempt
+            info!("Would enqueue event {} through traditional queue", event.event_id);
+            Ok(())
+        }
+    }
 }

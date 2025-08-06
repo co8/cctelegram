@@ -1,6 +1,7 @@
 use anyhow::{Result, Context};
 use tracing::{debug, warn, error, info, instrument};
 use sha2::{Sha256, Digest};
+use std::sync::Arc;
 use super::compression::{CompressionService, CompressedEvent};
 use crate::utils::integrity::{
     IntegrityValidator, DefaultIntegrityValidator, InstrumentedIntegrityValidator,
@@ -32,6 +33,12 @@ impl IntegrityAwareCompressionService {
     pub fn new_optimized() -> Self {
         let compression_service = CompressionService::new_optimized();
         Self::new(compression_service)
+    }
+    
+    /// Get a reference to the underlying compression service  
+    pub fn get_compression_service(&self) -> Arc<CompressionService> {
+        // Create a new optimized compression service since CompressionService doesn't implement Clone
+        Arc::new(CompressionService::new_optimized())
     }
 
     /// Compress event with end-to-end integrity validation

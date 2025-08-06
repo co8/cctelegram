@@ -102,8 +102,8 @@ impl ReassemblyBuffer {
         self.fragments.len() == self.total_fragments as usize
     }
     
-    fn is_expired(&self) -> bool {
-        self.last_activity.elapsed() > FRAGMENT_TIMEOUT
+    fn is_expired(&self, timeout: Duration) -> bool {
+        self.last_activity.elapsed() > timeout
     }
     
     fn get_missing_sequences(&self) -> Vec<u32> {
@@ -451,7 +451,7 @@ impl LargeMessageProtocol {
             return Err(anyhow::anyhow!("No fragments provided for reassembly"));
         }
         
-        let correlation_id = &fragments[0].metadata.correlation_id;
+        let correlation_id = fragments[0].metadata.correlation_id.clone();
         let expected_total = fragments[0].metadata.total_fragments as usize;
         
         if fragments.len() != expected_total {
@@ -469,7 +469,7 @@ impl LargeMessageProtocol {
         );
         
         for fragment in fragments {
-            if fragment.metadata.correlation_id != *correlation_id {
+            if fragment.metadata.correlation_id != correlation_id {
                 return Err(anyhow::anyhow!("Fragment correlation ID mismatch"));
             }
             buffer.add_fragment(fragment);
@@ -515,7 +515,7 @@ impl LargeMessageProtocol {
         let initial_count = buffers.len();
         
         buffers.retain(|correlation_id, buffer| {
-            if buffer.is_expired() {
+            if buffer.is_expired(self.config.fragment_timeout) {
                 warn!("🗑️ Cleaning up expired reassembly buffer: {} (age: {:.1}s, completion: {:.1}%)",
                       correlation_id, buffer.created_at.elapsed().as_secs_f64(), 
                       buffer.completion_percentage());
@@ -610,7 +610,7 @@ impl LargeMessageProtocol {
             // Validate fragment hash
             let mut hasher = Sha256::new();
             hasher.update(&fragment_data);
-            let computed_hash = format!("{:x}", hasher.finalize());
+            let _computed_hash = format!("{:x}", hasher.finalize());
             
             // Note: For compressed fragments, we validate the original content hash
             if fragment.metadata.is_compressed {
@@ -643,6 +643,7 @@ impl LargeMessageProtocol {
         let buffers = self.reassembly_buffers.clone();
         let stats = self.stats.clone();
         let interval = self.config.cleanup_interval;
+        let fragment_timeout = self.config.fragment_timeout;
         
         let handle = tokio::spawn(async move {
             let mut interval_timer = tokio::time::interval(interval);
@@ -655,7 +656,7 @@ impl LargeMessageProtocol {
                 let initial_count = buffer_map.len();
                 
                 buffer_map.retain(|correlation_id, buffer| {
-                    if buffer.is_expired() {
+                    if buffer.is_expired(fragment_timeout) {
                         warn!("🗑️ Background cleanup: expired buffer {} (age: {:.1}s)",
                               correlation_id, buffer.created_at.elapsed().as_secs_f64());
                         false

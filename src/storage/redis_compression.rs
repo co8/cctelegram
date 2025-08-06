@@ -413,6 +413,78 @@ impl RedisCompressionService {
         
         info!("Reset Redis compression service statistics");
     }
+    
+    /// Store raw data in Redis with optional key prefix
+    #[instrument(skip(self, data))]
+    pub async fn store_raw_data(&self, data: &[u8], key_suffix: Option<String>) -> Result<String> {
+        let start_time = std::time::Instant::now();
+        
+        let storage_key = if let Some(suffix) = key_suffix {
+            format!("{}:fragment:{}", self.config.compressed_key_prefix, suffix)
+        } else {
+            use rand::Rng;
+            let random_id: u64 = rand::thread_rng().gen();
+            format!("{}:fragment:{:x}", self.config.compressed_key_prefix, random_id)
+        };
+        
+        let mut conn = self.redis_client.get_async_connection().await
+            .context("Failed to get Redis connection")?;
+        
+        // Store raw data with TTL
+        conn.set_ex::<_, _, ()>(&storage_key, data, self.config.compressed_ttl).await
+            .context("Failed to store raw data in Redis")?;
+        
+        // Update stats
+        {
+            let mut stats = self.stats.write().await;
+            stats.total_compressed_stored += 1;
+            stats.total_storage_bytes_saved += data.len() as u64;
+        }
+        
+        debug!("Stored raw data in Redis: {} ({} bytes in {:.1}ms)", 
+               storage_key, data.len(), start_time.elapsed().as_millis());
+        
+        Ok(storage_key)
+    }
+    
+    /// Retrieve raw data from Redis
+    #[instrument(skip(self))]
+    pub async fn retrieve_raw_data(&self, storage_key: &str) -> Result<Option<Vec<u8>>> {
+        let start_time = std::time::Instant::now();
+        
+        let mut conn = self.redis_client.get_async_connection().await
+            .context("Failed to get Redis connection")?;
+        
+        let data: Option<Vec<u8>> = conn.get(storage_key).await
+            .context("Failed to retrieve raw data from Redis")?;
+        
+        // Update stats
+        {
+            let mut stats = self.stats.write().await;
+            stats.total_compressed_retrieved += 1;
+            
+            if data.is_some() {
+                stats.cache_hits += 1;
+            } else {
+                stats.cache_misses += 1;
+            }
+            
+            // Update average retrieval time
+            let retrieval_time = start_time.elapsed().as_millis() as f64;
+            stats.average_retrieval_time_ms = if stats.total_compressed_retrieved == 1 {
+                retrieval_time
+            } else {
+                (stats.average_retrieval_time_ms * (stats.total_compressed_retrieved - 1) as f64 + retrieval_time) / stats.total_compressed_retrieved as f64
+            };
+        }
+        
+        debug!("Retrieved raw data from Redis: {} ({} bytes in {:.1}ms)", 
+               storage_key, 
+               data.as_ref().map_or(0, |d| d.len()),
+               start_time.elapsed().as_millis());
+        
+        Ok(data)
+    }
 }
 
 #[cfg(test)]
