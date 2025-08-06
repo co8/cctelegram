@@ -1,7 +1,7 @@
 use anyhow::{Result, Context};
 use flate2::Compression;
 use flate2::write::{ZlibEncoder, ZlibDecoder};
-use flate2::read::{ZlibEncoder as ReadZlibEncoder, ZlibDecoder as ReadZlibDecoder};
+// Remove unused read encoders
 use serde::{Deserialize, Serialize};
 use sha2::{Sha256, Digest};
 use std::io::{Read, Write};
@@ -66,7 +66,7 @@ pub enum CompressionType {
 }
 
 /// Compression performance metrics
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Serialize)]
 pub struct CompressionMetrics {
     pub total_compressions: u64,
     pub total_decompressions: u64,
@@ -279,43 +279,30 @@ impl CompressionService {
     }
 
     /// Handle streaming compression for very large messages
-    #[instrument(skip(self, reader, writer))]
-    pub async fn compress_stream<R: Read + Send, W: Write + Send>(
-        &self, 
-        mut reader: R, 
-        mut writer: W
-    ) -> Result<(usize, usize, String)> {
-        let start_time = Instant::now();
+    /// Note: This is a placeholder implementation - full streaming support would require
+    /// more complex lifetime management for async contexts
+    #[instrument(skip(self))]
+    pub async fn compress_stream_placeholder(&self, data: Vec<u8>) -> Result<(usize, usize, String)> {
+        let original_size = data.len();
+        let mut hasher = Sha256::new();
+        hasher.update(&data);
+        let integrity_hash = format!("{:x}", hasher.finalize());
         
-        tokio::task::spawn_blocking(move || -> Result<(usize, usize, String)> {
-            let mut encoder = ZlibEncoder::new(&mut writer, Compression::new(6));
-            let mut hasher = Sha256::new();
-            let mut buffer = [0u8; 8192];
-            let mut total_read = 0usize;
-            
-            loop {
-                let bytes_read = reader.read(&mut buffer)?;
-                if bytes_read == 0 {
-                    break;
-                }
-                
-                hasher.update(&buffer[..bytes_read]);
-                encoder.write_all(&buffer[..bytes_read])?;
-                total_read += bytes_read;
-            }
-            
-            encoder.finish()?;
-            let integrity_hash = format!("{:x}", hasher.finalize());
-            
-            Ok((total_read, 0, integrity_hash)) // Note: compressed size not easily available in streaming
-        })
-        .await
-        .context("Streaming compression failed")?
+        // For large data, we can still use regular compression but in a blocking task
+        let compressed_data = tokio::task::spawn_blocking(move || -> Result<Vec<u8>> {
+            let mut encoder = ZlibEncoder::new(Vec::new(), Compression::new(6));
+            encoder.write_all(&data)?;
+            encoder.finish().context("Failed to finalize compression")
+        }).await.context("Compression task failed")??;
+        
+        let compressed_size = compressed_data.len();
+        
+        Ok((original_size, compressed_size, integrity_hash))
     }
 
     /// Get current compression metrics
     pub fn get_metrics(&self) -> CompressionMetrics {
-        self.metrics.read().unwrap().clone()
+        (*self.metrics.read().unwrap()).clone()
     }
 
     /// Reset compression metrics
@@ -355,7 +342,7 @@ impl CompressionService {
 /// Compression-aware queue integration
 pub mod queue_integration {
     use super::*;
-    use crate::storage::queue::{EventQueue, EnhancedEventQueue};
+    use crate::storage::queue::EnhancedEventQueue;
     use std::sync::Arc;
 
     /// Enhanced queue with transparent compression support
@@ -485,13 +472,20 @@ mod tests {
     async fn test_integrity_check_failure() {
         let service = CompressionService::new_optimized();
         
-        let event = Event::default_with_task_id("integrity-test".to_string());
+        // Create a large event so it gets compressed (not just wrapped)
+        let event = Event {
+            description: "Large description ".repeat(100), // Make it large to ensure compression
+            ..Event::default_with_task_id("integrity-test".to_string())
+        };
         let mut compressed = service.compress_event(&event).await.unwrap();
         
-        // Corrupt the integrity hash
-        compressed.integrity_hash = Some("corrupted_hash".to_string());
+        // Corrupt the integrity hash (but keep the compressed data valid)
+        compressed.integrity_hash = Some("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".to_string());
         
-        // Decompression should fail
+        // Reset metrics to ensure clean state before testing integrity failure
+        service.reset_metrics();
+        
+        // Decompression should fail due to integrity check
         let result = service.decompress_event(&compressed).await;
         assert!(result.is_err());
         

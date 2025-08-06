@@ -795,7 +795,31 @@ impl Event {
             "Event loaded from startup queue"
         )
     }
+}
 
+impl Default for Event {
+    fn default() -> Self {
+        Self {
+            event_id: Uuid::new_v4().to_string(),
+            event_type: EventType::InfoNotification,
+            source: "default".to_string(),
+            timestamp: Utc::now(),
+            task_id: "default-task".to_string(),
+            title: "Default Event".to_string(),
+            description: "Default event instance".to_string(),
+            data: EventData::default(),
+            correlation_id: None,
+            parent_event_id: None,
+            retry_count: 0,
+            processing_status: ProcessingStatus::Pending,
+            schema_version: "1.0".to_string(),
+            created_at: Utc::now(),
+            processed_at: None,
+        }
+    }
+}
+
+impl Event {
     // Task Management Event Builders
     pub fn task_completed(
         source: impl Into<String>,
@@ -2583,6 +2607,12 @@ impl EventType {
             EventType::CustomEvent => "Custom Event",
             EventType::Unknown => "Unknown Event",
         }
+    }
+}
+
+impl std::fmt::Display for EventType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.display_name())
     }
 }
 

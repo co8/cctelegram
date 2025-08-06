@@ -109,6 +109,9 @@ sha2 = "0.10"
 # Compression support for queue storage efficiency
 flate2 = "1.0"
 
+# Async utilities for batch operations
+futures = "0.3"
+
 
 [dev-dependencies]
 tokio-test = "0.4"

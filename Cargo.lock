@@ -457,6 +457,8 @@ dependencies = [
  "config",
  "dirs",
  "dotenv",
+ "flate2",
+ "futures",
  "notify",
  "prometheus",
  "rand 0.8.5",

@@ -170,4 +170,9 @@ impl EnhancedEventQueue {
         }
         Ok(())
     }
+
+    /// Load accumulated events from files (for startup processing)
+    pub fn load_accumulated_events_from_files(&mut self, events_dir: &std::path::Path) -> Vec<Event> {
+        self.traditional_queue.load_accumulated_events_from_files(events_dir)
+    }
 }

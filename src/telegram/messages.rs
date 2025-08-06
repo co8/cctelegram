@@ -345,4 +345,14 @@ impl MessageFormatter {
         You are not authorized to use this bot.\n\
         Please contact an administrator if you believe this is an error.".to_string()
     }
+    
+    /// Format a generic event message (used by large message handler)
+    pub fn format_event_message(&self, event: &Event) -> String {
+        match event.event_type {
+            crate::events::types::EventType::TaskCompletion => self.format_completion_message(event),
+            crate::events::types::EventType::ApprovalRequest => self.format_approval_message(event),
+            crate::events::types::EventType::ProgressUpdate => self.format_progress_message(event),
+            _ => self.format_generic_message(event),
+        }
+    }
 }
