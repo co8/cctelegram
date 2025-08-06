@@ -571,7 +571,7 @@ impl TelegramBot {
 
     async fn get_tasks_status(&self) -> String {
         let mut status_parts = vec![];
-        status_parts.push("*📋 Task Status Summary*".to_string());
+        status_parts.push("*📋 Taskmaster Status*".to_string());
         
         // Try to read TaskMaster directly first (primary method)
         let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -579,15 +579,12 @@ impl TelegramBot {
         
         match self.read_taskmaster_tasks(&taskmaster_path).await {
             Ok(Some(tasks_info)) => {
-                status_parts.push("✅ Data source: TaskMaster".to_string());
-                status_parts.push("".to_string());
-                status_parts.push("*📋 TaskMaster Project*".to_string());
-                status_parts.push(format!("*Project: {}*", Self::escape_markdown_v2(&tasks_info.project_name)));
-                status_parts.push(format!("📌 Pending: {}", tasks_info.pending));
-                status_parts.push(format!("🔄 In Progress: {}", tasks_info.in_progress));
-                status_parts.push(format!("✅ Completed: {}", tasks_info.completed));
-                status_parts.push(format!("🚧 Blocked: {}", tasks_info.blocked));
-                status_parts.push(format!("📊 Total: {}", tasks_info.total));
+                status_parts.push(format!("*Project:* {}", Self::escape_markdown_v2(&tasks_info.project_name)));
+                status_parts.push(format!("📌 *Pending:* {}", tasks_info.pending));
+                status_parts.push(format!("🔄 *In Progress:* {}", tasks_info.in_progress));
+                status_parts.push(format!("✅ *Completed:* {}", tasks_info.completed));
+                status_parts.push(format!("🚧 *Blocked:* {}", tasks_info.blocked));
+                status_parts.push(format!("📊 *Total:* {}", tasks_info.total));
             }
             Ok(None) => {
                 status_parts.push("ℹ️ No TaskMaster found in current directory".to_string());
@@ -613,8 +610,8 @@ impl TelegramBot {
             }
         }
         
-        status_parts.push("".to_string());
-        status_parts.push("💡 For real\\-time updates, use Claude Code".to_string());
+        //status_parts.push("".to_string());
+        //status_parts.push("💡 For real\\-time updates, use Claude Code".to_string());
         
         status_parts.join("\n")
     }
