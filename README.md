@@ -8,11 +8,15 @@
 
 ## TL;DR
 
-**MCP for Notifications over [Telegram](https://telegram.org/) from [Claude Code](https://github.com/anthropics/claude-code)**<br> Get real-time notifications about builds, tests, deployments, and code changes.
+**Complete Notification Ecosystem for [Claude Code](https://github.com/anthropics/claude-code) Developers**
 
-**Approve or Deny while you're away. Get progress updates with notes**
+CCTelegram consists of **two complementary components** that work together seamlessly:
 
-**CCTelegram MCP Server** - Connect to Claude Code / VS Code<br> **CCTelegram Bridge** - Built in Rust and sends/receives messages
+🔌 **MCP Server** (TypeScript) - Integrates directly with Claude Code via MCP protocol  
+🌉 **Bridge** (Rust) - High-performance background service for Telegram communication
+
+**Get real-time notifications, interactive approvals, and comprehensive development workflow integration.**  
+**Built specifically for the Claude Code + developer mindset.**
 
 🛡️ **Security Score: 8.5/10 (LOW RISK)** | 🔒 **OWASP Top 10 2021: 100% Compliant** | ✅ **Zero Critical Vulnerabilities**
 
@@ -23,21 +27,22 @@
 - Create bot with [@BotFather](https://t.me/botfather): `/newbot`
 - Get your user ID from [@userinfobot](https://t.me/userinfobot)
 
-### 2. Install MCP Server
+### 2. Install Complete System
 
 ```bash
-# Download Bridge and MCP
+# Download both MCP Server and Bridge
 git clone https://github.com/co8/cctelegram.git
 cd cctelegram
 
-# Navigate to MCP server and install
+# Install MCP Server (Claude Code integration)
 cd mcp-server
 ./install.sh
 
-# Configure your tokens in Claude Code config
-# (installer guides you through this)
+# Configure your tokens (installer guides you)
 export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USERS="your_user_id_here"
+
+# Bridge starts automatically in background
 ```
 
 ### 3. Test with [Claude Code](https://github.com/anthropics/claude-code)
@@ -48,7 +53,9 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 ```
 
 **🎉 You should get a [Telegram](https://telegram.org/) notification within seconds!**  
-_The bridge runs automatically in the background - no manual management needed._
+
+**How it works**: MCP Server processes the command in Claude Code → Bridge detects the event file → Sends to Telegram  
+_Both components work together automatically - no manual management needed._
 
 ---
 

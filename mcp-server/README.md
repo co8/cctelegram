@@ -1,10 +1,12 @@
 # CCTelegram MCP Server v1.5.0
 
-**⚡ High-Performance Secure Interface for [Telegram](https://telegram.org/) Development Notifications**
+**🔌 Primary Claude Code Interface for Development Notifications via [Telegram](https://telegram.org/)**
 
 🛡️ **Security Score: 8.5/10 (LOW RISK)** | 🔒 **OWASP Top 10 2021: 100% Compliant** | ✅ **Zero Critical Vulnerabilities** | ⚡ **Performance Optimized: <100ms processing, <50MB memory**
 
-Model Context Protocol (MCP) server that serves as the main interface for [Claude Code](https://github.com/anthropics/claude-code) users. Automatically manages the CCTelegram Bridge process in the background while providing a comprehensive set of tools for sending [Telegram](https://telegram.org/) notifications about development activities, processing approval workflows, and monitoring development status. This is a notification and monitoring system - users interact exclusively with MCP tools for sending notifications, not executing commands.
+The **MCP Server** is your primary interface with the CCTelegram notification ecosystem, designed specifically for [Claude Code](https://github.com/anthropics/claude-code) developers. It seamlessly integrates with Claude Code via the MCP protocol and automatically manages the high-performance Rust Bridge in the background.
+
+**Key Design Principle**: Developers interact exclusively with MCP tools in Claude Code - the Bridge runs transparently, processing events and delivering notifications without any manual management.
 
 ## Features
 
