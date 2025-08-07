@@ -25,6 +25,14 @@ path = "examples/monitoring_demo.rs"
 name = "test-prometheus-metrics"
 path = "examples/test-prometheus-metrics.rs"
 
+[[example]]
+name = "deduplication_demo"
+path = "examples/deduplication_demo.rs"
+
+[[example]]
+name = "message_persistence_demo"
+path = "examples/message_persistence_demo.rs"
+
 
 [dependencies]
 # Tokio for async runtime
@@ -119,9 +127,14 @@ flate2 = "1.0"
 # Async utilities for batch operations
 futures = "0.3"
 
+# SQLite database for message persistence
+rusqlite = { version = "0.32", features = ["bundled", "backup", "chrono", "uuid"] }
+
 
 [dev-dependencies]
 tokio-test = "0.4"
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3.8"
 
 [build-dependencies]
 chrono = { version = "0.4", features = ["clock"] }
@@ -130,3 +143,7 @@ chrono = { version = "0.4", features = ["clock"] }
 lto = true
 codegen-units = 1
 panic = "abort"
+
+[[bench]]
+name = "deduplication_performance"
+harness = false

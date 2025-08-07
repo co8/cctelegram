@@ -51,6 +51,12 @@ pub enum BridgeError {
 
     #[error("Generic error: {0}")]
     Generic(String),
+
+    #[error("Database error: {0}")]
+    Database(#[from] rusqlite::Error),
+
+    #[error("Message persistence error: {0}")]
+    Persistence(String),
 }
 
 /// Categorizes errors for retry logic

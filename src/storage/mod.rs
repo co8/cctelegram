@@ -7,6 +7,10 @@ pub mod redis_compression;
 pub mod compression_demo;
 pub mod large_message_protocol;
 pub mod large_message_queue_integration;
+pub mod message_persistence;
+pub mod persistent_queue;
+pub mod persistence_integration;
+pub mod message_deduplication;
 
 pub use file_store::FileStore;
 pub use queue::{EventQueue, EnhancedEventQueue};
@@ -17,3 +21,7 @@ pub use redis_compression::{RedisCompressionService, RedisCompressionConfig, Red
 pub use compression_demo::{CompressionDemo, run_compression_demo};
 pub use large_message_protocol::{LargeMessageProtocol, LargeMessageProtocolConfig, LargeMessageProtocolStats, MessageFragment, FragmentMetadata};
 pub use large_message_queue_integration::{LargeMessageQueueIntegration, LargeMessageQueueConfig, QueueIntegrationStats, QueueLimits, FragmentStorageStrategy};
+pub use message_persistence::{MessagePersistenceSystem, MessagePersistenceConfig, PersistedMessage, MessageStatus, PersistenceStats};
+pub use persistent_queue::{PersistentMessageQueue, PersistentQueueConfig, EventQueueIntegration, ProcessingResult, MessagePriority, QueueStats};
+pub use persistence_integration::{PersistenceIntegratedProcessor, PersistenceIntegrationConfig, IntegrationStats, create_default_processor, create_processor_with_path};
+pub use message_deduplication::{MessageDeduplicationSystem, DeduplicationConfig, DeduplicationResult, DeduplicationStats, DeduplicationMiddleware};

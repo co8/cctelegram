@@ -1736,7 +1736,7 @@
         "description": "Implement SQLite-based message persistence for crash recovery, message deduplication to prevent duplicates, and support for multiple Telegram bot tokens with failover capabilities to achieve 99.5%+ delivery rate.",
         "details": "Implement comprehensive reliability improvements building on existing queue and architecture systems: 1) SQLite Message Persistence - Create SQLite database using better-sqlite3 with WAL mode for concurrent access, implement message_store table with fields (id, chat_id, message_text, timestamp, status, retry_count, telegram_message_id), add atomic transaction support for message lifecycle (pending -> sent -> confirmed), implement crash recovery mechanism that loads pending messages on startup and resumes processing, create message archival strategy with configurable retention (default: 30 days). 2) Message Deduplication - Implement content-based deduplication using SHA-256 hash of (chat_id + message_text + timestamp_window), create deduplication_cache table with TTL support (default: 24 hours), add duplicate detection middleware that checks hashes before queue insertion, implement configurable deduplication window (default: 5 minutes) to handle legitimate duplicate messages. 3) Multi-Token Load Balancing - Extend existing rate limiter to support multiple bot tokens with token rotation strategy, implement token health monitoring with automatic failover for rate-limited/banned tokens, create token pool management with weighted round-robin distribution based on token performance metrics, add token validation endpoint to verify token status and permissions, implement graceful token rotation without message loss. 4) Enhanced Monitoring - Add SQLite performance metrics (transaction time, database size, connection pool usage), implement message persistence success rate tracking, create token utilization and failover dashboards, add alerting for database corruption, token failures, and persistence issues. Integration with existing systems: leverage Task 35 queue system for message processing, extend Task 36 tier orchestrator for token selection, utilize Task 17 error handling for database failures and token issues.",
         "testStrategy": "Create comprehensive test suite for reliability improvements: SQLite persistence testing using Jest with in-memory databases to validate message storage, retrieval, and crash recovery scenarios including database corruption simulation and transaction rollback testing. Message deduplication testing with controlled duplicate scenarios including hash collision edge cases, TTL expiration validation, and performance testing with 10K+ messages. Multi-token load balancing testing using mock Telegram APIs to simulate rate limiting, token bans, and failover scenarios with concurrent message sending across multiple tokens. Integration testing with existing queue system (Task 35) and tier orchestrator (Task 36) to validate end-to-end reliability improvements. Performance testing using k6 to validate 99.5% delivery rate under sustained load with token failures and database stress scenarios. Chaos engineering tests including database file corruption, token revocation during processing, and network partition scenarios to validate system resilience and recovery mechanisms.",
-        "status": "pending",
+        "status": "in-progress",
         "dependencies": [
           35,
           36,
@@ -1751,7 +1751,7 @@
             "description": "Create SQLite database with better-sqlite3 using WAL mode for concurrent access, implement message_store table with atomic transactions for message lifecycle management (pending -> sent -> confirmed), and build crash recovery mechanism that loads pending messages on startup with configurable retention policy.",
             "dependencies": [],
             "details": "Implement SQLite database using better-sqlite3 with WAL mode configuration for concurrent read/write access. Create message_store table schema with fields: id (primary key), chat_id, message_text, timestamp, status (enum: pending/sent/confirmed), retry_count, telegram_message_id. Implement atomic transaction support using database transactions for message lifecycle operations. Build crash recovery system that queries pending messages on startup and resumes processing. Create message archival system with configurable retention period (default: 30 days) using scheduled cleanup jobs. Add database connection pooling and error handling for database corruption scenarios.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create Jest test suite using in-memory SQLite databases to validate message storage, retrieval, and lifecycle transitions. Test crash recovery scenarios by simulating process interruption and verifying message restoration. Implement database corruption simulation tests and transaction rollback validation. Test concurrent access patterns and WAL mode effectiveness under load."
           },
           {
@@ -2066,7 +2066,7 @@
     ],
     "metadata": {
       "created": "2025-08-04T17:06:45.180Z",
-      "updated": "2025-08-07T17:53:24.435Z",
+      "updated": "2025-08-07T18:09:59.219Z",
       "description": "Tasks for master context"
     }
   }

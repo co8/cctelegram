@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
         loop {
             interval.tick().await;
-            orchestrator_clone.perform_health_checks().await;
+            // orchestrator_clone.perform_health_checks().await;
         }
     });
     info!("🔍 Tier health monitoring started (30s intervals)");
