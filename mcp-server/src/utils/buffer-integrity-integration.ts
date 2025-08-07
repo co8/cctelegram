@@ -139,14 +139,14 @@ export class IntegrityAwareDynamicBufferPool extends DynamicBufferPool {
  */
 export class IntegrityAwareBuffer {
   private buffer: Buffer;
-  private pool: IntegrityAwareDynamicBufferPool;
+  private integrityPool: IntegrityAwareDynamicBufferPool;
   private correlationId: string;
   private validationMetadata: ValidationMetadata | null = null;
   private isValidated = false;
 
   constructor(buffer: Buffer, pool: IntegrityAwareDynamicBufferPool, correlationId?: string) {
     this.buffer = buffer;
-    this.pool = pool;
+    this.integrityPool = pool;
     this.correlationId = correlationId || `buffer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
@@ -155,7 +155,7 @@ export class IntegrityAwareBuffer {
    */
   async getContent(): Promise<Buffer> {
     if (this.isValidated && this.validationMetadata) {
-      const validationResult = await this.pool.validateBufferIntegrity(this.buffer, this.validationMetadata);
+      const validationResult = await this.integrityPool.validateBufferIntegrity(this.buffer, this.validationMetadata);
       
       if (!validationResult.isValid) {
         throw new Error(`Buffer integrity validation failed: ${validationResult.error?.message}`);
@@ -198,7 +198,7 @@ export class IntegrityAwareBuffer {
    * Verify buffer integrity against expected metadata
    */
   async verifyIntegrity(expectedMetadata: ValidationMetadata): Promise<ValidationResult> {
-    return await this.pool.validateBufferIntegrity(this.buffer, expectedMetadata);
+    return await this.integrityPool.validateBufferIntegrity(this.buffer, expectedMetadata);
   }
 
   /**
@@ -233,7 +233,7 @@ export class IntegrityAwareBuffer {
     // Zero out buffer content before release
     this.buffer.fill(0);
     
-    this.pool.release(this.buffer);
+    this.integrityPool.release(this.buffer);
     
     secureLog('debug', 'Integrity-aware buffer released', {
       correlationId: this.correlationId,
@@ -246,14 +246,14 @@ export class IntegrityAwareBuffer {
  * Enhanced Dynamic Buffer with integrity validation
  */
 export class IntegrityAwareDynamicBuffer extends DynamicBuffer {
-  private pool: IntegrityAwareDynamicBufferPool;
+  private integrityPool: IntegrityAwareDynamicBufferPool;
   private correlationId: string;
   private validationMetadata: ValidationMetadata | null = null;
   private writeCount = 0;
 
   constructor(initialSize: number, pool: IntegrityAwareDynamicBufferPool, correlationId?: string) {
     super(initialSize, pool as any); // Cast to base type for compatibility
-    this.pool = pool;
+    this.integrityPool = pool;
     this.correlationId = correlationId || `dynamic-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
@@ -296,7 +296,7 @@ export class IntegrityAwareDynamicBuffer extends DynamicBuffer {
     
     // Validate integrity if we have validation metadata
     if (this.validationMetadata) {
-      const validationResult = await this.pool.validateBufferIntegrity(content, this.validationMetadata);
+      const validationResult = await this.integrityPool.validateBufferIntegrity(content, this.validationMetadata);
       
       if (!validationResult.isValid) {
         secureLog('error', 'Dynamic buffer integrity validation failed on read', {
@@ -321,7 +321,7 @@ export class IntegrityAwareDynamicBuffer extends DynamicBuffer {
     
     // Validate if we have metadata
     if (this.validationMetadata) {
-      const validationResult = await this.pool.validateBufferIntegrity(content, this.validationMetadata);
+      const validationResult = await this.integrityPool.validateBufferIntegrity(content, this.validationMetadata);
       
       if (!validationResult.isValid) {
         throw new Error(`Buffer integrity validation failed: ${validationResult.error?.message}`);

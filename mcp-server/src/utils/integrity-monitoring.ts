@@ -293,18 +293,12 @@ export class IntegrityMonitoringSystem extends EventEmitter {
         ];
         break;
         
-      case 'chain_validation':
+      case 'system_health':
         severity = IntegritySeverity.Medium;
         recoveryActions = [
           'Verify processing pipeline integrity',
           'Check for race conditions',
-          'Review chain validation logic'
-        ];
-        break;
-        
-      case 'processing':
-        severity = IntegritySeverity.Low;
-        recoveryActions = [
+          'Review chain validation logic',
           'Check system resources',
           'Review validation configuration',
           'Monitor for recurring patterns'

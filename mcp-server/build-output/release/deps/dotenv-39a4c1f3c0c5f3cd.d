@@ -1,0 +1,11 @@
+/Users/enrique/Documents/cctelegram/mcp-server/./build-output/release/deps/dotenv-39a4c1f3c0c5f3cd.d: /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/lib.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/parse.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/errors.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/iter.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/find.rs
+
+/Users/enrique/Documents/cctelegram/mcp-server/./build-output/release/deps/libdotenv-39a4c1f3c0c5f3cd.rlib: /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/lib.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/parse.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/errors.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/iter.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/find.rs
+
+/Users/enrique/Documents/cctelegram/mcp-server/./build-output/release/deps/libdotenv-39a4c1f3c0c5f3cd.rmeta: /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/lib.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/parse.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/errors.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/iter.rs /Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/find.rs
+
+/Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/lib.rs:
+/Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/parse.rs:
+/Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/errors.rs:
+/Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/iter.rs:
+/Users/enrique/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/dotenv-0.15.0/src/find.rs:

@@ -36,7 +36,7 @@ export interface ValidationResult {
 }
 
 export interface IntegrityError {
-  type: 'corruption' | 'truncation' | 'chain_validation' | 'processing';
+  type: 'corruption' | 'truncation' | 'system_health';
   checkpoint: ValidationCheckpoint;
   expectedHash?: string;
   actualHash?: string;
@@ -313,10 +313,8 @@ export class InstrumentedIntegrityValidator implements IIntegrityValidator {
           case 'truncation':
             this.metrics.truncationErrors++;
             break;
-          case 'chain_validation':
+          case 'system_health':
             this.metrics.chainValidationErrors++;
-            break;
-          case 'processing':
             this.metrics.processingErrors++;
             break;
         }
@@ -339,7 +337,7 @@ export class InstrumentedIntegrityValidator implements IIntegrityValidator {
       this.recordValidation({
         isValid: false,
         error: {
-          type: 'processing',
+          type: 'system_health',
           checkpoint,
           message: error instanceof Error ? error.message : 'Validation processing failed',
           severity: IntegritySeverity.Medium
@@ -386,7 +384,7 @@ export class InstrumentedIntegrityValidator implements IIntegrityValidator {
       this.recordValidation({
         isValid: false,
         error: {
-          type: 'chain_validation',
+          type: 'system_health',
           checkpoint: toCheckpoint,
           message: error instanceof Error ? error.message : 'Chain validation processing failed',
           severity: IntegritySeverity.Medium

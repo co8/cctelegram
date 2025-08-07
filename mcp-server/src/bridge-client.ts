@@ -263,7 +263,7 @@ export class CCTelegramBridgeClient {
     }, this.bufferPool);
     
     secureLog('info', 'Starting large message stream processing', {
-      max_message_size: processor.options?.maxMessageSize,
+      max_message_size: 10 * 1024 * 1024,
       buffer_pool_stats: this.bufferPool.getStats()
     });
     

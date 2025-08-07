@@ -4,7 +4,9 @@
  * Enhanced with dynamic buffer management for Task 39.3
  */
 
-import * as fs from 'fs-extra';
+import * as fs from 'fs/promises';
+import { Stats } from 'fs';
+import * as fsExtra from 'fs-extra';
 import * as path from 'path';
 import { getGlobalBufferPool, DynamicBufferPool } from './dynamic-buffer-manager.js';
 
@@ -13,7 +15,7 @@ import { getGlobalBufferPool, DynamicBufferPool } from './dynamic-buffer-manager
  */
 interface DirectoryCache {
   files: string[];
-  stats: Map<string, fs.Stats>;
+  stats: Map<string, Stats>;
   timestamp: number;
   ttl: number;
 }
@@ -51,7 +53,7 @@ export class FileSystemOptimizer {
   async getCachedDirectoryListing(
     directory: string,
     ttl: number = this.defaultCacheTtl
-  ): Promise<{ files: string[]; stats: Map<string, fs.Stats> }> {
+  ): Promise<{ files: string[]; stats: Map<string, Stats> }> {
     const cacheKey = path.resolve(directory);
     const now = Date.now();
     
@@ -64,13 +66,13 @@ export class FileSystemOptimizer {
     try {
       // Read directory and get stats for all files
       const files = await fs.readdir(directory);
-      const stats = new Map<string, fs.Stats>();
+      const stats = new Map<string, Stats>();
       
       // Batch stat operations
-      const statPromises = files.map(async (file): Promise<{ file: string; stat: fs.Stats | null; error?: unknown }> => {
+      const statPromises = files.map(async (file): Promise<{ file: string; stat: Stats | null; error?: unknown }> => {
         try {
           const filePath = path.join(directory, file);
-          const stat = await fs.stat(filePath);
+          const stat = await fsExtra.stat(filePath);
           return { file, stat };
         } catch (error) {
           return { file, stat: null, error };
@@ -109,27 +111,27 @@ export class FileSystemOptimizer {
     const readPromises = filePaths.map(async (filePath): Promise<BatchReadResult<T>> => {
       try {
         // Check file size first to determine buffer strategy
-        const stat = await fs.stat(filePath);
+        const stat = await fsExtra.stat(filePath);
         const fileSize = stat.size;
         
         if (fileSize > 64 * 1024) { // 64KB threshold for large files
           // Use dynamic buffer for large files
           const buffer = this.bufferPool.acquire(fileSize);
-          const fd = await fs.open(filePath, 'r');
+          const fileHandle = await fs.open(filePath, 'r');
           
           try {
-            const result = await fd.read(buffer, 0, fileSize, 0);
-            const jsonString = buffer.toString('utf8', 0, result.bytesRead);
+            const { bytesRead } = await fileHandle.read(buffer, 0, fileSize, 0);
+            const jsonString = buffer.toString('utf8', 0, bytesRead);
             const data = JSON.parse(jsonString);
             
             return { success: true, data, filePath };
           } finally {
-            await fd.close();
+            await fileHandle.close();
             this.bufferPool.release(buffer);
           }
         } else {
           // Use standard method for small files
-          const data = await fs.readJSON(filePath);
+          const data = await fsExtra.readJSON(filePath);
           return { success: true, data, filePath };
         }
       } catch (error) {
@@ -161,7 +163,7 @@ export class FileSystemOptimizer {
         this.bufferPool.release(buffer);
       }
     } else {
-      await fs.writeJSON(filePath, data, options);
+      await fsExtra.writeJSON(filePath, data, options);
     }
   }
 
@@ -171,7 +173,7 @@ export class FileSystemOptimizer {
   async batchPathExists(filePaths: string[]): Promise<Map<string, boolean>> {
     const existsPromises = filePaths.map(async (filePath) => {
       try {
-        const exists = await fs.pathExists(filePath);
+        const exists = await fsExtra.pathExists(filePath);
         return { filePath, exists };
       } catch (error) {
         return { filePath, exists: false };
@@ -200,12 +202,12 @@ export class FileSystemOptimizer {
       maxSize?: number; // bytes
     } = {},
     cacheTtl?: number
-  ): Promise<{ files: string[]; fileStats: Map<string, fs.Stats> }> {
+  ): Promise<{ files: string[]; fileStats: Map<string, Stats> }> {
     const { files, stats } = await this.getCachedDirectoryListing(directory, cacheTtl);
     const now = Date.now();
     
     const filteredFiles: string[] = [];
-    const fileStats = new Map<string, fs.Stats>();
+    const fileStats = new Map<string, Stats>();
 
     for (const file of files) {
       const stat = stats.get(file);
@@ -241,7 +243,7 @@ export class FileSystemOptimizer {
       sinceMinutes?: number;
       sortByTime?: boolean;
     } = {}
-  ): Promise<{ responses: any[]; fileStats: Map<string, fs.Stats> }> {
+  ): Promise<{ responses: any[]; fileStats: Map<string, Stats> }> {
     const filter: any = { extensions: ['.json'] };
     
     if (options.sinceMinutes) {
@@ -333,7 +335,7 @@ export class FileSystemOptimizer {
    */
   async batchFileCleanup(
     directory: string,
-    predicate: (file: string, stats: fs.Stats) => boolean,
+    predicate: (file: string, stats: Stats) => boolean,
     maxConcurrent: number = 10
   ): Promise<{ deleted: string[]; errors: Array<{ file: string; error: Error }> }> {
     const { files, stats } = await this.getCachedDirectoryListing(directory);
@@ -356,7 +358,7 @@ export class FileSystemOptimizer {
       const deletePromises = batch.map(async (file) => {
         const filePath = path.join(directory, file);
         try {
-          await fs.remove(filePath);
+          await fsExtra.remove(filePath);
           return { success: true, file };
         } catch (error) {
           return { 
