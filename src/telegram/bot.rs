@@ -20,6 +20,7 @@ use crate::utils::errors::{BridgeError};
 pub enum BridgeMode {
     Native,  // Default mode - at computer, use telegram for notifications only
     Nomad,   // Remote mode - use telegram for bidirectional communication
+    Muted,   // Muted mode - disable all Telegram messaging
 }
 
 impl Default for BridgeMode {
@@ -33,6 +34,7 @@ impl std::fmt::Display for BridgeMode {
         match self {
             BridgeMode::Native => write!(f, "native"),
             BridgeMode::Nomad => write!(f, "nomad"),
+            BridgeMode::Muted => write!(f, "muted"),
         }
     }
 }
@@ -194,6 +196,14 @@ impl TelegramBot {
                 • Commands: ✅ Available via Telegram\n\
                 • Responses: 💬 Full interactive mode\n\n\
                 💡 Use `/cct:native` when you return to your computer.".to_string()
+            }
+            BridgeMode::Muted => {
+                "🔇 *Mode: Muted*\n\n\
+                Silent mode activated! All Telegram messaging has been disabled.\n\n\
+                • Notifications: 🚫 Disabled\n\
+                • Commands: 🚫 Use Claude Code directly\n\
+                • Responses: 🚫 All messaging stopped\n\n\
+                💡 Use `/cct:native` or `/cct:nomad` to re-enable messaging.".to_string()
             }
         };
         
@@ -521,10 +531,42 @@ impl TelegramBot {
                         }
                     }
                 }
+                "/cct:mute" => {
+                    info!("Processing mute mode switch from MCP event");
+                    match self.set_bridge_mode(BridgeMode::Muted).await {
+                        Ok(response_message) => {
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &response_message, ParseMode::MarkdownV2
+                            ).await {
+                                error!("Failed to send mute mode switch response: {}", e);
+                            }
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            error!("Failed to set mute mode from MCP: {}", e);
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            let error_message = format!("❌ Failed to switch to mute mode: {}", e);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &error_message, ParseMode::Html
+                            ).await {
+                                error!("Failed to send mute mode error message: {}", e);
+                            }
+                            return Err(e);
+                        }
+                    }
+                }
                 _ => {
                     // Not a mode switch command, fall through to regular notification
                 }
             }
+        }
+
+        // Check if we're in muted mode for regular notifications
+        let current_mode = self.get_bridge_mode();
+        if current_mode == BridgeMode::Muted {
+            info!("Skipping notification to user {} - bridge is in muted mode", user_id);
+            return Ok(());
         }
 
         // Regular generic notification handling
@@ -687,6 +729,22 @@ impl TelegramBot {
                                 }
                             }
                         }
+                        "/cct:mute" | "/cct:mute@CCTelegramBot" => {
+                            match self.set_bridge_mode(BridgeMode::Muted).await {
+                                Ok(message) => {
+                                    bot.send_message(msg.chat.id, message)
+                                        .parse_mode(ParseMode::MarkdownV2)
+                                        .await?;
+                                }
+                                Err(e) => {
+                                    error!("Failed to set mute mode: {}", e);
+                                    bot.send_message(
+                                        msg.chat.id, 
+                                        format!("❌ Failed to switch to mute mode: {}", e)
+                                    ).await?;
+                                }
+                            }
+                        }
                         "/help" => {
                             let help_message = self.get_help_message().await;
                             bot.send_message(msg.chat.id, help_message)
@@ -724,6 +782,10 @@ impl TelegramBot {
                                     bot.send_message(msg.chat.id, response)
                                         .parse_mode(ParseMode::MarkdownV2)
                                         .await?;
+                                }
+                                BridgeMode::Muted => {
+                                    // Muted mode: no response at all, completely silent
+                                    info!("Received message in muted mode - ignoring silently: {}", text);
                                 }
                             }
                         }
@@ -1321,6 +1383,13 @@ impl TelegramBot {
     }
 
     pub async fn send_startup_message(&self, user_id: i64) -> Result<()> {
+        // Check if we're in muted mode
+        let current_mode = self.get_bridge_mode();
+        if current_mode == BridgeMode::Muted {
+            info!("Skipping startup message to user {} - bridge is in muted mode", user_id);
+            return Ok(());
+        }
+        
         let utc_now = Utc::now();
         let local_time = self.timezone.from_utc_datetime(&utc_now.naive_utc());
         let timestamp = Self::escape_markdown_v2(&local_time.format("%d/%b/%y %H:%M:%S").to_string());
@@ -1557,11 +1626,13 @@ impl TelegramBot {
         let mode_icon = match current_mode {
             BridgeMode::Native => "🏠",
             BridgeMode::Nomad => "📱",
+            BridgeMode::Muted => "🔇",
         };
         
         help_parts.push(format!("🔄 *Bridge Mode:* {} {}", mode_icon, current_mode));
         help_parts.push("• `/cct:nomad` \\- Switch to remote mode \\(full Telegram interaction\\)".to_string());
         help_parts.push("• `/cct:native` \\- Switch to native mode \\(minimal responses\\)".to_string());
+        help_parts.push("• `/cct:mute` \\- Switch to muted mode \\(disable all messaging\\)".to_string());
         help_parts.push("".to_string());
         
         help_parts.push("✅ *What CCTelegram Can Do:*".to_string());

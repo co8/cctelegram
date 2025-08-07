@@ -397,6 +397,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           type: 'object',
           properties: {}
         }
+      },
+      {
+        name: 'switch_to_mute_mode', 
+        description: 'Switch CCTelegram bridge to mute mode to disable all Telegram messaging',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
       }
     ]
   };
@@ -950,6 +958,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'switch_to_native_mode': {
         return await withSecurity(async () => {
           const result = await client.switchToNativeMode();
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  mode: result.mode
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'switch_to_mute_mode': {
+        return await withSecurity(async () => {
+          const result = await client.switchToMuteMode();
           
           return {
             content: [

@@ -1729,4 +1729,47 @@ export class CCTelegramBridgeClient {
       };
     }
   }
+
+  async switchToMuteMode(): Promise<{ success: boolean; message: string; mode: string }> {
+    try {
+      const event: CCTelegramEvent = {
+        type: 'info_notification',
+        source: 'claude-code',
+        timestamp: new Date().toISOString(),
+        task_id: uuidv4(),
+        title: 'Mode Switch Request',
+        description: '/cct:mute',
+        data: { 
+          command: '/cct:mute',
+          requested_mode: 'muted'
+        }
+      };
+
+      const result = await this.sendEvent(event);
+      
+      if (result.success) {
+        secureLog('info', 'Mute mode switch requested via bridge', {
+          event_id: result.event_id
+        });
+        
+        return {
+          success: true,
+          message: '🔇 Switched to mute mode! All Telegram messaging has been disabled.',
+          mode: 'muted'
+        };
+      } else {
+        throw new Error('Failed to send mute mode switch command to bridge');
+      }
+    } catch (error) {
+      secureLog('error', 'Failed to switch to mute mode', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      return {
+        success: false,
+        message: `Failed to switch to mute mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        mode: 'unknown'
+      };
+    }
+  }
 }

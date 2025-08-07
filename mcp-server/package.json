@@ -130,7 +130,9 @@
     "docs:quality:ci": "cd docs && npm run quality:check:ci",
     "docs:metrics": "cd docs && npm run metrics:generate",
     "release": "semantic-release",
-    "release:dry": "semantic-release --dry-run"
+    "release:dry": "semantic-release --dry-run",
+    "postinstall": "node scripts/install-claude-commands.cjs || true",
+    "install:commands": "node scripts/install-claude-commands.cjs"
   },
   "keywords": [
     "mcp",
