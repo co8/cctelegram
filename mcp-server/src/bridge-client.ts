@@ -1637,4 +1637,96 @@ export class CCTelegramBridgeClient {
 
     return filteredTasks;
   }
+
+  /**
+   * Switch bridge to nomad mode (remote mode)
+   */
+  async switchToNomadMode(): Promise<{ success: boolean; message: string; mode: string }> {
+    try {
+      const event: CCTelegramEvent = {
+        type: 'info_notification',
+        source: 'claude-code',
+        timestamp: new Date().toISOString(),
+        task_id: uuidv4(),
+        title: 'Mode Switch Request',
+        description: '/cct:nomad',
+        data: { 
+          command: '/cct:nomad',
+          requested_mode: 'nomad'
+        }
+      };
+
+      const result = await this.sendEvent(event);
+      
+      if (result.success) {
+        secureLog('info', 'Nomad mode switch requested via bridge', {
+          event_id: result.event_id
+        });
+        
+        return {
+          success: true,
+          message: '📱 Switched to nomad mode! CCTelegram will now provide full bidirectional communication via Telegram.',
+          mode: 'nomad'
+        };
+      } else {
+        throw new Error('Failed to send nomad mode switch command to bridge');
+      }
+    } catch (error) {
+      secureLog('error', 'Failed to switch to nomad mode', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      return {
+        success: false,
+        message: `Failed to switch to nomad mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        mode: 'unknown'
+      };
+    }
+  }
+
+  /**
+   * Switch bridge to native mode (local mode)
+   */
+  async switchToNativeMode(): Promise<{ success: boolean; message: string; mode: string }> {
+    try {
+      const event: CCTelegramEvent = {
+        type: 'info_notification',
+        source: 'claude-code',
+        timestamp: new Date().toISOString(),
+        task_id: uuidv4(),
+        title: 'Mode Switch Request',
+        description: '/cct:native',
+        data: { 
+          command: '/cct:native',
+          requested_mode: 'native'
+        }
+      };
+
+      const result = await this.sendEvent(event);
+      
+      if (result.success) {
+        secureLog('info', 'Native mode switch requested via bridge', {
+          event_id: result.event_id
+        });
+        
+        return {
+          success: true,
+          message: '🏠 Switched to native mode! CCTelegram will now use minimal Telegram responses for local development.',
+          mode: 'native'
+        };
+      } else {
+        throw new Error('Failed to send native mode switch command to bridge');
+      }
+    } catch (error) {
+      secureLog('error', 'Failed to switch to native mode', {
+        error_message: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      return {
+        success: false,
+        message: `Failed to switch to native mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        mode: 'unknown'
+      };
+    }
+  }
 }

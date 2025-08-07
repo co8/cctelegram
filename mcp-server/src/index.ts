@@ -381,6 +381,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: 'switch_to_nomad_mode',
+        description: 'Switch CCTelegram bridge to nomad mode for remote work with full bidirectional Telegram communication',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
+      },
+      {
+        name: 'switch_to_native_mode', 
+        description: 'Switch CCTelegram bridge to native mode for local development with minimal Telegram responses',
+        inputSchema: {
+          type: 'object',
+          properties: {}
+        }
       }
     ]
   };
@@ -906,6 +922,50 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           clientId: securityContext.clientId,
           data: args,
           schemaKey: 'todo'
+        });
+      }
+
+      case 'switch_to_nomad_mode': {
+        return await withSecurity(async () => {
+          const result = await client.switchToNomadMode();
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  mode: result.mode
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
+        });
+      }
+
+      case 'switch_to_native_mode': {
+        return await withSecurity(async () => {
+          const result = await client.switchToNativeMode();
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  mode: result.mode
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId
         });
       }
 

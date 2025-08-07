@@ -1,0 +1,12 @@
+{
+  "commands": {
+    "/cct:nomad": {
+      "description": "Switch CCTelegram to nomad mode (full remote Telegram interaction)", 
+      "action": "mcp__cctelegram__switch_to_nomad_mode"
+    },
+    "/cct:native": {
+      "description": "Switch CCTelegram to native mode (minimal Telegram responses)",
+      "action": "mcp__cctelegram__switch_to_native_mode"
+    }
+  }
+}

@@ -468,6 +468,66 @@ impl TelegramBot {
     }
 
     async fn send_generic_notification(&self, user_id: i64, event: &Event) -> Result<()> {
+        // Check if this is a mode switch command event
+        if let Some(command) = event.data.command.as_ref() {
+            match command.as_str() {
+                "/cct:nomad" => {
+                    info!("Processing nomad mode switch from MCP event");
+                    match self.set_bridge_mode(BridgeMode::Nomad).await {
+                        Ok(response_message) => {
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &response_message, ParseMode::MarkdownV2
+                            ).await {
+                                error!("Failed to send nomad mode switch response: {}", e);
+                            }
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            error!("Failed to set nomad mode from MCP: {}", e);
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            let error_message = format!("❌ Failed to switch to nomad mode: {}", e);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &error_message, ParseMode::Html
+                            ).await {
+                                error!("Failed to send nomad mode error message: {}", e);
+                            }
+                            return Err(e);
+                        }
+                    }
+                }
+                "/cct:native" => {
+                    info!("Processing native mode switch from MCP event");
+                    match self.set_bridge_mode(BridgeMode::Native).await {
+                        Ok(response_message) => {
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &response_message, ParseMode::MarkdownV2
+                            ).await {
+                                error!("Failed to send native mode switch response: {}", e);
+                            }
+                            return Ok(());
+                        }
+                        Err(e) => {
+                            error!("Failed to set native mode from MCP: {}", e);
+                            let chat_id = teloxide::types::ChatId(user_id);
+                            let error_message = format!("❌ Failed to switch to native mode: {}", e);
+                            if let Err(e) = self.send_message_with_parse_mode_and_retry(
+                                chat_id, &error_message, ParseMode::Html
+                            ).await {
+                                error!("Failed to send native mode error message: {}", e);
+                            }
+                            return Err(e);
+                        }
+                    }
+                }
+                _ => {
+                    // Not a mode switch command, fall through to regular notification
+                }
+            }
+        }
+
+        // Regular generic notification handling
         let message = self.formatter.format_generic_message(event);
         let chat_id = teloxide::types::ChatId(user_id);
 
