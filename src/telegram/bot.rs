@@ -2,7 +2,7 @@ use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery, ReactionType, ParseMode};
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use anyhow::Result;
 use tracing::{info, warn, error};
 use chrono::{Utc, TimeZone};
@@ -16,6 +16,27 @@ use super::rate_limiter::{RateLimiter, RateLimiterConfig};
 use super::retry_handler::{RetryHandler, RetryConfig, CircuitBreakerConfig};
 use crate::utils::errors::{BridgeError};
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum BridgeMode {
+    Native,  // Default mode - at computer, use telegram for notifications only
+    Nomad,   // Remote mode - use telegram for bidirectional communication
+}
+
+impl Default for BridgeMode {
+    fn default() -> Self {
+        BridgeMode::Native
+    }
+}
+
+impl std::fmt::Display for BridgeMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BridgeMode::Native => write!(f, "native"),
+            BridgeMode::Nomad => write!(f, "nomad"),
+        }
+    }
+}
+
 pub struct TelegramBot {
     bot: Bot,
     allowed_users: HashSet<i64>,
@@ -25,6 +46,8 @@ pub struct TelegramBot {
     mcp_integration: Option<Arc<McpIntegration>>,
     rate_limiter: Option<Arc<RateLimiter>>,
     retry_handler: Arc<RetryHandler>,
+    bridge_mode: Arc<RwLock<BridgeMode>>,
+    mode_config_path: PathBuf,
 }
 
 #[derive(serde::Serialize)]
@@ -78,6 +101,9 @@ impl TelegramBot {
     }
 
     pub fn new(token: String, allowed_users: Vec<i64>, responses_dir: PathBuf, timezone: Tz) -> Self {
+        let mode_config_path = responses_dir.join("bridge_mode.json");
+        let bridge_mode = Self::load_mode_from_file(&mode_config_path).unwrap_or_default();
+        
         Self {
             bot: Bot::new(token),
             allowed_users: allowed_users.into_iter().collect(),
@@ -87,10 +113,15 @@ impl TelegramBot {
             mcp_integration: None, // Initialize without MCP integration by default
             rate_limiter: None, // Initialize without rate limiter by default
             retry_handler: Arc::new(RetryHandler::new()),
+            bridge_mode: Arc::new(RwLock::new(bridge_mode)),
+            mode_config_path,
         }
     }
 
     pub fn new_with_style(token: String, allowed_users: Vec<i64>, responses_dir: PathBuf, timezone: Tz, message_style: MessageStyle) -> Self {
+        let mode_config_path = responses_dir.join("bridge_mode.json");
+        let bridge_mode = Self::load_mode_from_file(&mode_config_path).unwrap_or_default();
+        
         Self {
             bot: Bot::new(token),
             allowed_users: allowed_users.into_iter().collect(),
@@ -100,7 +131,79 @@ impl TelegramBot {
             mcp_integration: None, // Initialize without MCP integration by default
             rate_limiter: None, // Initialize without rate limiter by default
             retry_handler: Arc::new(RetryHandler::new()),
+            bridge_mode: Arc::new(RwLock::new(bridge_mode)),
+            mode_config_path,
         }
+    }
+
+    /// Load bridge mode from config file
+    fn load_mode_from_file(path: &PathBuf) -> Result<BridgeMode> {
+        let contents = std::fs::read_to_string(path)?;
+        let mode: BridgeMode = serde_json::from_str(&contents)?;
+        Ok(mode)
+    }
+
+    /// Save bridge mode to config file
+    async fn save_mode_to_file(&self) -> Result<()> {
+        // Ensure parent directory exists
+        if let Some(parent) = self.mode_config_path.parent() {
+            fs::create_dir_all(parent).await?;
+        }
+        
+        let bridge_mode = self.bridge_mode.read().unwrap().clone();
+        let json_content = serde_json::to_string_pretty(&bridge_mode)?;
+        fs::write(&self.mode_config_path, json_content).await?;
+        info!("Bridge mode saved to: {}", self.mode_config_path.display());
+        Ok(())
+    }
+
+    /// Set the bridge mode and persist it
+    pub async fn set_bridge_mode(&self, mode: BridgeMode) -> Result<String> {
+        let old_mode = {
+            let current_mode = self.bridge_mode.read().unwrap();
+            current_mode.clone()
+        };
+        
+        // Update the mode
+        {
+            let mut bridge_mode = self.bridge_mode.write().unwrap();
+            *bridge_mode = mode.clone();
+        }
+        
+        // Persist the new mode
+        if let Err(e) = self.save_mode_to_file().await {
+            // Rollback on error
+            let mut bridge_mode = self.bridge_mode.write().unwrap();
+            *bridge_mode = old_mode;
+            return Err(e);
+        }
+
+        let message = match mode {
+            BridgeMode::Native => {
+                "🏠 *Mode: Native*\n\n\
+                You're back at your computer! Claude and CCTelegram will now use minimal Telegram responses.\n\n\
+                • Notifications: ✅ Sent to Telegram\n\
+                • Commands: 🚫 Use Claude Code directly\n\
+                • Responses: ⚡ Minimal reactions only\n\n\
+                💡 Use `/cct:nomad` when you're remote again.".to_string()
+            }
+            BridgeMode::Nomad => {
+                "📱 *Mode: Nomad*\n\n\
+                Remote mode activated! Claude and CCTelegram will provide full bidirectional communication via Telegram.\n\n\
+                • Notifications: ✅ Sent to Telegram\n\
+                • Commands: ✅ Available via Telegram\n\
+                • Responses: 💬 Full interactive mode\n\n\
+                💡 Use `/cct:native` when you return to your computer.".to_string()
+            }
+        };
+        
+        info!("Bridge mode changed from {} to {}", old_mode, mode);
+        Ok(message)
+    }
+
+    /// Get the current bridge mode
+    pub fn get_bridge_mode(&self) -> BridgeMode {
+        self.bridge_mode.read().unwrap().clone()
     }
 
     pub fn is_user_allowed(&self, user_id: i64) -> bool {
@@ -492,6 +595,38 @@ impl TelegramBot {
                                 .parse_mode(ParseMode::MarkdownV2)
                                 .await?;
                         }
+                        "/cct:nomad" | "/cct:nomad@CCTelegramBot" => {
+                            match self.set_bridge_mode(BridgeMode::Nomad).await {
+                                Ok(message) => {
+                                    bot.send_message(msg.chat.id, message)
+                                        .parse_mode(ParseMode::MarkdownV2)
+                                        .await?;
+                                }
+                                Err(e) => {
+                                    error!("Failed to set nomad mode: {}", e);
+                                    bot.send_message(
+                                        msg.chat.id, 
+                                        format!("❌ Failed to switch to nomad mode: {}", e)
+                                    ).await?;
+                                }
+                            }
+                        }
+                        "/cct:native" | "/cct:native@CCTelegramBot" => {
+                            match self.set_bridge_mode(BridgeMode::Native).await {
+                                Ok(message) => {
+                                    bot.send_message(msg.chat.id, message)
+                                        .parse_mode(ParseMode::MarkdownV2)
+                                        .await?;
+                                }
+                                Err(e) => {
+                                    error!("Failed to set native mode: {}", e);
+                                    bot.send_message(
+                                        msg.chat.id, 
+                                        format!("❌ Failed to switch to native mode: {}", e)
+                                    ).await?;
+                                }
+                            }
+                        }
                         "/help" => {
                             let help_message = self.get_help_message().await;
                             bot.send_message(msg.chat.id, help_message)
@@ -499,13 +634,37 @@ impl TelegramBot {
                                 .await?;
                         }
                         _ => {
-                            // For regular messages, add lightning emoji reaction to acknowledge receipt
-                            if let Err(e) = bot.set_message_reaction(msg.chat.id, msg.id)
-                                .reaction(vec![ReactionType::Emoji { emoji: "⚡".to_string() }])
-                                .await {
-                                warn!("Could not add emoji reaction, falling back to minimal message: {}", e);
-                                // Fallback: send a minimal acknowledgment message if reaction fails
-                                bot.send_message(msg.chat.id, "⚡").await?;
+                            // Handle regular messages based on current bridge mode
+                            let bridge_mode = self.get_bridge_mode();
+                            match bridge_mode {
+                                BridgeMode::Native => {
+                                    // Native mode: minimal response with emoji reaction
+                                    if let Err(e) = bot.set_message_reaction(msg.chat.id, msg.id)
+                                        .reaction(vec![ReactionType::Emoji { emoji: "⚡".to_string() }])
+                                        .await {
+                                        warn!("Could not add emoji reaction, falling back to minimal message: {}", e);
+                                        // Fallback: send a minimal acknowledgment message if reaction fails
+                                        bot.send_message(msg.chat.id, "⚡").await?;
+                                    }
+                                }
+                                BridgeMode::Nomad => {
+                                    // Nomad mode: full interactive response
+                                    let response = format!(
+                                        "📱 *Message Received*\n\n\
+                                        💬 \"{}\"\n\n\
+                                        🤖 I'm in nomad mode and ready for full interaction!\n\n\
+                                        💡 *Available commands:*\n\
+                                        • `/bridge` \\- Bridge status\n\
+                                        • `/tasks` \\- View tasks\n\
+                                        • `/todo` \\- View todos\n\
+                                        • `/help` \\- Show all commands\n\
+                                        • `/cct:native` \\- Switch back to native mode",
+                                        Self::escape_markdown_v2(text)
+                                    );
+                                    bot.send_message(msg.chat.id, response)
+                                        .parse_mode(ParseMode::MarkdownV2)
+                                        .await?;
+                                }
                             }
                         }
                     }
@@ -1331,6 +1490,18 @@ impl TelegramBot {
         help_parts.push("• `/bridge` \\- Shows bridge system status".to_string());
         help_parts.push("• `/help` \\- Shows all available commands".to_string());
         help_parts.push("• `/restart` \\- Restart Telegram app".to_string());
+        help_parts.push("".to_string());
+        
+        // Add current bridge mode and mode switching commands
+        let current_mode = self.get_bridge_mode();
+        let mode_icon = match current_mode {
+            BridgeMode::Native => "🏠",
+            BridgeMode::Nomad => "📱",
+        };
+        
+        help_parts.push(format!("🔄 *Bridge Mode:* {} {}", mode_icon, current_mode));
+        help_parts.push("• `/cct:nomad` \\- Switch to remote mode \\(full Telegram interaction\\)".to_string());
+        help_parts.push("• `/cct:native` \\- Switch to native mode \\(minimal responses\\)".to_string());
         help_parts.push("".to_string());
         
         help_parts.push("✅ *What CCTelegram Can Do:*".to_string());
