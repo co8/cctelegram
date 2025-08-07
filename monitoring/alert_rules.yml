@@ -112,3 +112,165 @@ groups:
         annotations:
           summary: "Container has been restarted"
           description: "Container {{ $labels.name }} has restarted {{ $value }} times in the last hour"
+
+  # Enhanced Tier Orchestrator Alerts
+  - name: tier-orchestrator-alerts
+    rules:
+      # Tier error rate alerts
+      - alert: TierHighErrorRate
+        expr: sum by (tier) (rate(cctelegram_tier_failure_total[5m])) / sum by (tier) (rate(cctelegram_tier_requests_total[5m])) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          component: tier-orchestrator
+        annotations:
+          summary: "High error rate in tier {{ $labels.tier }}"
+          description: "Tier {{ $labels.tier }} has an error rate of {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/tier-error-rate"
+
+      # Circuit breaker open alert
+      - alert: CircuitBreakerOpen
+        expr: cctelegram_tier_circuit_breaker_state == 2
+        for: 1m
+        labels:
+          severity: high
+          component: tier-orchestrator
+        annotations:
+          summary: "Circuit breaker open for tier {{ $labels.tier }}"
+          description: "Circuit breaker for tier {{ $labels.tier }} has been open for more than 1 minute"
+          runbook_url: "https://docs.cctelegram.local/runbooks/circuit-breaker"
+
+      # Tier health degradation
+      - alert: TierHealthDegraded
+        expr: cctelegram_tier_health_score < 0.7
+        for: 5m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "Tier {{ $labels.tier }} health degraded"
+          description: "Health score for tier {{ $labels.tier }} is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/tier-health"
+
+      # Bulkhead utilization too high
+      - alert: BulkheadUtilizationHigh
+        expr: cctelegram_bulkhead_utilization_ratio > 0.9
+        for: 2m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "High bulkhead utilization in tier {{ $labels.tier }}"
+          description: "Bulkhead utilization for {{ $labels.tier }}/{{ $labels.resource_type }} is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/bulkhead-utilization"
+
+      # Self-healing failure rate high
+      - alert: SelfHealingFailureRateHigh
+        expr: (1 - (sum by (tier) (rate(cctelegram_self_healing_success_total[10m])) / sum by (tier) (rate(cctelegram_self_healing_attempts_total[10m])))) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "High self-healing failure rate in tier {{ $labels.tier }}"
+          description: "Self-healing failure rate for tier {{ $labels.tier }} is {{ $value | humanizePercentage }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/self-healing"
+
+      # Priority queue depth too high
+      - alert: PriorityQueueDepthHigh
+        expr: cctelegram_priority_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "High priority queue depth"
+          description: "Priority queue depth for {{ $labels.tier }}/{{ $labels.priority }} is {{ $value }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/queue-depth"
+
+      # Critical error classification spike
+      - alert: CriticalErrorSpike
+        expr: sum by (tier) (rate(cctelegram_error_severity_distribution{severity="critical"}[5m])) > 1
+        for: 1m
+        labels:
+          severity: critical
+          component: tier-orchestrator
+        annotations:
+          summary: "Critical error spike in tier {{ $labels.tier }}"
+          description: "Critical errors in tier {{ $labels.tier }} at {{ $value }}/sec"
+          runbook_url: "https://docs.cctelegram.local/runbooks/critical-errors"
+
+      # Adaptive timeout anomaly
+      - alert: AdaptiveTimeoutAnomaly
+        expr: increase(cctelegram_adaptive_timeout_seconds[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "Adaptive timeout increasing rapidly for tier {{ $labels.tier }}"
+          description: "Adaptive timeout for tier {{ $labels.tier }} increased by {{ $value }}s in 10 minutes"
+          runbook_url: "https://docs.cctelegram.local/runbooks/adaptive-timeout"
+
+      # Frequent failovers
+      - alert: FrequentFailovers
+        expr: rate(cctelegram_failover_events_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: high
+          component: tier-orchestrator
+        annotations:
+          summary: "Frequent tier failovers detected"
+          description: "Failover rate is {{ $value }}/sec over the last 10 minutes"
+          runbook_url: "https://docs.cctelegram.local/runbooks/frequent-failovers"
+
+      # Selection strategy performance degradation
+      - alert: SelectionStrategyPerformanceDegraded
+        expr: histogram_quantile(0.95, sum by (strategy, le) (rate(cctelegram_tier_score_histogram_bucket{score_type="total"}[10m]))) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: tier-orchestrator
+        annotations:
+          summary: "Selection strategy {{ $labels.strategy }} performance degraded"
+          description: "95th percentile score for strategy {{ $labels.strategy }} is {{ $value }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/selection-strategy"
+
+  # Resilience Pattern Alerts
+  - name: resilience-pattern-alerts
+    rules:
+      # Recovery attempts failing consistently
+      - alert: RecoveryAttemptsFailingConsistently
+        expr: (sum by (tier, strategy) (rate(cctelegram_recovery_success_total[15m])) / sum by (tier, strategy) (rate(cctelegram_recovery_attempts_total[15m]))) < 0.3
+        for: 15m
+        labels:
+          severity: high
+          component: resilience-patterns
+        annotations:
+          summary: "Recovery attempts failing consistently for {{ $labels.tier }}/{{ $labels.strategy }}"
+          description: "Recovery success rate is {{ $value | humanizePercentage }} for tier {{ $labels.tier }} strategy {{ $labels.strategy }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/recovery-failures"
+
+      # Circuit breaker trip frequency too high
+      - alert: CircuitBreakerTripsFrequent
+        expr: rate(cctelegram_circuit_breaker_trips_total[30m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: resilience-patterns
+        annotations:
+          summary: "Frequent circuit breaker trips in tier {{ $labels.tier }}"
+          description: "Circuit breaker trips at {{ $value }}/sec for tier {{ $labels.tier }}"
+          runbook_url: "https://docs.cctelegram.local/runbooks/circuit-breaker-trips"
+
+      # Self-healing system inactive
+      - alert: SelfHealingSystemInactive
+        expr: sum(rate(cctelegram_self_healing_attempts_total[1h])) == 0 and sum(rate(cctelegram_tier_failure_total[1h])) > 0
+        for: 30m
+        labels:
+          severity: warning
+          component: resilience-patterns
+        annotations:
+          summary: "Self-healing system appears inactive"
+          description: "No self-healing attempts detected despite failures in the last hour"
+          runbook_url: "https://docs.cctelegram.local/runbooks/self-healing-inactive"

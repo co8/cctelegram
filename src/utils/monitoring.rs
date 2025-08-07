@@ -13,6 +13,9 @@ use tracing::info;
 use chrono::{DateTime, Utc};
 
 use crate::tier_orchestrator::{TierType, TierHealth, CircuitBreakerState};
+use crate::tier_orchestrator::intelligent_selection::{SelectionStrategy, MessagePriority, TierScore};
+use crate::tier_orchestrator::error_classification::{ErrorCategory, ErrorSeverity, ClassifiedError};
+//use crate::tier_orchestrator::resilience_patterns::{ResilienceMetricsCollector, BulkheadUtilization};
 use crate::utils::performance::PerformanceMonitor;
 
 /// Comprehensive tier-specific monitoring system
@@ -27,6 +30,22 @@ pub struct TierMonitor {
     pub tier_queue_depth: GaugeVec,
     pub failover_events_total: Counter,
     pub correlation_active_gauge: Gauge,
+    
+    // Enhanced tier orchestrator metrics
+    pub intelligent_selection_total: CounterVec,
+    pub selection_strategy_distribution: CounterVec,
+    pub tier_score_histogram: HistogramVec,
+    pub error_classification_total: CounterVec,
+    pub error_severity_distribution: CounterVec,
+    pub recovery_attempts_total: CounterVec,
+    pub recovery_success_total: CounterVec,
+    pub bulkhead_utilization: GaugeVec,
+    pub adaptive_timeout_current: GaugeVec,
+    pub priority_queue_depth: GaugeVec,
+    pub self_healing_attempts: CounterVec,
+    pub self_healing_success: CounterVec,
+    pub circuit_breaker_trips: CounterVec,
+    pub tier_health_score: GaugeVec,
     
     // Registry for metrics export
     metrics_registry: Registry,
@@ -177,6 +196,133 @@ impl TierMonitor {
         )?;
         registry.register(Box::new(correlation_active_gauge.clone()))?;
         
+        // Enhanced tier orchestrator metrics
+        let intelligent_selection_total = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_intelligent_selection_total",
+                "Total number of intelligent tier selections by strategy"
+            ),
+            &["strategy", "selected_tier", "message_priority"]
+        )?;
+        registry.register(Box::new(intelligent_selection_total.clone()))?;
+        
+        let selection_strategy_distribution = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_selection_strategy_distribution",
+                "Distribution of selection strategies used"
+            ),
+            &["strategy"]
+        )?;
+        registry.register(Box::new(selection_strategy_distribution.clone()))?;
+        
+        let tier_score_histogram = HistogramVec::new(
+            prometheus::HistogramOpts::new(
+                "cctelegram_tier_score_histogram",
+                "Distribution of tier scores during selection"
+            ).buckets(vec![0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]),
+            &["tier", "score_type"]
+        )?;
+        registry.register(Box::new(tier_score_histogram.clone()))?;
+        
+        let error_classification_total = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_error_classification_total",
+                "Total number of errors classified by category and tier"
+            ),
+            &["tier", "category", "operation"]
+        )?;
+        registry.register(Box::new(error_classification_total.clone()))?;
+        
+        let error_severity_distribution = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_error_severity_distribution",
+                "Distribution of error severities across tiers"
+            ),
+            &["tier", "severity"]
+        )?;
+        registry.register(Box::new(error_severity_distribution.clone()))?;
+        
+        let recovery_attempts_total = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_recovery_attempts_total",
+                "Total number of recovery attempts by tier and strategy"
+            ),
+            &["tier", "strategy", "trigger"]
+        )?;
+        registry.register(Box::new(recovery_attempts_total.clone()))?;
+        
+        let recovery_success_total = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_recovery_success_total",
+                "Total number of successful recoveries by tier and strategy"
+            ),
+            &["tier", "strategy"]
+        )?;
+        registry.register(Box::new(recovery_success_total.clone()))?;
+        
+        let bulkhead_utilization = GaugeVec::new(
+            prometheus::Opts::new(
+                "cctelegram_bulkhead_utilization_ratio",
+                "Current bulkhead utilization ratio (0.0-1.0) by tier"
+            ),
+            &["tier", "resource_type"]
+        )?;
+        registry.register(Box::new(bulkhead_utilization.clone()))?;
+        
+        let adaptive_timeout_current = GaugeVec::new(
+            prometheus::Opts::new(
+                "cctelegram_adaptive_timeout_seconds",
+                "Current adaptive timeout values by tier"
+            ),
+            &["tier"]
+        )?;
+        registry.register(Box::new(adaptive_timeout_current.clone()))?;
+        
+        let priority_queue_depth = GaugeVec::new(
+            prometheus::Opts::new(
+                "cctelegram_priority_queue_depth",
+                "Current depth of priority queues by tier and priority"
+            ),
+            &["tier", "priority"]
+        )?;
+        registry.register(Box::new(priority_queue_depth.clone()))?;
+        
+        let self_healing_attempts = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_self_healing_attempts_total",
+                "Total number of self-healing attempts by tier and type"
+            ),
+            &["tier", "healing_type", "trigger"]
+        )?;
+        registry.register(Box::new(self_healing_attempts.clone()))?;
+        
+        let self_healing_success = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_self_healing_success_total",
+                "Total number of successful self-healing actions by tier"
+            ),
+            &["tier", "healing_type"]
+        )?;
+        registry.register(Box::new(self_healing_success.clone()))?;
+        
+        let circuit_breaker_trips = CounterVec::new(
+            prometheus::Opts::new(
+                "cctelegram_circuit_breaker_trips_total",
+                "Total number of circuit breaker trips by tier and reason"
+            ),
+            &["tier", "reason"]
+        )?;
+        registry.register(Box::new(circuit_breaker_trips.clone()))?;
+        
+        let tier_health_score = GaugeVec::new(
+            prometheus::Opts::new(
+                "cctelegram_tier_health_score",
+                "Composite health score (0.0-1.0) by tier"
+            ),
+            &["tier"]
+        )?;
+        registry.register(Box::new(tier_health_score.clone()))?;
+        
         Ok(Self {
             tier_requests_total,
             tier_success_total,
@@ -186,6 +332,20 @@ impl TierMonitor {
             tier_queue_depth,
             failover_events_total,
             correlation_active_gauge,
+            intelligent_selection_total,
+            selection_strategy_distribution,
+            tier_score_histogram,
+            error_classification_total,
+            error_severity_distribution,
+            recovery_attempts_total,
+            recovery_success_total,
+            bulkhead_utilization,
+            adaptive_timeout_current,
+            priority_queue_depth,
+            self_healing_attempts,
+            self_healing_success,
+            circuit_breaker_trips,
+            tier_health_score,
             metrics_registry: registry,
             active_correlations: Arc::new(RwLock::new(HashMap::new())),
             tier_health_cache: Arc::new(RwLock::new(Vec::new())),
@@ -498,6 +658,209 @@ impl TierMonitor {
     /// Get active correlations for debugging
     pub async fn get_active_correlations(&self) -> Vec<CorrelationContext> {
         self.active_correlations.read().await.values().cloned().collect()
+    }
+    
+    /// Record intelligent tier selection metrics
+    pub fn record_tier_selection(
+        &self, 
+        strategy: SelectionStrategy,
+        selected_tier: TierType,
+        message_priority: MessagePriority,
+        tier_scores: &[TierScore]
+    ) {
+        let strategy_str = match strategy {
+            SelectionStrategy::PriorityBased => "priority_based",
+            SelectionStrategy::PerformanceWeighted => "performance_weighted",
+            SelectionStrategy::LoadBalanced => "load_balanced",
+            SelectionStrategy::Adaptive => "adaptive",
+            SelectionStrategy::CostOptimized => "cost_optimized",
+        };
+        
+        let priority_str = match message_priority {
+            MessagePriority::Critical => "critical",
+            MessagePriority::High => "high",
+            MessagePriority::Normal => "normal",
+            MessagePriority::Low => "low",
+        };
+        
+        // Record selection event
+        self.intelligent_selection_total
+            .with_label_values(&[strategy_str, selected_tier.as_str(), priority_str])
+            .inc();
+            
+        // Record strategy distribution
+        self.selection_strategy_distribution
+            .with_label_values(&[strategy_str])
+            .inc();
+        
+        // Record tier scores
+        for score in tier_scores {
+            self.tier_score_histogram
+                .with_label_values(&[score.tier_type.as_str(), "total"])
+                .observe(score.total_score);
+                
+            self.tier_score_histogram
+                .with_label_values(&[score.tier_type.as_str(), "performance"])
+                .observe(score.performance_score);
+                
+            self.tier_score_histogram
+                .with_label_values(&[score.tier_type.as_str(), "availability"])
+                .observe(score.availability_score);
+                
+            self.tier_score_histogram
+                .with_label_values(&[score.tier_type.as_str(), "load"])
+                .observe(score.load_score);
+        }
+    }
+    
+    /// Record error classification metrics
+    pub fn record_error_classification(
+        &self,
+        tier: TierType,
+        classified_error: &ClassifiedError,
+        operation: &str
+    ) {
+        let category_str = match classified_error.category {
+            ErrorCategory::Network => "network",
+            ErrorCategory::Timeout => "timeout",
+            ErrorCategory::Authentication => "authentication",
+            ErrorCategory::Authorization => "authorization",
+            ErrorCategory::RateLimit => "rate_limit",
+            ErrorCategory::Resource => "resource",
+            ErrorCategory::Validation => "validation",
+            ErrorCategory::Configuration => "configuration",
+            ErrorCategory::ExternalService => "external_service",
+            ErrorCategory::System => "system",
+            ErrorCategory::Unknown => "unknown",
+        };
+        
+        let severity_str = match classified_error.severity {
+            ErrorSeverity::Critical => "critical",
+            ErrorSeverity::High => "high",
+            ErrorSeverity::Medium => "medium",
+            ErrorSeverity::Low => "low",
+            ErrorSeverity::Info => "info",
+        };
+        
+        // Record error classification
+        self.error_classification_total
+            .with_label_values(&[tier.as_str(), category_str, operation])
+            .inc();
+            
+        // Record severity distribution
+        self.error_severity_distribution
+            .with_label_values(&[tier.as_str(), severity_str])
+            .inc();
+    }
+    
+    /// Record recovery attempt metrics
+    pub fn record_recovery_attempt(
+        &self,
+        tier: TierType,
+        strategy: &str,
+        trigger: &str
+    ) {
+        self.recovery_attempts_total
+            .with_label_values(&[tier.as_str(), strategy, trigger])
+            .inc();
+    }
+    
+    /// Record successful recovery
+    pub fn record_recovery_success(
+        &self,
+        tier: TierType,
+        strategy: &str
+    ) {
+        self.recovery_success_total
+            .with_label_values(&[tier.as_str(), strategy])
+            .inc();
+    }
+    
+    /// Update bulkhead utilization metrics
+    pub fn update_bulkhead_utilization(
+        &self,
+        tier: TierType,
+        resource_type: &str,
+        utilization_ratio: f64
+    ) {
+        self.bulkhead_utilization
+            .with_label_values(&[tier.as_str(), resource_type])
+            .set(utilization_ratio);
+    }
+    
+    /// Update adaptive timeout metrics
+    pub fn update_adaptive_timeout(
+        &self,
+        tier: TierType,
+        timeout_seconds: f64
+    ) {
+        self.adaptive_timeout_current
+            .with_label_values(&[tier.as_str()])
+            .set(timeout_seconds);
+    }
+    
+    /// Update priority queue depth metrics
+    pub fn update_priority_queue_depth(
+        &self,
+        tier: TierType,
+        priority: MessagePriority,
+        depth: usize
+    ) {
+        let priority_str = match priority {
+            MessagePriority::Critical => "critical",
+            MessagePriority::High => "high",
+            MessagePriority::Normal => "normal",
+            MessagePriority::Low => "low",
+        };
+        
+        self.priority_queue_depth
+            .with_label_values(&[tier.as_str(), priority_str])
+            .set(depth as f64);
+    }
+    
+    /// Record self-healing attempt
+    pub fn record_self_healing_attempt(
+        &self,
+        tier: TierType,
+        healing_type: &str,
+        trigger: &str
+    ) {
+        self.self_healing_attempts
+            .with_label_values(&[tier.as_str(), healing_type, trigger])
+            .inc();
+    }
+    
+    /// Record successful self-healing action
+    pub fn record_self_healing_success(
+        &self,
+        tier: TierType,
+        healing_type: &str
+    ) {
+        self.self_healing_success
+            .with_label_values(&[tier.as_str(), healing_type])
+            .inc();
+    }
+    
+    /// Record circuit breaker trip
+    pub fn record_circuit_breaker_trip(
+        &self,
+        tier: TierType,
+        reason: &str
+    ) {
+        self.circuit_breaker_trips
+            .with_label_values(&[tier.as_str(), reason])
+            .inc();
+    }
+    
+    /// Update tier health score
+    pub fn update_tier_health_score(
+        &self,
+        tier: TierType,
+        health_score: f64
+    ) {
+        self.tier_health_score
+            .with_label_values(&[tier.as_str()])
+            .set(health_score.clamp(0.0, 1.0));
     }
 }
 

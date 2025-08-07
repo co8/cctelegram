@@ -109,7 +109,7 @@ impl MonitoringServer {
                 }
             });
 
-        // Health check endpoint
+        // Health check endpoint - comprehensive
         let health_api = warp::path("health")
             .and(warp::get())
             .and_then({
@@ -154,6 +154,91 @@ impl MonitoringServer {
                         }
                     }
                 }
+            });
+
+        // Simple health check endpoint for load balancers
+        let health_simple = warp::path("healthz")
+            .and(warp::get())
+            .and_then({
+                let tier_monitor = Arc::clone(&tier_monitor);
+                move || {
+                    let tier_monitor = Arc::clone(&tier_monitor);
+                    async move {
+                        match tier_monitor.get_health_check().await {
+                            Ok(health_check) => {
+                                let status_code = match health_check.overall_status {
+                                    crate::utils::monitoring::HealthStatus::Healthy => warp::http::StatusCode::OK,
+                                    _ => warp::http::StatusCode::SERVICE_UNAVAILABLE,
+                                };
+                                Ok::<_, warp::Rejection>(warp::reply::with_status(
+                                    "OK",
+                                    status_code,
+                                ))
+                            }
+                            Err(_) => Ok::<_, warp::Rejection>(warp::reply::with_status(
+                                "ERROR",
+                                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            ))
+                        }
+                    }
+                }
+            });
+
+        // Readiness check endpoint
+        let readiness_api = warp::path("ready")
+            .and(warp::get())
+            .and_then({
+                let tier_monitor = Arc::clone(&tier_monitor);
+                move || {
+                    let tier_monitor = Arc::clone(&tier_monitor);
+                    async move {
+                        match tier_monitor.get_health_check().await {
+                            Ok(health_check) => {
+                                let is_ready = matches!(
+                                    health_check.overall_status, 
+                                    crate::utils::monitoring::HealthStatus::Healthy | 
+                                    crate::utils::monitoring::HealthStatus::Degraded
+                                );
+                                
+                                let response = json!({
+                                    "ready": is_ready,
+                                    "timestamp": health_check.timestamp,
+                                    "active_correlations": health_check.active_correlations
+                                });
+
+                                Ok::<_, warp::Rejection>(warp::reply::with_status(
+                                    warp::reply::json(&response),
+                                    if is_ready {
+                                        warp::http::StatusCode::OK
+                                    } else {
+                                        warp::http::StatusCode::SERVICE_UNAVAILABLE
+                                    },
+                                ))
+                            }
+                            Err(e) => {
+                                let error_response = json!({
+                                    "ready": false,
+                                    "error": e.to_string()
+                                });
+                                Ok::<_, warp::Rejection>(warp::reply::with_status(
+                                    warp::reply::json(&error_response),
+                                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                                ))
+                            }
+                        }
+                    }
+                }
+            });
+
+        // Liveness check endpoint  
+        let liveness_api = warp::path("live")
+            .and(warp::get())
+            .map(|| {
+                let response = json!({
+                    "alive": true,
+                    "timestamp": chrono::Utc::now()
+                });
+                warp::reply::json(&response)
             });
 
         // Message trace lookup endpoint
@@ -220,6 +305,9 @@ impl MonitoringServer {
         let routes = dashboard_api
             .or(metrics_api)
             .or(health_api)
+            .or(health_simple)
+            .or(readiness_api)
+            .or(liveness_api)
             .or(trace_api)
             .or(correlations_api)
             .or(dashboard_static)
@@ -231,7 +319,11 @@ impl MonitoringServer {
         info!("✅ Monitoring server started on http://localhost:{}", self.port);
         info!("📊 Dashboard available at: http://localhost:{}/dashboard/", self.port);
         info!("📈 Metrics available at: http://localhost:{}/metrics", self.port);
-        info!("🏥 Health check at: http://localhost:{}/health", self.port);
+        info!("🏥 Health checks available at:");
+        info!("   • Comprehensive: http://localhost:{}/health", self.port);
+        info!("   • Load balancer: http://localhost:{}/healthz", self.port);
+        info!("   • Readiness: http://localhost:{}/ready", self.port);
+        info!("   • Liveness: http://localhost:{}/live", self.port);
 
         warp::serve(routes)
             .run(([0, 0, 0, 0], self.port))

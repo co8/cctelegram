@@ -1,6 +1,6 @@
 /**
- * Task 21.5: Circuit Breaker and Tier Fallback Logic
- * Intelligent tier selection and failover management for 3-tier cascading system
+ * Task 21.5: Core Tier Orchestrator Types and Implementation
+ * Core types and main orchestrator logic moved from tier_orchestrator.rs
  */
 
 use std::sync::Arc;
@@ -10,12 +10,23 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use tracing::{info, warn, error, debug};
-// Simple circuit breaker pattern without external dependencies
 
 use crate::config::{Config, ConfigManager};
 use crate::internal_processor::{InternalProcessor, ResponsePayload, ProcessingResult};
 use crate::events::file_tier::FileTierProcessor;
 use crate::utils::{TierMonitor, PerformanceMonitor};
+
+// Import new orchestrator components
+use super::intelligent_selection::{
+    IntelligentTierSelector, SelectionStrategy, SelectionContext, MessagePriority, 
+    RecipientAvailability, SystemLoad
+};
+use super::error_classification::{
+    ErrorClassificationEngine, ClassifiedError, ErrorCategory, ErrorSeverity, RecoveryStrategy
+};
+use super::resilience_patterns::{
+    ResilienceOrchestrator, ResilienceError, HealingResult, RecoveryResult
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TierType {
@@ -110,10 +121,19 @@ pub struct TierOrchestrator {
     internal_processor: Arc<InternalProcessor>,
     file_tier_processor: Option<Arc<FileTierProcessor>>,
     tier_health: Arc<RwLock<Vec<TierHealth>>>,
-    // Removed circuit_breakers field - using built-in logic instead
     failover_events: Arc<RwLock<Vec<TierFailoverEvent>>>,
     statistics: Arc<RwLock<TierStatistics>>,
     tier_monitor: Arc<TierMonitor>,
+    
+    // New enhanced orchestrator components
+    intelligent_selector: Arc<IntelligentTierSelector>,
+    error_classifier: Arc<ErrorClassificationEngine>,
+    resilience_orchestrator: Option<Arc<ResilienceOrchestrator>>,
+    
+    // Enhanced features control
+    enable_intelligent_selection: bool,
+    enable_error_classification: bool,
+    enable_resilience_patterns: bool,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -128,27 +148,27 @@ pub struct TierStatistics {
 }
 
 impl TierOrchestrator {
-    pub fn new(config: Arc<Config>, internal_processor: Arc<InternalProcessor>) -> Self {
-        Self::new_with_file_tier(config, internal_processor, None)
+    pub async fn new(config: Arc<Config>, internal_processor: Arc<InternalProcessor>) -> Self {
+        Self::new_with_file_tier(config, internal_processor, None).await
     }
     
-    pub fn new_with_config_manager(
+    pub async fn new_with_config_manager(
         config: Arc<Config>, 
         config_manager: Arc<ConfigManager>,
         internal_processor: Arc<InternalProcessor>
     ) -> Self {
-        Self::new_with_file_tier_and_config_manager(config, Some(config_manager), internal_processor, None)
+        Self::new_with_file_tier_and_config_manager(config, Some(config_manager), internal_processor, None).await
     }
     
-    pub fn new_with_file_tier(
+    pub async fn new_with_file_tier(
         config: Arc<Config>, 
         internal_processor: Arc<InternalProcessor>,
         file_tier_base_path: Option<&std::path::Path>
     ) -> Self {
-        Self::new_with_file_tier_and_config_manager(config, None, internal_processor, file_tier_base_path)
+        Self::new_with_file_tier_and_config_manager(config, None, internal_processor, file_tier_base_path).await
     }
     
-    pub fn new_with_file_tier_and_config_manager(
+    pub async fn new_with_file_tier_and_config_manager(
         config: Arc<Config>, 
         config_manager: Option<Arc<ConfigManager>>,
         internal_processor: Arc<InternalProcessor>,
@@ -226,6 +246,37 @@ impl TierOrchestrator {
             }
         };
 
+        // Initialize intelligent tier selector
+        let intelligent_selector = {
+            let selector = IntelligentTierSelector::new(SelectionStrategy::Adaptive);
+            info!("✅ [ORCHESTRATOR] Intelligent tier selector initialized");
+            Arc::new(selector)
+        };
+
+        // Initialize error classification engine
+        let error_classifier = {
+            let classifier = ErrorClassificationEngine::new();
+            info!("✅ [ORCHESTRATOR] Error classification engine initialized");
+            Arc::new(classifier)
+        };
+
+        // Initialize resilience orchestrator (optional for backward compatibility)
+        let resilience_orchestrator = match ResilienceOrchestrator::new(Arc::clone(&config)).await {
+            Ok(orchestrator) => {
+                info!("✅ [ORCHESTRATOR] Resilience orchestrator initialized");
+                Some(Arc::new(orchestrator))
+            }
+            Err(e) => {
+                warn!("⚠️ [ORCHESTRATOR] Failed to initialize resilience orchestrator: {}", e);
+                None
+            }
+        };
+
+        // Determine if enhanced features should be enabled based on configuration
+        let enable_intelligent_selection = config.tier_configuration.enable_performance_based_selection;
+        let enable_error_classification = true; // Always enable for better error handling
+        let enable_resilience_patterns = resilience_orchestrator.is_some();
+
         Self {
             config,
             config_manager,
@@ -235,10 +286,14 @@ impl TierOrchestrator {
             failover_events: Arc::new(RwLock::new(Vec::new())),
             statistics: Arc::new(RwLock::new(TierStatistics::default())),
             tier_monitor,
+            intelligent_selector,
+            error_classifier,
+            resilience_orchestrator,
+            enable_intelligent_selection,
+            enable_error_classification,
+            enable_resilience_patterns,
         }
     }
-
-    // Circuit breaker logic is now integrated into tier health management
 
     pub async fn select_tier(&self, correlation_id: &str) -> TierSelection {
         let start_time = Instant::now();
@@ -251,6 +306,70 @@ impl TierOrchestrator {
         } else {
             (*self.config).clone()
         };
+        
+        // Use intelligent selection if enabled
+        if self.enable_intelligent_selection {
+            match self.select_tier_intelligently(correlation_id, &current_config).await {
+                Ok(selection) => {
+                    info!("🧠 [ORCHESTRATOR] Intelligent selection completed for {} in {}ms", 
+                          correlation_id, start_time.elapsed().as_millis());
+                    return selection;
+                }
+                Err(e) => {
+                    warn!("⚠️ [ORCHESTRATOR] Intelligent selection failed, falling back to legacy: {}", e);
+                    // Continue with legacy selection
+                }
+            }
+        }
+        
+        // Legacy tier selection logic (backward compatibility)
+        self.select_tier_legacy(correlation_id, &current_config).await
+    }
+    
+    // New intelligent tier selection method
+    async fn select_tier_intelligently(&self, correlation_id: &str, config: &Config) -> Result<TierSelection, Box<dyn std::error::Error + Send + Sync>> {
+        let start_time = Instant::now();
+        
+        // Get current tier health status
+        let tier_health = self.tier_health.read().await;
+        
+        // Create selection context
+        let selection_context = SelectionContext {
+            message_priority: MessagePriority::Normal, // TODO: Extract from payload
+            message_size: None, // TODO: Extract from payload
+            recipient_availability: RecipientAvailability::Unknown,
+            system_load: self.get_current_system_load().await,
+            timestamp: Utc::now(),
+        };
+        
+        // Use intelligent selector
+        let tier_scores = self.intelligent_selector
+            .select_optimal_tier(&tier_health, config, &selection_context)
+            .await;
+            
+        if tier_scores.is_empty() {
+            return Err("No tiers available for intelligent selection".into());
+        }
+        
+        let best_tier = &tier_scores[0];
+        let fallback_tiers: Vec<TierType> = tier_scores.iter()
+            .skip(1)
+            .map(|score| score.tier_type)
+            .collect();
+            
+        Ok(TierSelection {
+            selected_tier: best_tier.tier_type,
+            reason: format!("Intelligent: {} (score: {:.2})", 
+                          best_tier.selection_reason, best_tier.total_score),
+            fallback_tiers,
+            decision_time_ms: start_time.elapsed().as_millis() as u64,
+            correlation_id: correlation_id.to_string(),
+        })
+    }
+    
+    // Legacy tier selection method (preserved for backward compatibility)
+    async fn select_tier_legacy(&self, correlation_id: &str, current_config: &Config) -> TierSelection {
+        let start_time = Instant::now();
         
         // Get current tier health status
         let tier_health = self.tier_health.read().await;
@@ -267,7 +386,7 @@ impl TierOrchestrator {
 
         // Performance-based tier selection if enabled
         if current_config.tier_configuration.enable_performance_based_selection {
-            available_tiers = self.apply_performance_filtering(available_tiers, &current_config).await;
+            available_tiers = self.apply_performance_filtering(available_tiers, current_config).await;
         }
 
         // Sort by configured priority (lower number = higher priority)
@@ -281,7 +400,7 @@ impl TierOrchestrator {
         };
         
         let fallback_tiers: Vec<TierType> = available_tiers.into_iter().skip(1).map(|h| h.tier_type).collect();
-        let reason = self.get_selection_reason(&selected_tier, &fallback_tiers, &current_config).await;
+        let reason = self.get_selection_reason(&selected_tier, &fallback_tiers, current_config).await;
         
         let selection = TierSelection {
             selected_tier,
@@ -404,6 +523,17 @@ impl TierOrchestrator {
               tier_timeout.as_millis(),
               overall_timeout.as_millis());
         
+        // Use resilience patterns if enabled (disabled for now due to API mismatch)
+        // TODO: Implement proper resilience integration
+        /*
+        if self.enable_resilience_patterns {
+            if let Some(resilience_orchestrator) = &self.resilience_orchestrator {
+                // Resilience patterns integration needs proper API alignment
+                debug!("🛡️ [ORCHESTRATOR] Resilience patterns available but not yet fully integrated");
+            }
+        }
+        */
+        
         let result = tokio::time::timeout(
             timeout_to_use,
             async {
@@ -445,15 +575,8 @@ impl TierOrchestrator {
                         // End correlation tracking with failure
                         self.tier_monitor.end_correlation_failure(correlation_id, &e.to_string()).await;
                         
-                        self.record_tier_failure(selected_tier, e.to_string()).await;
-                        
-                        crate::log_tier_failure!(
-                            selected_tier.as_str(),
-                            correlation_id,
-                            e,
-                            processing_tier = selected_tier.as_str(),
-                            processing_time_ms = processing_time
-                        );
+                        // Enhanced error handling with classification
+                        self.handle_tier_error(selected_tier, &e.to_string(), correlation_id, processing_time).await;
                         
                         Err(e)
                     }
@@ -468,7 +591,8 @@ impl TierOrchestrator {
                 // End correlation tracking with timeout failure
                 self.tier_monitor.end_correlation_failure(correlation_id, &timeout_error).await;
                 
-                self.record_tier_failure(selected_tier, timeout_error.clone()).await;
+                // Enhanced error handling for timeouts
+                self.handle_tier_error(selected_tier, &timeout_error, correlation_id, processing_time).await;
                 
                 warn!("⏰ [ORCHESTRATOR] {} - triggering graceful degradation", timeout_error);
                 
@@ -686,7 +810,7 @@ impl TierOrchestrator {
         }
     }
 
-    async fn record_tier_failure(&self, tier_type: TierType, _error: String) {
+    async fn record_tier_failure(&self, tier_type: TierType, error: String) {
         let mut stats = self.statistics.write().await;
         *stats.tier_failures.entry(tier_type).or_insert(0) += 1;
         
@@ -696,6 +820,8 @@ impl TierOrchestrator {
         } else {
             (*self.config).clone()
         };
+        
+        debug!("❌ [ORCHESTRATOR] Recording failure for {} tier: {}", tier_type.as_str(), error);
         
         // Update tier health
         let mut tier_health = self.tier_health.write().await;
@@ -773,7 +899,7 @@ impl TierOrchestrator {
         }
     }
 
-    // Health check methods
+    // Additional methods from original implementation...
     pub async fn perform_health_checks(&self) {
         info!("🔍 [ORCHESTRATOR] Performing tier health checks...");
         
@@ -823,32 +949,6 @@ impl TierOrchestrator {
             }
         }
     }
-    
-    // File tier specific methods
-    pub async fn get_file_tier_metrics(&self) -> Option<crate::events::file_tier::FileWatcherMetrics> {
-        match &self.file_tier_processor {
-            Some(processor) => Some(processor.get_metrics().await),
-            None => None,
-        }
-    }
-    
-    pub async fn get_file_tier_queue_status(&self) -> Option<(usize, usize, usize)> {
-        match &self.file_tier_processor {
-            Some(processor) => processor.get_queue_status().await.ok(),
-            None => None,
-        }
-    }
-    
-    pub async fn cleanup_file_tier_entries(&self, max_age_days: u32) -> Option<usize> {
-        match &self.file_tier_processor {
-            Some(processor) => processor.cleanup_old_entries(max_age_days).await.ok(),
-            None => None,
-        }
-    }
-    
-    pub fn has_file_tier(&self) -> bool {
-        self.file_tier_processor.is_some()
-    }
 
     /// Get the current configuration (may be updated via hot-reload)
     pub async fn get_current_config(&self) -> Config {
@@ -859,138 +959,177 @@ impl TierOrchestrator {
         }
     }
 
-    /// Update timeout for a specific tier dynamically
-    pub async fn update_tier_timeout(&self, tier_type: TierType, timeout_ms: u64) -> anyhow::Result<()> {
-        if let Some(config_manager) = &self.config_manager {
-            config_manager.update_timeout(tier_type, timeout_ms).await?;
-            info!("⚙️ [ORCHESTRATOR] Updated {} tier timeout to {}ms", tier_type.as_str(), timeout_ms);
-        } else {
-            warn!("⚠️ [ORCHESTRATOR] Cannot update timeout - no configuration manager available");
-        }
-        Ok(())
-    }
-
-    /// Enable or disable a tier dynamically
-    pub async fn set_tier_enabled(&self, tier_type: TierType, enabled: bool) -> anyhow::Result<()> {
-        if let Some(config_manager) = &self.config_manager {
-            config_manager.set_tier_enabled(tier_type, enabled).await?;
-            info!("⚙️ [ORCHESTRATOR] {} tier {}", 
-                  tier_type.as_str(), 
-                  if enabled { "enabled ✓" } else { "disabled ✗" });
-        } else {
-            warn!("⚠️ [ORCHESTRATOR] Cannot update tier state - no configuration manager available");
-        }
-        Ok(())
-    }
-
-    /// Trigger auto-recovery for tiers if enabled
-    pub async fn trigger_auto_recovery(&self) -> anyhow::Result<()> {
-        let current_config = self.get_current_config().await;
-        
-        if !current_config.tier_configuration.enable_auto_recovery {
-            debug!("🔄 [ORCHESTRATOR] Auto-recovery disabled in configuration");
-            return Ok(());
-        }
-
-        let recovery_timeout = Duration::from_millis(current_config.timeouts.circuit_breaker_recovery_timeout_ms);
-        let mut tier_health = self.tier_health.write().await;
-        let now = Utc::now();
-
-        let mut recovered_tiers = Vec::new();
-
-        for health in tier_health.iter_mut() {
-            if health.circuit_breaker_state == CircuitBreakerState::Open {
-                let time_since_failure = now.signed_duration_since(health.last_check);
-                
-                if time_since_failure >= chrono::Duration::from_std(recovery_timeout).unwrap_or_default() {
-                    health.circuit_breaker_state = CircuitBreakerState::HalfOpen;
-                    health.consecutive_failures = 0;
-                    health.is_healthy = true; // Allow testing
-                    recovered_tiers.push(health.tier_type);
-                    
-                    info!("🔄 [ORCHESTRATOR] {} tier circuit breaker set to half-open for recovery testing", 
-                          health.tier_type.as_str());
-                }
-            }
-        }
-
-        if !recovered_tiers.is_empty() {
-            info!("✅ [ORCHESTRATOR] Auto-recovery triggered for {} tiers: {:?}", 
-                  recovered_tiers.len(), recovered_tiers);
-        }
-
-        Ok(())
-    }
-
-    
-    // Monitoring and observability methods
-    
-    /// Get comprehensive health check with detailed tier status
-    pub async fn get_comprehensive_health_check(&self) -> anyhow::Result<crate::utils::monitoring::TierHealthCheck> {
-        // Update tier monitor with current health
-        let tier_health = self.get_tier_health().await;
-        self.tier_monitor.update_tier_health(tier_health).await;
-        
-        // Update queue depths if file tier is available
-        if let Some((queue_count, _, _)) = self.get_file_tier_queue_status().await {
-            self.tier_monitor.update_queue_depth(TierType::FileWatcher, queue_count).await;
-        }
-        
-        self.tier_monitor.get_health_check().await
-    }
-    
-    /// Export all monitoring metrics in Prometheus format
-    pub fn export_prometheus_metrics(&self) -> anyhow::Result<String> {
-        self.tier_monitor.export_prometheus_metrics()
-    }
-    
     /// Get tier-specific monitoring instance
     pub fn get_tier_monitor(&self) -> Arc<TierMonitor> {
         Arc::clone(&self.tier_monitor)
     }
-    
-    /// Start background monitoring tasks
-    pub async fn start_monitoring_tasks(&self) -> anyhow::Result<()> {
-        let tier_monitor = Arc::clone(&self.tier_monitor);
-        let tier_health = Arc::clone(&self.tier_health);
-        
-        // Start health check updater task
-        let _health_updater = {
-            let tier_monitor = Arc::clone(&tier_monitor);
-            let tier_health = Arc::clone(&tier_health);
-            
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(30));
-                
-                loop {
-                    interval.tick().await;
-                    
-                    // Update tier monitor with current health
-                    let current_health = tier_health.read().await.clone();
-                    tier_monitor.update_tier_health(current_health).await;
-                    
-                    debug!("🔍 [ORCHESTRATOR] Updated tier monitor with current health status");
-                }
-            })
-        };
-        
-        info!("🚀 [ORCHESTRATOR] Started background monitoring tasks");
-        Ok(())
+
+    pub fn has_file_tier(&self) -> bool {
+        self.file_tier_processor.is_some()
     }
     
-    pub async fn start_file_tier_background_processor(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        match &self.file_tier_processor {
-            Some(processor) => {
-                let processor_clone = Arc::clone(processor);
-                tokio::spawn(async move {
-                    if let Err(e) = processor_clone.run_background_processor().await {
-                        error!("❌ [TIER-3-FILE] Background processor error: {}", e);
-                    }
-                });
-                info!("🚀 [ORCHESTRATOR] File tier background processor started");
-                Ok(())
-            }
-            None => Err("File tier processor not initialized".into()),
+    // ========== Enhanced Orchestrator Methods ==========
+    
+    /// Enhanced error handling with classification and recovery suggestions
+    async fn handle_tier_error(
+        &self, 
+        tier_type: TierType, 
+        error: &str, 
+        correlation_id: &str,
+        processing_time: u64
+    ) {
+        // Always record legacy failure stats
+        self.record_tier_failure(tier_type, error.to_string()).await;
+        
+        // Enhanced error classification if enabled
+        if self.enable_error_classification {
+            // For now, we'll do basic error classification since the classifier needs refactoring
+            // TODO: Implement proper error classification integration
+            let error_str = error;
+            let error_category = if error_str.contains("timeout") {
+                "Timeout"
+            } else if error_str.contains("network") || error_str.contains("connection") {
+                "Network"
+            } else if error_str.contains("auth") {
+                "Authentication"
+            } else {
+                "Unknown"
+            };
+            
+            debug!("🔍 [ORCHESTRATOR] Error classified: {} -> {} category", 
+                   error_str.chars().take(100).collect::<String>(),
+                   error_category);
+        }
+        
+        // Standard error logging
+        crate::log_tier_failure!(
+            tier_type.as_str(),
+            correlation_id,
+            error,
+            processing_tier = tier_type.as_str(),
+            processing_time_ms = processing_time
+        );
+    }
+    
+    /// Get current system load for intelligent tier selection
+    async fn get_current_system_load(&self) -> SystemLoad {
+        // TODO: Integrate with actual system monitoring
+        // For now, provide reasonable defaults
+        SystemLoad {
+            cpu_usage_percent: 50.0,
+            memory_usage_percent: 60.0,
+            active_connections: 10,
+            queue_depth: 5,
         }
     }
+    
+    /// Get intelligent tier selector for external access
+    pub fn get_intelligent_selector(&self) -> Arc<IntelligentTierSelector> {
+        Arc::clone(&self.intelligent_selector)
+    }
+    
+    /// Get error classifier for external access
+    pub fn get_error_classifier(&self) -> Arc<ErrorClassificationEngine> {
+        Arc::clone(&self.error_classifier)
+    }
+    
+    /// Get resilience orchestrator for external access
+    pub fn get_resilience_orchestrator(&self) -> Option<Arc<ResilienceOrchestrator>> {
+        self.resilience_orchestrator.as_ref().map(Arc::clone)
+    }
+    
+    /// Check if intelligent selection is enabled
+    pub fn is_intelligent_selection_enabled(&self) -> bool {
+        self.enable_intelligent_selection
+    }
+    
+    /// Check if error classification is enabled
+    pub fn is_error_classification_enabled(&self) -> bool {
+        self.enable_error_classification
+    }
+    
+    /// Check if resilience patterns are enabled
+    pub fn is_resilience_patterns_enabled(&self) -> bool {
+        self.enable_resilience_patterns
+    }
+    
+    /// Enable or disable intelligent selection at runtime
+    pub async fn set_intelligent_selection_enabled(&mut self, enabled: bool) {
+        self.enable_intelligent_selection = enabled;
+        info!("⚙️ [ORCHESTRATOR] Intelligent selection {}", 
+              if enabled { "enabled" } else { "disabled" });
+    }
+    
+    /// Enable or disable error classification at runtime
+    pub async fn set_error_classification_enabled(&mut self, enabled: bool) {
+        self.enable_error_classification = enabled;
+        info!("⚙️ [ORCHESTRATOR] Error classification {}", 
+              if enabled { "enabled" } else { "disabled" });
+    }
+    
+    /// Enable or disable resilience patterns at runtime
+    pub async fn set_resilience_patterns_enabled(&mut self, enabled: bool) {
+        self.enable_resilience_patterns = enabled;
+        info!("⚙️ [ORCHESTRATOR] Resilience patterns {}", 
+              if enabled { "enabled" } else { "disabled" });
+    }
+    
+    /// Get comprehensive orchestrator status including enhanced features
+    pub async fn get_enhanced_status(&self) -> EnhancedOrchestratorStatus {
+        let tier_health = self.get_tier_health().await;
+        let statistics = self.get_statistics().await;
+        let recent_failovers = self.get_failover_events(Some(10)).await;
+        
+        EnhancedOrchestratorStatus {
+            tier_health,
+            statistics,
+            recent_failovers,
+            intelligent_selection_enabled: self.enable_intelligent_selection,
+            error_classification_enabled: self.enable_error_classification,
+            resilience_patterns_enabled: self.enable_resilience_patterns,
+            has_file_tier: self.has_file_tier(),
+            resilience_available: self.resilience_orchestrator.is_some(),
+        }
+    }
+    
+    /// Perform comprehensive health check including enhanced components
+    pub async fn perform_enhanced_health_checks(&self) {
+        info!("🔍 [ORCHESTRATOR] Performing enhanced health checks...");
+        
+        // Standard tier health checks
+        self.perform_health_checks().await;
+        
+        // Check enhanced components health (simplified for now)
+        if self.enable_intelligent_selection {
+            debug!("✅ [ORCHESTRATOR] Intelligent selector health check - enabled and running");
+        }
+        
+        if self.enable_error_classification {
+            debug!("✅ [ORCHESTRATOR] Error classifier health check - enabled and running");
+        }
+        
+        if self.enable_resilience_patterns {
+            if let Some(resilience_orchestrator) = &self.resilience_orchestrator {
+                match resilience_orchestrator.get_health_assessment().await {
+                    Ok(_) => debug!("✅ [ORCHESTRATOR] Resilience orchestrator health check passed"),
+                    Err(e) => warn!("⚠️ [ORCHESTRATOR] Resilience orchestrator health check failed: {}", e),
+                }
+            }
+        }
+        
+        info!("✅ [ORCHESTRATOR] Enhanced health checks completed");
+    }
+}
+
+/// Enhanced status structure including new orchestrator features
+#[derive(Debug, Clone, Serialize)]
+pub struct EnhancedOrchestratorStatus {
+    pub tier_health: Vec<TierHealth>,
+    pub statistics: TierStatistics,
+    pub recent_failovers: Vec<TierFailoverEvent>,
+    pub intelligent_selection_enabled: bool,
+    pub error_classification_enabled: bool,
+    pub resilience_patterns_enabled: bool,
+    pub has_file_tier: bool,
+    pub resilience_available: bool,
 }

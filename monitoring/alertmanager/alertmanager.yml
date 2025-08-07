@@ -1,0 +1,126 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@cctelegram.local'
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'tier']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default'
+  routes:
+  - match:
+      severity: critical
+    receiver: 'critical-alerts'
+    group_wait: 10s
+    repeat_interval: 1h
+  - match:
+      severity: high
+    receiver: 'high-priority'
+    group_wait: 30s
+    repeat_interval: 4h
+  - match:
+      alertname: TierHealthDegraded
+    receiver: 'tier-health'
+  - match:
+      alertname: CircuitBreakerOpen
+    receiver: 'circuit-breaker'
+  - match_re:
+      alertname: .*SelfHealing.*
+    receiver: 'self-healing'
+
+receivers:
+- name: 'default'
+  email_configs:
+  - to: 'ops-team@cctelegram.local'
+    subject: '[CCTelegram] Alert: {{ .GroupLabels.alertname }}'
+    body: |
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Tier: {{ .Labels.tier }}
+      Severity: {{ .Labels.severity }}
+      Started: {{ .StartsAt }}
+      {{ end }}
+
+- name: 'critical-alerts'
+  email_configs:
+  - to: 'oncall@cctelegram.local'
+    subject: '[CCTelegram CRITICAL] {{ .GroupLabels.alertname }}'
+    body: |
+      🚨 CRITICAL ALERT 🚨
+      {{ range .Alerts }}
+      Alert: {{ .Annotations.summary }}
+      Description: {{ .Annotations.description }}
+      Tier: {{ .Labels.tier }}
+      Started: {{ .StartsAt }}
+      Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+  slack_configs:
+  - api_url: '{{ .Values.slack.webhook_url }}'
+    channel: '#alerts-critical'
+    title: 'CCTelegram Critical Alert'
+    text: |
+      {{ range .Alerts }}
+      🚨 *{{ .Annotations.summary }}*
+      Tier: {{ .Labels.tier }}
+      Description: {{ .Annotations.description }}
+      {{ end }}
+
+- name: 'high-priority'
+  email_configs:
+  - to: 'ops-team@cctelegram.local'
+    subject: '[CCTelegram HIGH] {{ .GroupLabels.alertname }}'
+  slack_configs:
+  - api_url: '{{ .Values.slack.webhook_url }}'
+    channel: '#alerts-high'
+    title: 'CCTelegram High Priority Alert'
+
+- name: 'tier-health'
+  email_configs:
+  - to: 'tier-team@cctelegram.local'
+    subject: '[CCTelegram] Tier Health Alert: {{ .GroupLabels.tier }}'
+    body: |
+      Tier health degradation detected:
+      {{ range .Alerts }}
+      Tier: {{ .Labels.tier }}
+      Health Score: {{ .Labels.health_score }}
+      Description: {{ .Annotations.description }}
+      {{ end }}
+
+- name: 'circuit-breaker'
+  email_configs:
+  - to: 'reliability-team@cctelegram.local'
+    subject: '[CCTelegram] Circuit Breaker Alert: {{ .GroupLabels.tier }}'
+    body: |
+      Circuit breaker state change:
+      {{ range .Alerts }}
+      Tier: {{ .Labels.tier }}
+      State: {{ .Labels.circuit_breaker_state }}
+      Reason: {{ .Labels.reason }}
+      {{ end }}
+
+- name: 'self-healing'
+  email_configs:
+  - to: 'automation-team@cctelegram.local'
+    subject: '[CCTelegram] Self-Healing Activity: {{ .GroupLabels.alertname }}'
+    body: |
+      Self-healing system activity:
+      {{ range .Alerts }}
+      Tier: {{ .Labels.tier }}
+      Action: {{ .Labels.healing_type }}
+      Status: {{ .Labels.status }}
+      {{ end }}
+
+inhibit_rules:
+- source_match:
+    severity: 'critical'
+  target_match:
+    severity: 'warning'
+  equal: ['tier', 'alertname']
+- source_match:
+    severity: 'high'
+  target_match:
+    severity: 'warning'
+  equal: ['tier', 'alertname']

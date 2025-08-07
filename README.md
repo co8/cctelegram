@@ -1,6 +1,6 @@
 ![CCTelegram GitHub Header](docs/assets/cctelegram-github-header-optimized.jpg)
 
-# CCTelegram MCP Server
+# CCTelegram Bridge + MCP Server
 
 [![Bridge Version](https://img.shields.io/badge/Bridge-v0.9.0-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.9.0) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.9.0-2da199?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
 
@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-**Complete Notification Ecosystem for [Claude Code](https://github.com/anthropics/claude-code) Developers**
+**Complete Notification Ecosystem for [Claude Code](https://github.com/anthropics/claude-code) over [Telegram](https://telegram.org/)**
 
 CCTelegram consists of **two complementary components** that work together seamlessly:
 
@@ -32,10 +32,9 @@ CCTelegram consists of **two complementary components** that work together seaml
 ```bash
 # Download both MCP Server and Bridge
 git clone https://github.com/co8/cctelegram.git
-cd cctelegram
+cd cctelegram/mcp-server
 
-# Install MCP Server v1.9.0 (Claude Code integration)
-cd mcp-server
+# Install MCP Server + Slash Commands
 ./install.sh
 
 # Configure your tokens (installer guides you)
@@ -142,13 +141,15 @@ _Both components work together automatically - no manual management needed._
 ### ✅ Complete Test Coverage (154 Tests Passing)
 
 **Rust Library Tests: 122/122 ✅**
+
 - Core integrity validation and cryptographic functions
-- Event processing and queue management systems  
+- Event processing and queue management systems
 - Compression and deduplication algorithms
 - Security authentication and authorization
 - Performance monitoring and metrics collection
 
 **End-to-End Tests: 32/32 ✅**
+
 - Bridge health API endpoints validation
 - Dashboard UI responsiveness (mobile/desktop)
 - Cross-browser compatibility (Chrome/Firefox/Safari)
@@ -157,9 +158,10 @@ _Both components work together automatically - no manual management needed._
 - Performance benchmarking under various conditions
 
 **Test Categories:**
+
 ```bash
 🦀 Rust Unit Tests        122 ✅  # Core business logic
-🌐 E2E Integration Tests   32 ✅  # Full system workflows  
+🌐 E2E Integration Tests   32 ✅  # Full system workflows
 📱 Cross-Platform Tests    15 ✅  # Multi-browser support
 🔄 Performance Tests       8 ✅   # Load & stress testing
 🎨 Visual Regression        6 ✅   # UI consistency checks
@@ -167,9 +169,10 @@ _Both components work together automatically - no manual management needed._
 ```
 
 **Quality Gates:**
+
 - **100% Core Test Success** - All critical path functionality verified
 - **Cross-Browser Compatibility** - Chrome, Firefox, Safari tested
-- **Mobile Responsiveness** - Responsive design verified across viewports  
+- **Mobile Responsiveness** - Responsive design verified across viewports
 - **Performance Standards** - Load times <3s, API responses <200ms
 - **Visual Consistency** - UI regression detection with pixel-perfect comparison
 - **Error Handling** - Graceful degradation and recovery verified

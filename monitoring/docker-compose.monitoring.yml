@@ -1,0 +1,193 @@
+version: '3.8'
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: cctelegram-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - cctelegram-monitoring
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.cctelegram.local`)"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+  grafana:
+    image: grafana/grafana:10.0.3
+    container_name: cctelegram-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+      - GF_SECURITY_SECRET_KEY=${GRAFANA_SECRET_KEY:-your-secret-key-here}
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=mailhog:1025
+      - GF_SMTP_FROM_ADDRESS=grafana@cctelegram.local
+    networks:
+      - cctelegram-monitoring
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.cctelegram.local`)"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  alertmanager:
+    image: prom/alertmanager:v0.25.0
+    container_name: cctelegram-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://alertmanager.cctelegram.local'
+      - '--web.route-prefix=/'
+      - '--cluster.listen-address=0.0.0.0:9094'
+    networks:
+      - cctelegram-monitoring
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.cctelegram.local`)"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+
+  node-exporter:
+    image: prom/node-exporter:v1.6.1
+    container_name: cctelegram-node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - cctelegram-monitoring
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: cctelegram-cadvisor
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    networks:
+      - cctelegram-monitoring
+
+  # Email testing service
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: cctelegram-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - cctelegram-monitoring
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mailhog.rule=Host(`mail.cctelegram.local`)"
+      - "traefik.http.services.mailhog.loadbalancer.server.port=8025"
+
+  # Reverse proxy for easier access
+  traefik:
+    image: traefik:v3.0
+    container_name: cctelegram-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8090:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik:/etc/traefik:ro
+    networks:
+      - cctelegram-monitoring
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+
+  # Loki for log aggregation (optional)
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: cctelegram-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki_data:/loki
+      - ./loki:/etc/loki:ro
+    command: -config.file=/etc/loki/loki-config.yml
+    networks:
+      - cctelegram-monitoring
+
+  # Promtail for log collection (optional)
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: cctelegram-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./promtail:/etc/promtail:ro
+    command: -config.file=/etc/promtail/promtail-config.yml
+    networks:
+      - cctelegram-monitoring
+    depends_on:
+      - loki
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  loki_data:
+    driver: local
+
+networks:
+  cctelegram-monitoring:
+    driver: bridge

@@ -13,10 +13,33 @@ rule_files:
 
 # Scrape configurations
 scrape_configs:
+  # CCTelegram Bridge - Main monitoring endpoint with enhanced tier orchestrator metrics
+  - job_name: 'cctelegram-bridge'
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    
+    # Relabeling for enhanced tier orchestrator metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'cctelegram-bridge'
+      - source_labels: [job]
+        target_label: service
+        replacement: 'cctelegram-bridge'
+      - source_labels: [tier]
+        target_label: tier_type
+      - source_labels: [strategy]
+        target_label: selection_strategy
+      - source_labels: [severity]
+        target_label: error_severity
+
   # MCP Server metrics
   - job_name: 'mcp-server'
     static_configs:
-      - targets: ['mcp-server:3000']
+      - targets: ['mcp-server:3000', 'host.docker.internal:3001']
     metrics_path: '/metrics'
     scrape_interval: 10s
     scrape_timeout: 5s
@@ -46,6 +69,21 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
     scrape_interval: 15s
+
+  # cAdvisor for container metrics
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+
+  # CCTelegram health checks monitoring
+  - job_name: 'cctelegram-health'
+    static_configs:
+      - targets: ['host.docker.internal:8085']
+    metrics_path: '/health'
+    scrape_interval: 30s
+    params:
+      format: ['prometheus']
 
 # Alertmanager configuration
 alerting:
