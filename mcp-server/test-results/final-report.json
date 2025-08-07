@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-08-07T16:33:10.057Z",
+  "environment": {
+    "node_version": "v24.4.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "ci": false
+  },
+  "test_configuration": {
+    "timeout": 120000,
+    "retries": 1,
+    "workers": 4,
+    "projects": 13
+  },
+  "paths": {
+    "test_results": "./test-results",
+    "screenshots": "./test-results/screenshots",
+    "videos": "./test-results/playwright-output"
+  },
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "duration": 264.565
+  }
+}

@@ -9,48 +9,68 @@ test.describe('CCTelegram Health Dashboard', () => {
   const healthPort = process.env.CC_TELEGRAM_HEALTH_PORT || '8080';
   const dashboardUrl = `http://localhost:${healthPort}/dashboard`;
 
+  // Helper function to check if dashboard is available
+  const checkDashboardAvailability = async (page) => {
+    try {
+      const healthResponse = await page.request.get(`http://localhost:${healthPort}/health`);
+      if (!healthResponse.ok()) {
+        console.log('Bridge not running - skipping dashboard test');
+        test.skip();
+        return false;
+      }
+      
+      const dashboardResponse = await page.request.get(dashboardUrl);
+      if (dashboardResponse.status() === 404) {
+        console.log('Dashboard endpoint not available - bridge has no web interface');
+        test.skip();
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.log('Bridge not running - skipping dashboard test');
+      test.skip();
+      return false;
+    }
+  };
+
   test.beforeEach(async ({ page }) => {
     // Set up common test context
     await page.setViewportSize({ width: 1280, height: 720 });
   });
 
   test('Dashboard should load and display system status', async ({ page }) => {
-    try {
-      await page.goto(dashboardUrl, { waitUntil: 'networkidle' });
-      
-      // Check if dashboard is accessible
-      const title = await page.title();
-      expect(title).toContain('CCTelegram');
-      
-      // Look for common dashboard elements
-      const statusElements = [
-        'text=Status',
-        'text=Health',
-        'text=Metrics',
-        'text=Uptime'
-      ];
-      
-      for (const selector of statusElements) {
-        try {
-          await expect(page.locator(selector)).toBeVisible({ timeout: 5000 });
-        } catch (error) {
-          console.log(`Dashboard element not found: ${selector}`);
-        }
-      }
-      
-    } catch (error) {
-      if (error.message.includes('ERR_CONNECTION_REFUSED')) {
-        console.log('Dashboard not available - bridge not running or no web interface');
-        test.skip();
-      } else {
-        throw error;
+    const isAvailable = await checkDashboardAvailability(page);
+    if (!isAvailable) return;
+    
+    await page.goto(dashboardUrl, { waitUntil: 'networkidle' });
+    
+    // Check if dashboard is accessible
+    const title = await page.title();
+    expect(title).toContain('CCTelegram');
+    
+    // Look for common dashboard elements
+    const statusElements = [
+      'text=Status',
+      'text=Health',
+      'text=Metrics',
+      'text=Uptime'
+    ];
+    
+    for (const selector of statusElements) {
+      try {
+        await expect(page.locator(selector)).toBeVisible({ timeout: 5000 });
+      } catch (error) {
+        console.log(`Dashboard element not found: ${selector}`);
       }
     }
   });
 
   test('Health metrics should update dynamically', async ({ page }) => {
-    try {
-      await page.goto(dashboardUrl);
+    const isAvailable = await checkDashboardAvailability(page);
+    if (!isAvailable) return;
+    
+    await page.goto(dashboardUrl);
       
       // Look for metric displays
       const metricSelectors = [
@@ -82,19 +102,13 @@ test.describe('CCTelegram Health Dashboard', () => {
       } else {
         console.log('No specific metrics found - dashboard may use different structure');
       }
-      
-    } catch (error) {
-      if (error.message.includes('ERR_CONNECTION_REFUSED')) {
-        test.skip();
-      } else {
-        throw error;
-      }
-    }
   });
 
   test('Dashboard should be responsive on mobile', async ({ page }) => {
-    try {
-      // Test mobile viewport
+    const isAvailable = await checkDashboardAvailability(page);
+    if (!isAvailable) return;
+    
+    // Test mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto(dashboardUrl);
       

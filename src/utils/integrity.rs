@@ -533,7 +533,7 @@ mod tests {
     #[test]
     fn test_content_validation_corruption() {
         let original_content = b"original content";
-        let corrupted_content = b"corrupted content";
+        let corrupted_content = b"modified content"; // Same length but different content
         
         let metadata = ValidationMetadata::new(
             original_content,
@@ -549,7 +549,7 @@ mod tests {
         if let ValidationResult::Failed(IntegrityError::Corruption { checkpoint, .. }) = result {
             assert_eq!(checkpoint, ValidationCheckpoint::Queue);
         } else {
-            panic!("Expected corruption error");
+            panic!("Expected corruption error but got: {:?}", result);
         }
     }
     

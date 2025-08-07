@@ -55,7 +55,7 @@ async function globalTeardown(config: FullConfig) {
   }
 
   // Generate final test report
-  await generateFinalReport();
+  await generateFinalReport(config);
 
   // Archive test results if in CI
   if (process.env.CI && process.env.ARCHIVE_RESULTS !== 'false') {
@@ -90,7 +90,7 @@ async function cleanupTestFiles(): Promise<void> {
 /**
  * Generate final comprehensive test report
  */
-async function generateFinalReport(): Promise<void> {
+async function generateFinalReport(config?: FullConfig): Promise<void> {
   try {
     const reportData = {
       timestamp: new Date().toISOString(),
@@ -101,10 +101,10 @@ async function generateFinalReport(): Promise<void> {
         ci: !!process.env.CI
       },
       test_configuration: {
-        timeout: config.timeout,
-        retries: config.retries,
-        workers: config.workers,
-        projects: config.projects?.length || 0
+        timeout: config?.timeout || 120000,
+        retries: config?.retries || 1,
+        workers: config?.workers || 1,
+        projects: config?.projects?.length || 0
       },
       paths: {
         test_results: './test-results',
@@ -198,7 +198,7 @@ Generated: ${reportData.timestamp}
 async function archiveTestResults(): Promise<void> {
   try {
     const archiveName = `e2e-test-results-${Date.now()}.tar.gz`;
-    const { spawn } = require('child_process');
+    const { spawn } = await import('child_process');
     
     const archive = spawn('tar', [
       '-czf',

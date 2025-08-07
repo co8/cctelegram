@@ -1,0 +1,513 @@
+{
+  "config": {
+    "configFile": "/Users/enrique/Documents/cctelegram/mcp-server/playwright.config.ts",
+    "rootDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": "/Users/enrique/Documents/cctelegram/mcp-server/tests/setup/global-setup.ts",
+    "globalTeardown": "/Users/enrique/Documents/cctelegram/mcp-server/tests/setup/global-teardown.ts",
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "test-framework": "playwright",
+      "project": "cctelegram-mcp-server",
+      "test-type": "e2e-workflow",
+      "actualWorkers": 3
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "test-results/playwright-report",
+          "open": "on-failure"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/playwright-results.json"
+        }
+      ],
+      [
+        "junit",
+        {
+          "outputFile": "test-results/playwright-junit.xml"
+        }
+      ],
+      [
+        "line",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "API Tests",
+        "name": "API Tests",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/bridge-health.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Chrome Desktop - Workflows",
+        "name": "Chrome Desktop - Workflows",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/telegram-bridge-workflow.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Firefox Desktop - Workflows",
+        "name": "Firefox Desktop - Workflows",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/telegram-bridge-workflow.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Safari Desktop - Workflows",
+        "name": "Safari Desktop - Workflows",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/telegram-bridge-workflow.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Chrome - Dashboard",
+        "name": "Chrome - Dashboard",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/dashboard.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Firefox - Dashboard",
+        "name": "Firefox - Dashboard",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/dashboard.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Safari - Dashboard",
+        "name": "Safari - Dashboard",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/dashboard.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Mobile Chrome",
+        "name": "Mobile Chrome",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/mobile-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Mobile Safari",
+        "name": "Mobile Safari",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/mobile-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "iPad - Tablet Testing",
+        "name": "iPad - Tablet Testing",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/tablet-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Chrome - High DPI",
+        "name": "Chrome - High DPI",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/visual-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Chrome - Slow Network",
+        "name": "Chrome - Slow Network",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/performance-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/enrique/Documents/cctelegram/mcp-server/test-results/playwright-output",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "test-framework": "playwright",
+          "project": "cctelegram-mcp-server",
+          "test-type": "e2e-workflow",
+          "actualWorkers": 3
+        },
+        "id": "Chrome - Accessibility",
+        "name": "Chrome - Accessibility",
+        "testDir": "/Users/enrique/Documents/cctelegram/mcp-server/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/accessibility-*.e2e.test.ts"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.54.2",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "port": 8080,
+      "reuseExistingServer": true,
+      "timeout": 120000,
+      "env": {
+        "CC_TELEGRAM_HEALTH_PORT": "8080",
+        "CC_TELEGRAM_WEBHOOK_PORT": "3000",
+        "NODE_ENV": "test"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "bridge-health.e2e.test.ts",
+      "file": "bridge-health.e2e.test.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Health endpoint should respond with valid status",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "API Tests",
+              "projectName": "API Tests",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 46,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-08-07T16:33:09.969Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8af898dfa19e2a28c639-394350f7ec2508476fa2",
+          "file": "bridge-health.e2e.test.ts",
+          "line": 43,
+          "column": 1
+        },
+        {
+          "title": "Metrics endpoint should provide performance data",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "API Tests",
+              "projectName": "API Tests",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-08-07T16:33:10.025Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8af898dfa19e2a28c639-b997accd1954e93c8499",
+          "file": "bridge-health.e2e.test.ts",
+          "line": 75,
+          "column": 1
+        },
+        {
+          "title": "Health endpoint should handle high load",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "API Tests",
+              "projectName": "API Tests",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 56,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Health endpoint handled 10/10 concurrent requests\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-08-07T16:33:09.952Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8af898dfa19e2a28c639-ce1616e1517dad63aa9a",
+          "file": "bridge-health.e2e.test.ts",
+          "line": 103,
+          "column": 1
+        },
+        {
+          "title": "Error handling for invalid endpoints",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "API Tests",
+              "projectName": "API Tests",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-08-07T16:33:10.014Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8af898dfa19e2a28c639-291bc148d1ea808135cf",
+          "file": "bridge-health.e2e.test.ts",
+          "line": 129,
+          "column": 1
+        },
+        {
+          "title": "Response time performance validation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "API Tests",
+              "projectName": "API Tests",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 20,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "Health endpoint response time: 17ms\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-08-07T16:33:09.954Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "8af898dfa19e2a28c639-ffb2ce5e8f191c448d11",
+          "file": "bridge-health.e2e.test.ts",
+          "line": 143,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-08-07T16:33:09.256Z",
+    "duration": 802.5709999999999,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -119,7 +119,7 @@ async function globalSetup(config: FullConfig) {
  * Set up mock Telegram API server
  */
 async function setupMockTelegramServer(): Promise<any> {
-  const express = require('express');
+  const express = (await import('express')).default;
   const app = express();
   
   app.use(express.json());
@@ -198,7 +198,7 @@ async function startBridgeForTesting(): Promise<ChildProcess> {
  * Perform health checks on all services
  */
 async function performHealthChecks(): Promise<void> {
-  const axios = require('axios');
+  const axios = (await import('axios')).default;
   const healthChecks = [];
 
   // Check bridge health endpoint
