@@ -1,6 +1,6 @@
 {
   "name": "cctelegram",
-  "version": "1.0.0",
+  "version": "0.8.5",
   "description": "![CCTelegram GitHub Header](@docs/assets/cctelegram-github-header-optimized.jpg)",
   "main": "index.js",
   "directories": {

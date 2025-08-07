@@ -358,4 +358,4 @@ cargo test test_event_validation
 
 ---
 
-*Quick reference for CC Telegram Bridge Event System v0.4.4*
+*Quick reference for CC Telegram Bridge Event System v0.8.5*

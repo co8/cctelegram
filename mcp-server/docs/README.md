@@ -1,6 +1,6 @@
 # CCTelegram MCP Server Documentation
 
-Fast, developer-focused documentation powered by VitePress and TypeDoc.
+Fast, developer-focused documentation for CCTelegram MCP Server v1.8.5, powered by VitePress and TypeDoc.
 
 ## Quick Start
 

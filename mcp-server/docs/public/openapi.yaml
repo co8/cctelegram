@@ -28,7 +28,7 @@ info:
     - Task management systems
     - Monitoring and observability frameworks
     
-  version: 1.5.0
+  version: 1.8.5
   contact:
     name: CCTelegram Development Team
     url: https://github.com/your-org/cctelegram
@@ -1148,7 +1148,7 @@ components:
       value:
         type: approval_request
         title: Deploy to Production
-        description: Ready to deploy version 1.5.0 to production environment?
+        description: Ready to deploy version 1.8.5 to production environment?
         task_id: deploy_prod_001
         source: deployment-system
         data:
@@ -1156,7 +1156,7 @@ components:
           response_options: ["Deploy", "Cancel", "Review"]
           timeout_minutes: 30
           deployment_target: production
-          version: "1.5.0"
+          version: "1.8.5"
 
 tags:
   - name: Events

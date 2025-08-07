@@ -121,7 +121,7 @@ version: '3.8'
 
 services:
   mcp-server:
-    image: cctelegram/mcp-server:1.5.0
+    image: cctelegram/mcp-server:1.8.5
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -150,7 +150,7 @@ services:
           cpus: '0.25'
 
   bridge:
-    image: cctelegram/bridge:0.6.0
+    image: cctelegram/bridge:0.8.5
     restart: unless-stopped
     environment:
       - RUST_LOG=warn

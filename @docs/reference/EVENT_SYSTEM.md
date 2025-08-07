@@ -236,7 +236,7 @@ let event = Event::approval_request(
     "claude-code",
     "approval-001",
     "Deploy to Production",
-    "Ready to deploy version 1.2.0 to production?".to_string(),
+    "Ready to deploy version 1.8.5 to production?".to_string(),
     vec!["Deploy".to_string(), "Cancel".to_string()]
 );
 ```
@@ -761,4 +761,4 @@ The event system is designed for extensibility:
 
 ---
 
-*This documentation covers the comprehensive event system implementation for CC Telegram Bridge v0.6.0 with enterprise-grade validation, deduplication, and serialization optimizations. The system achieves significant reliability improvements targeting zero message loss through comprehensive integrity checking and performance optimization. For the latest updates and changes, refer to the project repository.*
+*This documentation covers the comprehensive event system implementation for CC Telegram Bridge v0.8.5 with enterprise-grade validation, deduplication, and serialization optimizations. The system achieves significant reliability improvements targeting zero message loss through comprehensive integrity checking and performance optimization. For the latest updates and changes, refer to the project repository.*

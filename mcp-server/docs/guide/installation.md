@@ -25,26 +25,26 @@ Download platform-specific binaries:
 
 #### macOS
 ```bash
-curl -L https://github.com/user/cctelegram/releases/latest/download/cctelegram-mcp-server-darwin-arm64.tar.gz | tar -xz
+curl -L https://github.com/user/cctelegram/releases/download/v1.8.5/cctelegram-mcp-server-v1.8.5-darwin-arm64.tar.gz | tar -xz
 chmod +x cctelegram-mcp-server
 ```
 
 #### Linux
 ```bash
-curl -L https://github.com/user/cctelegram/releases/latest/download/cctelegram-mcp-server-linux-x64.tar.gz | tar -xz
+curl -L https://github.com/user/cctelegram/releases/download/v1.8.5/cctelegram-mcp-server-v1.8.5-linux-x64.tar.gz | tar -xz
 chmod +x cctelegram-mcp-server
 ```
 
 #### Windows
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/user/cctelegram/releases/latest/download/cctelegram-mcp-server-win-x64.zip" -OutFile "cctelegram.zip"
+Invoke-WebRequest -Uri "https://github.com/user/cctelegram/releases/download/v1.8.5/cctelegram-mcp-server-v1.8.5-win-x64.zip" -OutFile "cctelegram.zip"
 Expand-Archive cctelegram.zip
 ```
 
 ### Docker
 
 ```bash
-docker pull ghcr.io/user/cctelegram-mcp-server:latest
+docker pull ghcr.io/user/cctelegram-mcp-server:v1.8.5
 ```
 
 Run container:
@@ -53,7 +53,7 @@ docker run -d \
   --name cctelegram \
   -p 3000:3000 \
   -e TELEGRAM_BOT_TOKEN="your_token" \
-  ghcr.io/user/cctelegram-mcp-server:latest
+  ghcr.io/user/cctelegram-mcp-server:v1.8.5
 ```
 
 ### From Source
@@ -77,12 +77,12 @@ npx cctelegram-mcp-server --version
 ./cctelegram-mcp-server --version
 
 # Docker
-docker run --rm ghcr.io/user/cctelegram-mcp-server:latest --version
+docker run --rm ghcr.io/user/cctelegram-mcp-server:v1.8.5 --version
 ```
 
 Expected output:
 ```
-cctelegram-mcp-server v1.7.0
+cctelegram-mcp-server v1.8.5
 Node.js v20.x.x
 ```
 

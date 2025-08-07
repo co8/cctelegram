@@ -1,5 +1,8 @@
 # Large Message Protocol (Task 39.6)
 
+**Bridge Version**: v0.8.5  
+**MCP Server Version**: v1.8.5
+
 ## Overview
 
 The Large Message Protocol (LMP) is a comprehensive system designed to handle messages exceeding 64KB by fragmenting them into smaller, manageable chunks with integrity validation and reassembly capabilities. This implementation integrates with existing compression and queue processing systems (Tasks 39.1-39.5) to provide seamless large message handling.
@@ -287,3 +290,10 @@ Potential areas for future development:
 - Consider storage strategy optimization
 
 This completes the Large Message Protocol implementation for Task 39.6, providing a robust, scalable solution for handling large messages with comprehensive integration across the existing system architecture.
+
+---
+**Document Version**: 2.0.0 (August 2025)  
+**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Dependencies**: Redis 6.0+, tokio v1.45+, flate2 v1.0+, sha2 v0.10+  
+**Integration**: Tasks 39.1-39.5 (Compression, Queue, Redis, Integrity, Monitoring)  
+**Last Updated**: August 2025

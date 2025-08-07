@@ -83,8 +83,8 @@ This documentation supports compliance with:
 - **Security Incidents**: Execute [Security Incident Response](./security/incident-response.md#immediate-response)
 
 ### Documentation Updates
-- **Version**: 1.5.0
-- **Last Updated**: January 2025
+- **Version**: 1.8.5
+- **Last Updated**: August 2025
 - **Next Review**: March 2025
 
 ---

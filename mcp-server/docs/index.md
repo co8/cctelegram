@@ -4,7 +4,7 @@ layout: home
 hero:
   name: CCTelegram MCP Server
   text: Fast, Reliable Bridge Integration
-  tagline: TypeScript MCP server for seamless Telegram bridge communication
+  tagline: TypeScript MCP server v1.8.5 for seamless Telegram bridge communication
   actions:
     - theme: brand
       text: Get Started →

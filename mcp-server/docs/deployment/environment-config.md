@@ -17,7 +17,7 @@ Complete environment configuration templates for CCTelegram MCP Server across de
 ```bash
 # Development Environment Configuration
 NODE_ENV=development
-SERVICE_VERSION=1.6.0-dev
+SERVICE_VERSION=1.8.5-dev
 
 # Server Configuration
 MCP_SERVER_HOST=localhost
@@ -172,7 +172,7 @@ networks:
 ```bash
 # Staging Environment Configuration
 NODE_ENV=staging
-SERVICE_VERSION=1.6.0-staging
+SERVICE_VERSION=1.8.5-staging
 
 # Server Configuration
 MCP_SERVER_HOST=0.0.0.0
@@ -344,7 +344,7 @@ spec:
 ```bash
 # Production Environment Configuration
 NODE_ENV=production
-SERVICE_VERSION=1.6.0
+SERVICE_VERSION=1.8.5
 
 # Server Configuration
 MCP_SERVER_HOST=0.0.0.0

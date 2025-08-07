@@ -1,6 +1,6 @@
 # System Architecture
 
-CCTelegram implements a sophisticated 3-tier cascading architecture designed for high-performance event processing and reliable notification delivery. This document provides comprehensive architectural diagrams showing the system design, data flows, and integration patterns.
+CCTelegram v1.8.5 implements a sophisticated 3-tier cascading architecture designed for high-performance event processing and reliable notification delivery. This document provides comprehensive architectural diagrams showing the system design, data flows, and integration patterns for the latest stable release.
 
 ## System Overview
 

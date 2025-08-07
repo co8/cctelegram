@@ -33,8 +33,8 @@ apiVersion: v2
 name: cctelegram
 description: CCTelegram MCP Server Helm Chart
 type: application
-version: 1.6.0
-appVersion: "1.6.0"
+version: 1.8.5
+appVersion: "1.8.5"
 keywords:
   - mcp
   - telegram
@@ -68,7 +68,7 @@ replicaCount: 3
 image:
   repository: ghcr.io/your-org/cctelegram-mcp-server
   pullPolicy: IfNotPresent
-  tag: "1.6.0"
+  tag: "1.8.5"
 
 imagePullSecrets:
   - name: registry-secret
@@ -306,7 +306,7 @@ replicaCount: 5
 
 image:
   pullPolicy: Always
-  tag: "1.6.0"
+  tag: "1.8.5"
 
 config:
   logLevel: warn
@@ -672,7 +672,7 @@ helm install cctelegram cctelegram/cctelegram \
 
 # Install with inline values
 helm install cctelegram cctelegram/cctelegram \
-  --set image.tag=1.6.1 \
+  --set image.tag=1.8.5 \
   --set replicaCount=5 \
   --set ingress.hosts[0].host=mcp.mycompany.com \
   --namespace cctelegram \
@@ -689,7 +689,7 @@ helm upgrade cctelegram cctelegram/cctelegram \
 
 # Upgrade to specific version
 helm upgrade cctelegram cctelegram/cctelegram \
-  --version 1.6.1 \
+  --version 1.8.5 \
   --namespace cctelegram
 
 # Upgrade with rollback on failure
@@ -754,7 +754,7 @@ helm template cctelegram helm/cctelegram \
 helm package helm/cctelegram
 
 # Verify package
-helm verify cctelegram-1.6.0.tgz
+helm verify cctelegram-1.8.5.tgz
 ```
 
 ### templates/tests/test-connection.yaml

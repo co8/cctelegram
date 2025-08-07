@@ -162,5 +162,5 @@ The MCP server is ready for:
 
 **Build Date**: August 6, 2025  
 **Status**: ✅ PRODUCTION READY  
-**Version**: 1.7.0  
+**Version**: 1.8.5  
 **Last Test**: All systems functional

@@ -570,7 +570,7 @@ prometheus_query "sum(rate(http_requests_total[5m]))" \
 
 ## 🔄 Document Maintenance
 
-- **Last Updated**: January 2025
+- **Last Updated**: August 2025
 - **Review Frequency**: Monthly
 - **Owner**: DevOps Team
 - **Approver**: Engineering Leadership

@@ -243,7 +243,7 @@ const cachedResult = await cache.get('user:123', async () => {
 version: '3.8'
 services:
   cctelegram:
-    image: ghcr.io/user/cctelegram-mcp-server:latest
+    image: ghcr.io/user/cctelegram-mcp-server:v1.8.5
     ports:
       - "3000:3000"
     environment:
@@ -287,7 +287,7 @@ spec:
     spec:
       containers:
       - name: cctelegram
-        image: ghcr.io/user/cctelegram-mcp-server:latest
+        image: ghcr.io/user/cctelegram-mcp-server:v1.8.5
         ports:
         - containerPort: 3000
         env:

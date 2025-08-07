@@ -104,7 +104,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: cctelegram-mcp-server:${VERSION:-latest}
+    image: cctelegram-mcp-server:${VERSION:-v1.8.5}
     container_name: cctelegram-mcp
     restart: unless-stopped
     
@@ -241,7 +241,7 @@ services:
 ```bash
 # Service configuration
 NODE_ENV=production
-VERSION=1.6.0
+VERSION=1.8.5
 MCP_PORT=3000
 
 # Data directories
@@ -298,7 +298,7 @@ DEBUG=mcp:*
 mkdir -p cctelegram-deploy && cd cctelegram-deploy
 
 # 2. Download compose files
-curl -O https://raw.githubusercontent.com/your-org/cctelegram/main/docker-compose.production.yml
+curl -O https://raw.githubusercontent.com/your-org/cctelegram/v1.8.5/docker-compose.production.yml
 
 # 3. Configure environment
 cp .env.example .env.production
@@ -529,7 +529,7 @@ REGISTRY=${REGISTRY:-ghcr.io/your-org}
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --tag $REGISTRY/cctelegram-mcp-server:$VERSION \
-  --tag $REGISTRY/cctelegram-mcp-server:latest \
+  --tag $REGISTRY/cctelegram-mcp-server:v1.8.5 \
   --push .
 ```
 
@@ -544,7 +544,7 @@ docker buildx build \
     push: ${{ github.event_name != 'pull_request' }}
     tags: |
       ghcr.io/${{ github.repository }}/mcp-server:${{ github.sha }}
-      ghcr.io/${{ github.repository }}/mcp-server:latest
+      ghcr.io/${{ github.repository }}/mcp-server:v1.8.5
     cache-from: type=gha
     cache-to: type=gha,mode=max
 ```

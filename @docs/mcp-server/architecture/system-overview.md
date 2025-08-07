@@ -933,7 +933,7 @@ spec:
         fsGroup: 1001
       containers:
       - name: mcp-server
-        image: cctelegram/mcp-server:1.5.0
+        image: cctelegram/mcp-server:1.8.5
         ports:
         - containerPort: 8080
           name: http

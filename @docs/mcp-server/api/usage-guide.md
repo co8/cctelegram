@@ -99,11 +99,11 @@ async function example() {
     const result = await client.sendTelegramEvent({
       type: 'task_completion',
       title: 'Build Process Completed',
-      description: 'Successfully built and deployed version 1.5.0',
+      description: 'Successfully built and deployed version 1.8.5',
       task_id: 'build_001',
       source: 'ci-cd-pipeline',
       data: {
-        version: '1.5.0',
+        version: '1.8.5',
         duration_ms: 120000,
         artifacts: ['dist/app.js', 'dist/styles.css']
       }
@@ -272,7 +272,7 @@ func main() {
         "source":      "deployment-pipeline",
         "data": map[string]interface{}{
             "environment": "production",
-            "version":     "1.5.0",
+            "version":     "1.8.5",
             "duration_ms": 180000,
         },
     }

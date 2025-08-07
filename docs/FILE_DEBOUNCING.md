@@ -1,5 +1,8 @@
 # File Debouncing System Documentation
 
+**Bridge Version**: v0.8.5  
+**MCP Server Version**: v1.8.5
+
 ## Overview
 
 The CCTelegram bridge includes a sophisticated file debouncing system that efficiently handles high-frequency file system events while maintaining data integrity through content hashing. This system prevents duplicate processing of rapid file changes and reduces system overhead.
@@ -380,3 +383,9 @@ let debug_config = DebounceConfig {
 - [Configuration Guide](./CONFIGURATION.md)
 - [API Reference](./API_REFERENCE.md)
 - [Examples](../examples/file_debouncing_demo.rs)
+
+---
+**Document Version**: 2.0.0 (August 2025)  
+**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Dependencies**: tokio v1.45+, notify v6.1+, sha2 v0.10+  
+**Last Updated**: August 2025

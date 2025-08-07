@@ -96,7 +96,7 @@ curl http://localhost:8080/report
 - **System Resources**: CPU usage, memory consumption, uptime
 - **Performance**: Throughput, latency percentiles, bottleneck detection
 
-## 🎛️ Model Context Protocol (MCP) Server (v1.1.1)
+## 🎛️ Model Context Protocol (MCP) Server (v1.8.5)
 
 ### Primary Interface Features
 - **[Claude Code](https://github.com/anthropics/claude-code) Native Integration**: Primary interface for developers - MCP server manages everything automatically
@@ -368,21 +368,22 @@ health_endpoint = "/health"
 - Resource pooling and connection management
 - Horizontal scaling support
 
-## 🔄 Latest Improvements (v0.4.4)
+## 🔄 Latest Improvements (v0.8.5)
 
-- **Concise Messaging System**: Configurable message styles with 40% reduction in message length
-- **Smart Text Truncation**: Intelligent title (20-25 chars) and description (40-60 chars) limits
-- **Optimized Message Format**: Single-line "*emoji title* ⏰ timestamp\ndescription" format
-- **Configurable Timezone Support**: Set custom timezone via CC_TELEGRAM_TIMEZONE environment variable
-- **Message Style Control**: Toggle between "concise" (default) and "detailed" via CC_TELEGRAM_MESSAGE_STYLE
-- **Enhanced User Experience**: Shorter, more readable messages while preserving essential information
-- **MCP-First Architecture**: Users interact with MCP server, bridge managed automatically in background
+- **Queue Integration**: Comprehensive message queue system with Redis support and memory fallback
+- **Performance Optimization**: 86.3% payload reduction with intelligent null field omission
+- **Advanced Validation**: 14 ValidationError types with comprehensive field validation
+- **Enhanced Deduplication**: Primary and secondary deduplication with hash-based detection
+- **Serialization Benchmarks**: Integrated performance testing with microsecond precision
+- **Enterprise Reliability**: Zero message loss architecture with comprehensive validation
+- **Forward Compatibility**: Custom deserializers with Unknown variant fallbacks
+- **MCP Server Coordination**: Full integration with MCP Server v1.8.5 featuring enhanced security
 
 ---
 
 ## 🎯 Zero Message Loss Architecture
 
-CCTelegram v0.6.0 implements enterprise-grade reliability targeting **zero message loss** through:
+CCTelegram v0.8.5 implements enterprise-grade reliability targeting **zero message loss** through:
 
 ### Reliability Framework
 - **Comprehensive Validation**: 14 ValidationError types prevent invalid events from entering the system

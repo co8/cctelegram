@@ -336,7 +336,7 @@ The main server implements the Model Context Protocol specification:
 
 const server = new Server({
   name: 'cctelegram-mcp-server',
-  version: '1.5.0',
+  version: '1.8.5',
 }, {
   capabilities: {
     tools: {},
@@ -804,7 +804,7 @@ export async function sendEventWithResult(event: CCTelegramEvent): Promise<Resul
  * const result = await sendEvent({
  *   type: 'task_completion',
  *   title: 'Build Completed',
- *   description: 'Successfully built version 1.5.0',
+ *   description: 'Successfully built version 1.8.5',
  *   task_id: 'build_001',
  *   source: 'ci-pipeline'
  * });
@@ -1168,4 +1168,4 @@ Happy coding! 🚀
 
 ---
 
-*Last updated: January 2025 | Next review: April 2025*
+*Last updated: August 2025 | Next review: November 2025*
