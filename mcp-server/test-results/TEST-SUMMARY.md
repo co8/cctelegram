@@ -4,8 +4,8 @@
 - **Total Tests**: Unknown
 - **Passed**: Unknown ✅
 - **Failed**: Unknown ❌
-- **Duration**: 0s
-- **Success Rate**: NaN%
+- **Duration**: Unknown
+- **Success Rate**: Unknown
 
 ## Environment
 - **Node Version**: v24.4.1
@@ -33,4 +33,4 @@
 - ✅ Visual Regression Testing
 - ✅ Cross-Browser Compatibility
 
-Generated: 2025-08-07T16:33:10.057Z
+Generated: 2025-08-07T16:49:44.948Z

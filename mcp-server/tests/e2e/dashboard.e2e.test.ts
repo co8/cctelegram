@@ -108,7 +108,8 @@ test.describe('CCTelegram Health Dashboard', () => {
     const isAvailable = await checkDashboardAvailability(page);
     if (!isAvailable) return;
     
-    // Test mobile viewport
+    try {
+      // Test mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
       await page.goto(dashboardUrl);
       

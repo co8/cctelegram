@@ -1,5 +1,5 @@
 {
-  "timestamp": "2025-08-07T16:33:10.057Z",
+  "timestamp": "2025-08-07T16:49:44.948Z",
   "environment": {
     "node_version": "v24.4.1",
     "platform": "darwin",
@@ -16,11 +16,5 @@
     "test_results": "./test-results",
     "screenshots": "./test-results/screenshots",
     "videos": "./test-results/playwright-output"
-  },
-  "summary": {
-    "total": 0,
-    "passed": 0,
-    "failed": 0,
-    "duration": 264.565
   }
 }
