@@ -48,6 +48,9 @@ pub enum BridgeError {
 
     #[error("Timeout error: {0}")]
     Timeout(String),
+
+    #[error("Generic error: {0}")]
+    Generic(String),
 }
 
 /// Categorizes errors for retry logic

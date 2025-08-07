@@ -114,8 +114,10 @@ impl MessageFormatter {
             _ => "ℹ️",
         };
 
-        let concise_title = self.truncate_title(&event.title, 80);
-        let concise_results = self.truncate_description(results, 200);
+        // Calculate intelligent truncation limits using 4096 char Telegram limit
+        let (title_limit, desc_limit) = self.calculate_smart_limits(&event.title, results, status_emoji);
+        let concise_title = self.truncate_title(&event.title, title_limit);
+        let concise_results = self.truncate_description(results, desc_limit);
 
         format!(
             "*{} {}*\n⏰ {}\n\n{}",
@@ -127,7 +129,9 @@ impl MessageFormatter {
     }
 
     pub fn format_approval_message(&self, event: &Event) -> String {
-        let concise_title = self.truncate_title(&event.title, 80);
+        let prompt = event.data.approval_prompt.as_deref().unwrap_or("Approval required");
+        let (title_limit, _) = self.calculate_smart_limits(&event.title, prompt, "🔐");
+        let concise_title = self.truncate_title(&event.title, title_limit);
         
         // Create concise summary with rating icons
         let summary = match self.style {
@@ -163,8 +167,9 @@ impl MessageFormatter {
 
     pub fn format_progress_message(&self, event: &Event) -> String {
         let progress_info = self.extract_progress_info(event);
-        let concise_title = self.truncate_title(&event.title, 80);
-        let concise_desc = self.truncate_description(&event.description, 200);
+        let (title_limit, desc_limit) = self.calculate_smart_limits(&event.title, &event.description, "🔄");
+        let concise_title = self.truncate_title(&event.title, title_limit);
+        let concise_desc = self.truncate_description(&event.description, desc_limit);
         
         // Combine progress info with description for concise format
         let combined_content = if progress_info.is_empty() {
@@ -186,8 +191,9 @@ impl MessageFormatter {
 
     pub fn format_generic_message(&self, event: &Event) -> String {
         let (emoji, _event_name) = self.get_event_display_info(&event.event_type);
-        let concise_title = self.truncate_title(&event.title, 80);
-        let concise_desc = self.truncate_description(&event.description, 200);
+        let (title_limit, desc_limit) = self.calculate_smart_limits(&event.title, &event.description, emoji);
+        let concise_title = self.truncate_title(&event.title, title_limit);
+        let concise_desc = self.truncate_description(&event.description, desc_limit);
         
         format!(
             "*{} {}*\n⏰ {}\n\n{}",
@@ -281,27 +287,29 @@ impl MessageFormatter {
         local_time.format("%d/%b/%y %H:%M").to_string()
     }
 
-    fn truncate_title(&self, title: &str, max_len: usize) -> String {
+    fn truncate_title(&self, title: &str, available_chars: usize) -> String {
         match self.style {
             MessageStyle::Detailed => title.to_string(),
             MessageStyle::Concise => {
-                if title.len() <= max_len {
+                // Use intelligent truncation based on available characters
+                if title.len() <= available_chars {
                     title.to_string()
                 } else {
-                    format!("{}…", &title[..max_len.saturating_sub(1)])
+                    format!("{}…", &title[..available_chars.saturating_sub(1)])
                 }
             }
         }
     }
 
-    fn truncate_description(&self, desc: &str, max_len: usize) -> String {
+    fn truncate_description(&self, desc: &str, available_chars: usize) -> String {
         match self.style {
             MessageStyle::Detailed => desc.to_string(),
             MessageStyle::Concise => {
-                if desc.len() <= max_len {
+                // Use intelligent truncation based on available characters  
+                if desc.len() <= available_chars {
                     desc.to_string()
                 } else {
-                    format!("{}…", &desc[..max_len.saturating_sub(1)])
+                    format!("{}…", &desc[..available_chars.saturating_sub(1)])
                 }
             }
         }
@@ -353,6 +361,48 @@ impl MessageFormatter {
             crate::events::types::EventType::ApprovalRequest => self.format_approval_message(event),
             crate::events::types::EventType::ProgressUpdate => self.format_progress_message(event),
             _ => self.format_generic_message(event),
+        }
+    }
+
+    /// Calculate smart truncation limits based on Telegram's 4096 character limit
+    fn calculate_smart_limits(&self, title: &str, description: &str, emoji: &str) -> (usize, usize) {
+        // Telegram API limit is 4096 characters, leave some buffer
+        const MAX_MESSAGE_LENGTH: usize = 4090;
+        
+        // Calculate overhead for formatting: emoji, asterisks, newlines, timestamp, etc.
+        // Format: "*{emoji} {title}*\n⏰ {timestamp}\n\n{description}"
+        let timestamp_overhead = 25; // "⏰ 14/Aug/25 10:30" + formatting
+        let format_overhead = emoji.len() + 10; // emoji + asterisks + spaces + newlines
+        let total_overhead = format_overhead + timestamp_overhead;
+        
+        let available_content_chars = MAX_MESSAGE_LENGTH.saturating_sub(total_overhead);
+        
+        match self.style {
+            MessageStyle::Detailed => {
+                // In detailed mode, don't truncate unless absolutely necessary
+                let total_content = title.len() + description.len();
+                if total_content <= available_content_chars {
+                    (title.len(), description.len())
+                } else {
+                    // Need to truncate - prioritize description over title
+                    let title_limit = (available_content_chars / 4).min(title.len()); // 25% for title
+                    let desc_limit = available_content_chars.saturating_sub(title_limit); // 75% for description
+                    (title_limit, desc_limit)
+                }
+            }
+            MessageStyle::Concise => {
+                // In concise mode, still use much more generous limits than before
+                let total_content = title.len() + description.len();
+                if total_content <= available_content_chars {
+                    // No truncation needed - use full content!
+                    (title.len(), description.len())
+                } else {
+                    // Smart truncation - prioritize description (which contains the actual content)
+                    let title_limit = (available_content_chars / 3).min(500).min(title.len()); // ~33% for title, max 500 chars
+                    let desc_limit = available_content_chars.saturating_sub(title_limit); // Remaining for description
+                    (title_limit, desc_limit)
+                }
+            }
         }
     }
 }

@@ -318,53 +318,93 @@ impl TelegramBot {
         self.retry_handler.reset_stats().await;
     }
 
-    /// Send a message with rate limiting and retry logic
+    /// Send a message with rate limiting and retry logic, with automatic message splitting
     async fn send_message_with_retry(&self, chat_id: teloxide::types::ChatId, message: &str) -> Result<teloxide::types::Message> {
-        let chat_id_i64 = chat_id.0;
-        let message = message.to_string();
-        let bot = self.bot.clone();
+        // Split message if it exceeds Telegram's 4096 character limit
+        let messages = Self::split_long_message(message);
+        let mut last_result = None;
         
-        self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
-            let bot = bot.clone();
-            let chat_id = chat_id;
-            let message = message.clone();
+        for (i, msg_part) in messages.iter().enumerate() {
+            let chat_id_i64 = chat_id.0;
+            let message_part = msg_part.to_string();
+            let bot = self.bot.clone();
             
-            async move {
-                bot.send_message(chat_id, &message)
-                    .await
-                    .map_err(|e| {
-                        BridgeError::Telegram(e)
-                    })
+            let result = self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
+                let bot = bot.clone();
+                let chat_id = chat_id;
+                let message_part = message_part.clone();
+                
+                async move {
+                    bot.send_message(chat_id, &message_part)
+                        .await
+                        .map_err(|e| {
+                            BridgeError::Telegram(e)
+                        })
+                }
+            }).await;
+            
+            if let Err(e) = &result {
+                error!("Failed to send message part {}/{}: {}", i + 1, messages.len(), e);
+                return result;
             }
-        }).await
+            
+            last_result = Some(result?);
+            
+            // Add small delay between parts to avoid rate limiting
+            if i < messages.len() - 1 {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        }
+        
+        last_result.ok_or_else(|| anyhow::anyhow!("No messages sent"))
     }
 
-    /// Send a message with parse mode and retry logic
+    /// Send a message with parse mode and retry logic, with automatic message splitting
     async fn send_message_with_parse_mode_and_retry(
         &self, 
         chat_id: teloxide::types::ChatId, 
         message: &str,
         parse_mode: ParseMode,
     ) -> Result<teloxide::types::Message> {
-        let chat_id_i64 = chat_id.0;
-        let message = message.to_string();
-        let bot = self.bot.clone();
+        // Split message if it exceeds Telegram's 4096 character limit
+        let messages = Self::split_long_message(message);
+        let mut last_result = None;
         
-        self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
-            let bot = bot.clone();
-            let chat_id = chat_id;
-            let message = message.clone();
-            let parse_mode = parse_mode;
+        for (i, msg_part) in messages.iter().enumerate() {
+            let chat_id_i64 = chat_id.0;
+            let message_part = msg_part.to_string();
+            let bot = self.bot.clone();
             
-            async move {
-                bot.send_message(chat_id, &message)
-                    .parse_mode(parse_mode)
-                    .await
-                    .map_err(|e| {
-                        BridgeError::Telegram(e)
-                    })
+            let result = self.retry_handler.send_telegram_message_with_retry(chat_id_i64, move || {
+                let bot = bot.clone();
+                let chat_id = chat_id;
+                let message_part = message_part.clone();
+                let parse_mode = parse_mode;
+                
+                async move {
+                    bot.send_message(chat_id, &message_part)
+                        .parse_mode(parse_mode)
+                        .await
+                        .map_err(|e| {
+                            BridgeError::Telegram(e)
+                        })
+                }
+            }).await;
+            
+            if let Err(e) = &result {
+                error!("Failed to send message part {}/{}: {}", i + 1, messages.len(), e);
+                return result;
             }
-        }).await
+            
+            last_result = Some(result?);
+            
+            // Add small delay between parts to avoid rate limiting
+            if i < messages.len() - 1 {
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
+        }
+        
+        last_result.ok_or_else(|| anyhow::anyhow!("No messages sent"))
     }
 
     /// Send a message with reply markup and retry logic
@@ -1589,6 +1629,64 @@ impl TelegramBot {
     /// Get current timestamp for status updates
     fn get_current_timestamp() -> String {
         chrono::Utc::now().format("%H:%M:%S UTC").to_string()
+    }
+    
+    /// Split long messages into parts that fit within Telegram's 4096 character limit
+    fn split_long_message(message: &str) -> Vec<String> {
+        const MAX_LENGTH: usize = 4090; // Leave small buffer
+        
+        if message.len() <= MAX_LENGTH {
+            return vec![message.to_string()];
+        }
+        
+        let mut parts = Vec::new();
+        let mut current_pos = 0;
+        
+        while current_pos < message.len() {
+            let remaining = &message[current_pos..];
+            
+            if remaining.len() <= MAX_LENGTH {
+                // Last part
+                parts.push(remaining.to_string());
+                break;
+            }
+            
+            // Find a good breaking point (prefer line breaks, then spaces)
+            let mut break_pos = MAX_LENGTH.min(remaining.len());
+            
+            // Look for line break within the last 500 characters
+            if let Some(newline_pos) = remaining[0..break_pos].rfind('\n') {
+                if break_pos - newline_pos < 500 {
+                    break_pos = newline_pos + 1; // Include the newline
+                }
+            }
+            // Otherwise, look for space within the last 100 characters
+            else if let Some(space_pos) = remaining[0..break_pos].rfind(' ') {
+                if break_pos - space_pos < 100 {
+                    break_pos = space_pos + 1; // Include the space
+                }
+            }
+            
+            let part = &remaining[0..break_pos];
+            parts.push(part.to_string());
+            current_pos += break_pos;
+        }
+        
+        // Add continuation indicators for multiple parts
+        if parts.len() > 1 {
+            let total_parts = parts.len();
+            for (i, part) in parts.iter_mut().enumerate() {
+                if i == 0 {
+                    part.push_str("\n\n📄 *Message continues...*");
+                } else if i == total_parts - 1 {
+                    *part = format!("📄 *...continued from above*\n\n{}", part);
+                } else {
+                    *part = format!("📄 *...continued from above*\n\n{}\n\n📄 *Message continues...*", part);
+                }
+            }
+        }
+        
+        parts
     }
 
     /// Get dynamic help message based on MCP integration status
