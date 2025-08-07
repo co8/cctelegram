@@ -1,6 +1,21 @@
-# CC Telegram Bridge Event System - Quick Reference
+# 📋 CC Telegram Bridge Event System - Quick Reference
+*Developer's Essential Guide to 44+ Event Types & MCP Tools*
 
-## Event Types Overview
+## 🎯 **Event Types at a Glance**
+
+### 📊 **Event Category Overview**
+| Category | Count | Primary Use | Performance | Priority |
+|:---------|:------|:------------|:------------|:---------|
+| 📋 Task Management | 5 types | Workflow tracking | <100ms | 🔴 Critical |
+| 🔨 Code Operations | 6 types | Development cycle | <200ms | 🔴 Critical |
+| 📁 File System | 5 types | File monitoring | <50ms | 🟡 Medium |
+| 🔨 Build & Dev | 8 types | CI/CD pipeline | <300ms | 🔴 Critical |
+| 📝 Git & VCS | 7 types | Version control | <150ms | 🟡 Medium |
+| 💚 System Monitoring | 5 types | Health checks | <100ms | 🔴 Critical |
+| 💬 User Interaction | 3 types | Approvals | <50ms | 🔴 Critical |
+| 🔄 Notifications | 4 types | Info updates | <100ms | 🟢 Low |
+| 🌐 Integration | 3 types | External APIs | <200ms | 🟡 Medium |
+| 🎯 Custom Events | ∞ types | User-defined | <100ms | 🟢 Variable |
 
 ### 📋 Task Management (5)
 ```rust

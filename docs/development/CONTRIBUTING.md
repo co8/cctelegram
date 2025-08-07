@@ -1,378 +1,475 @@
-# Contributing to CC Telegram Bridge
+# Contributing to CCTelegram
 
-Thank you for your interest in contributing to CC Telegram Bridge! This document provides guidelines and information for contributors.
+**Complete contribution workflow** with git diagrams, quality gates, and technical procedures.
 
-## 🤝 Ways to Contribute
+> **Quick Start**: Fork → Branch → Code → Test → PR → Review → Merge
 
-- **Bug Reports**: Help us identify and fix issues
-- **Feature Requests**: Suggest new functionality
-- **Code Contributions**: Submit bug fixes and enhancements
-- **Documentation**: Improve guides, examples, and API docs
-- **Testing**: Help expand test coverage
-- **Performance**: Optimize and benchmark improvements
+## 🎯 Contribution Areas
 
-## 🚀 Getting Started
+### High-Impact Areas
+- **🔧 MCP Tool Development**: Add new Telegram integration capabilities
+- **⚡ Performance Optimization**: Improve throughput and response times
+- **🛡️ Security Enhancements**: Strengthen authentication and authorization
+- **🧪 Testing Infrastructure**: Expand automated testing coverage
+- **📚 Documentation**: Improve developer experience and guides
 
-### Prerequisites
-- **Rust 1.70+** - [Install Rust](https://rustup.rs/)
-- **Git** for version control
-- **Telegram Bot Token** for testing
-- **Basic understanding** of Rust and async programming
+### Technical Contributions
+- **Bug Fixes**: Resolve issues with detailed root cause analysis
+- **Feature Implementation**: Add new functionality with comprehensive tests
+- **Code Reviews**: Help maintain quality through peer review
+- **Performance Benchmarking**: Validate and improve system performance
+- **Security Audits**: Identify and resolve security vulnerabilities
 
-### Development Setup
+## 🚀 Complete Development Setup
+
+### 1. Repository Setup
 ```bash
-# Fork and clone the repository
-git clone https://github.com/yourusername/cc-telegram.git
-cd cc-telegram
+# Fork the repository on GitHub first
+git clone https://github.com/yourusername/cctelegram.git
+cd cctelegram
 
-# Install development tools
-rustup component add clippy rustfmt
+# Configure upstream remote
+git remote add upstream https://github.com/co8/cctelegram.git
+git remote -v  # Verify remotes
+```
 
-# Build and test
+### 2. Rust Bridge Setup
+```bash
+# Install Rust 1.70+ with components
+rustup install 1.70
+rustup default 1.70
+rustup component add clippy rustfmt rust-analyzer
+
+# Verify installation
+rustc --version
+cargo --version
+
+# Build and test Rust bridge
 cargo build
 cargo test
-
-# Run lints
 cargo clippy
 cargo fmt --check
 ```
 
-## 📝 Development Guidelines
+### 3. MCP Server Setup
+```bash
+# Navigate to MCP server directory
+cd mcp-server
 
-### Code Style
-- **Format**: Use `cargo fmt` for consistent formatting
-- **Linting**: Ensure `cargo clippy` passes without warnings
-- **Documentation**: Document public APIs with rustdoc comments
-- **Comments**: Use `//` for code comments, avoid obvious comments
-- **Error Handling**: Use `anyhow::Result` for error propagation
+# Install Node.js dependencies
+npm install
 
-### Rust Best Practices
-```rust
-// ✅ Good: Clear error context and proper types
-pub async fn process_event(&self, event: &Event) -> anyhow::Result<()> {
-    self.validate_event(event)
-        .context("Failed to validate event")?;
-    Ok(())
-}
+# Build TypeScript project
+npm run build
 
-// ❌ Avoid: Unwrap in production code
-let result = operation().unwrap(); // Don't do this
-
-// ✅ Good: Proper error handling
-let result = operation()
-    .context("Operation failed")?;
+# Run test suite
+npm test
+npm run lint
+npm run type-check
 ```
 
-### Testing Standards
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test complete workflows
-- **Documentation Tests**: Ensure examples in docs work
-- **Performance Tests**: Validate performance characteristics
+### 4. Integration Testing
+```bash
+# Return to root directory
+cd ..
 
+# Run full integration tests
+./scripts/test-all.sh
+
+# Verify both systems work together
+cargo test --test integration_tests
+npm run test:integration --prefix mcp-server
+```
+
+## 📋 Development Prerequisites
+
+### Required Tools
+- **Rust**: 1.70+ with clippy, rustfmt, rust-analyzer
+- **Node.js**: 20+ with npm 9+
+- **Git**: 2.30+ for advanced features
+- **System**: macOS, Linux, or Windows with WSL2
+
+### Recommended IDE Setup
+- **VS Code** with rust-analyzer, Jest, GitLens extensions
+- **RustRover** or **IntelliJ IDEA** with Rust plugin
+- **WebStorm** for TypeScript development
+
+### Testing Requirements
+- **Docker**: For integration tests and E2E testing
+- **Telegram Bot Token**: For testing Telegram integration
+- **Test Coverage**: >90% for new code
+
+## 🔄 Git Workflow
+
+### Branch Strategy
+```mermaid
+gitGraph
+    commit id: "main"
+    branch feat/new-feature
+    checkout feat/new-feature
+    commit id: "implement feature"
+    commit id: "add tests"
+    commit id: "update docs"
+    checkout main
+    merge feat/new-feature
+    commit id: "release"
+```
+
+### Detailed Workflow
+
+#### 1. Sync with Upstream
+```bash
+# Ensure main is current
+git checkout main
+git fetch upstream
+git rebase upstream/main
+git push origin main
+```
+
+#### 2. Create Feature Branch
+```bash
+# Create descriptive branch name
+git checkout -b feat/add-approval-timeout
+git checkout -b fix/memory-leak-queue
+git checkout -b docs/api-reference-update
+```
+
+#### 3. Development Cycle
+```mermaid
+flowchart TD
+    START[Start Development] --> CODE[Write Code]
+    CODE --> TEST[Run Tests]
+    TEST --> LINT[Run Linters]
+    LINT --> FIX{Issues Found?}
+    FIX -->|Yes| CODE
+    FIX -->|No| COMMIT[Commit Changes]
+    COMMIT --> PUSH[Push to Fork]
+    PUSH --> PR[Create Pull Request]
+```
+
+#### 4. Quality Validation
+```bash
+# Pre-commit validation script
+#!/bin/bash
+set -e
+
+echo "🔍 Running quality checks..."
+
+# Rust validation
+echo "Validating Rust code..."
+cargo clippy -- -D warnings
+cargo fmt --check
+cargo test
+
+# TypeScript validation  
+echo "Validating TypeScript code..."
+cd mcp-server
+npm run lint
+npm run type-check
+npm run test:unit
+
+# Integration tests
+echo "Running integration tests..."
+npm run test:integration
+
+echo "✅ All quality checks passed!"
+```
+
+## 🧪 Testing Standards
+
+### Test Pyramid Strategy
+```mermaid
+pyramid
+    Unit Tests [90% Coverage]
+    Integration Tests [80% Coverage]
+    E2E Tests [Critical Paths]
+```
+
+### Rust Testing
 ```rust
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio_test;
     
     #[tokio::test]
-    async fn test_event_processing() {
-        // Setup
-        let processor = EventProcessor::new(&temp_dir);
+    async fn test_event_processing_success() {
+        // Arrange
+        let processor = EventProcessor::new(&temp_dir).await;
+        let event = create_mock_event();
         
-        // Execute
-        let result = processor.process_event(&mock_event).await;
+        // Act
+        let result = processor.process_event(&event).await;
         
-        // Verify
+        // Assert
         assert!(result.is_ok());
+        assert_eq!(result.unwrap().status, ProcessingStatus::Success);
+    }
+    
+    #[tokio::test]
+    async fn test_event_processing_failure() {
+        // Test error handling paths
+        let processor = EventProcessor::new(&invalid_dir).await;
+        let result = processor.process_event(&invalid_event).await;
+        
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), ErrorKind::InvalidInput);
     }
 }
 ```
 
-### Security Guidelines
-- **Input Validation**: Validate all external inputs
-- **Authentication**: Maintain user-based access control
-- **Secrets**: Never commit tokens, keys, or sensitive data
-- **Rate Limiting**: Implement appropriate throttling
-- **Error Messages**: Don't leak sensitive information
-
-## 🐛 Bug Reports
-
-### Before Submitting
-1. **Search existing issues** to avoid duplicates
-2. **Test with latest version** to ensure bug still exists
-3. **Gather system information** (OS, Rust version, etc.)
-4. **Create minimal reproduction** if possible
-
-### Bug Report Template
-```markdown
-## Bug Description
-Brief description of the issue.
-
-## Steps to Reproduce
-1. Step one
-2. Step two
-3. Expected vs actual behavior
-
-## Environment
-- OS: [e.g., macOS 14.0, Ubuntu 22.04]
-- Rust Version: [e.g., 1.75.0]
-- CC Telegram Bridge Version: [e.g., 0.1.0]
-
-## Logs/Output
-```
-Paste relevant logs or error messages
-```
-
-## Additional Context
-Any other relevant information.
-```
-
-## 💡 Feature Requests
-
-### Before Submitting
-1. **Check existing issues** for similar requests
-2. **Consider scope** - does it fit the project goals?
-3. **Think about implementation** - is it technically feasible?
-4. **Provide use cases** - why is this needed?
-
-### Feature Request Template
-```markdown
-## Feature Description
-Clear description of the proposed feature.
-
-## Use Case
-Why is this feature needed? What problem does it solve?
-
-## Proposed Implementation
-How should this feature work? Any implementation ideas?
-
-## Alternatives Considered
-What alternatives have you considered?
-
-## Additional Context
-Any other relevant information, mockups, or examples.
+### TypeScript Testing
+```typescript
+describe('MCPServer Tool Handler', () => {
+  let server: MCPServer;
+  let mockBridgeClient: jest.Mocked<CCTelegramBridgeClient>;
+  
+  beforeEach(() => {
+    mockBridgeClient = createMockBridgeClient();
+    server = new MCPServer(mockBridgeClient);
+  });
+  
+  describe('send_telegram_event', () => {
+    it('should successfully send event with valid parameters', async () => {
+      // Arrange
+      const eventArgs = {
+        type: 'task_completion',
+        title: 'Test Task',
+        description: 'Test completed successfully'
+      };
+      
+      mockBridgeClient.sendEvent.mockResolvedValue({
+        success: true,
+        event_id: 'test-123'
+      });
+      
+      // Act
+      const result = await server.callTool('send_telegram_event', eventArgs);
+      
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockBridgeClient.sendEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'task_completion',
+          title: 'Test Task'
+        })
+      );
+    });
+    
+    it('should handle bridge communication failures', async () => {
+      // Test error scenarios and retry logic
+      mockBridgeClient.sendEvent.mockRejectedValue(
+        new Error('Bridge connection failed')
+      );
+      
+      const result = await server.callTool('send_telegram_event', eventArgs);
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Bridge connection failed/);
+    });
+  });
+});
 ```
 
-## 🔧 Code Contributions
-
-### Development Workflow
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
-3. **Develop** your changes following the guidelines
-4. **Test** thoroughly: `cargo test && cargo clippy`
-5. **Commit** with clear messages
-6. **Push** to your fork: `git push origin feature/amazing-feature`
-7. **Submit** a pull request
-
-### Commit Message Format
-Use conventional commits for consistency:
-
+### Performance Testing
 ```bash
-# Format: type(scope): description
-feat(telegram): add interactive keyboard support
-fix(config): resolve environment variable parsing
-docs(readme): update installation instructions
-test(events): add event validation tests
-perf(monitor): optimize metrics collection
-refactor(storage): simplify file operations
+# Benchmark critical paths
+npm run benchmark
+cargo bench
+
+# Load testing
+npm run test:load
+k6 run tests/load-test.js
+
+# Memory leak detection
+npm run test:memory-leak
+valgrind cargo test
 ```
 
-### Pull Request Guidelines
+## 🚦 Pull Request Process
 
-#### Before Submitting
-- [ ] **Tests pass**: `cargo test`
-- [ ] **Lints clean**: `cargo clippy`
-- [ ] **Formatted**: `cargo fmt`
-- [ ] **Documentation updated** if needed
-- [ ] **CHANGELOG.md updated** for user-facing changes
+### PR Quality Checklist
+```markdown
+## Pre-Submission Checklist
+- [ ] **Code Quality**
+  - [ ] Rust: `cargo clippy` passes with zero warnings
+  - [ ] TypeScript: `npm run lint` passes with zero violations
+  - [ ] Code follows project conventions and patterns
+  
+- [ ] **Testing**
+  - [ ] Unit tests added/updated (>90% coverage)
+  - [ ] Integration tests pass
+  - [ ] E2E tests cover critical paths
+  - [ ] Performance tests validate no regressions
+  
+- [ ] **Documentation**
+  - [ ] Code comments for complex logic
+  - [ ] API documentation updated
+  - [ ] README updated if needed
+  - [ ] CHANGELOG.md entry added
+  
+- [ ] **Security**
+  - [ ] Security implications reviewed
+  - [ ] Input validation implemented
+  - [ ] No secrets committed
+  - [ ] Dependency vulnerabilities resolved
+```
 
-#### PR Template
+### PR Template
 ```markdown
 ## Description
-Brief description of changes made.
+Brief description of changes and motivation.
 
 ## Type of Change
-- [ ] Bug fix (non-breaking change fixing an issue)
-- [ ] New feature (non-breaking change adding functionality)
-- [ ] Breaking change (fix or feature causing existing functionality to change)
-- [ ] Documentation update
+- [ ] 🐛 Bug fix (non-breaking change fixing an issue)
+- [ ] ✨ New feature (non-breaking change adding functionality)  
+- [ ] 💥 Breaking change (fix or feature causing existing functionality to change)
+- [ ] 📚 Documentation update
+- [ ] 🎨 Code style/formatting changes
+- [ ] ♻️ Code refactoring
+- [ ] ⚡ Performance improvements
+- [ ] 🧪 Test additions/improvements
 
-## Testing
+## Testing Strategy
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] Manual testing performed
+- [ ] Performance impact validated
+- [ ] Cross-platform compatibility verified
 
-## Checklist
-- [ ] Code follows style guidelines
-- [ ] Self-review completed
-- [ ] Documentation updated
-- [ ] Tests added and passing
-- [ ] No new clippy warnings
+## Security Impact
+- [ ] Authentication/authorization changes reviewed
+- [ ] Input validation implemented
+- [ ] Security implications documented
+- [ ] No sensitive data exposure
 
-## Additional Notes
-Any additional information or context.
+## Performance Impact
+- [ ] Performance benchmarks run
+- [ ] Memory usage validated  
+- [ ] No performance regressions introduced
+- [ ] Scalability implications considered
+
+## Breaking Changes
+List any breaking changes and migration steps.
+
+## Screenshots/Logs
+Include relevant screenshots, logs, or examples.
+
+## Related Issues
+- Fixes #123
+- Related to #456
+- Implements RFC #789
 ```
 
-## 🧪 Testing
+### Review Process
+```mermaid
+sequenceDiagram
+    participant DEV as Developer
+    participant REV as Reviewer
+    participant CI as CI/CD
+    participant MAIN as Main Branch
+    
+    DEV->>CI: Create PR
+    CI->>CI: Run automated checks
+    CI->>REV: Request review
+    REV->>DEV: Provide feedback
+    DEV->>DEV: Address feedback
+    DEV->>CI: Update PR
+    CI->>CI: Re-run checks
+    REV->>CI: Approve PR
+    CI->>MAIN: Merge PR
+    MAIN->>CI: Deploy if needed
+```
 
-### Running Tests
+## 📊 Code Quality Standards
+
+### Rust Quality Gates
+```toml
+[lints.rust]
+warnings = "deny"
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "deny"
+pedantic = "deny"
+nursery = "deny"
+cargo = "deny"
+```
+
+### TypeScript Quality Gates
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}
+```
+
+### Performance Standards
+- **Response Time**: <500ms P95 for MCP tools
+- **Memory Usage**: <1GB per component under load
+- **Throughput**: 1000+ events/minute sustained
+- **Error Rate**: <0.1% for critical operations
+
+### Security Requirements
+- **Input Validation**: All external inputs validated with Joi/serde
+- **Authentication**: API key validation with rate limiting
+- **Authorization**: Role-based access control enforcement
+- **Audit Logging**: All security events logged with context
+- **Vulnerability Management**: Zero critical/high vulnerabilities
+
+## 🎯 Contribution Guidelines
+
+### Commit Message Format
 ```bash
-# Run all tests
-cargo test
-
-# Run specific test
-cargo test test_performance_monitor
-
-# Run with output
-cargo test -- --nocapture
-
-# Run integration tests only
-cargo test --test integration_tests
+# Format: type(scope): description
+feat(mcp): add approval timeout configuration
+fix(bridge): resolve memory leak in queue processing
+docs(api): update MCP tool reference
+test(integration): add E2E Telegram workflow tests
+perf(queue): optimize batch processing performance
+refactor(auth): simplify authentication middleware
 ```
 
-### Writing Tests
-- **Test Names**: Use descriptive names
-- **Test Structure**: Arrange, Act, Assert pattern
-- **Mock Data**: Use realistic test data
-- **Error Cases**: Test both success and failure paths
+### Code Review Standards
+- **Functionality**: Code works as intended and handles edge cases
+- **Testing**: Comprehensive test coverage with meaningful assertions
+- **Performance**: No obvious performance regressions
+- **Security**: Secure coding practices followed
+- **Maintainability**: Code is readable and well-documented
+- **Architecture**: Changes align with system design principles
 
-```rust
-#[tokio::test]
-async fn test_telegram_message_formatting() {
-    // Arrange
-    let formatter = MessageFormatter::new();
-    let event = create_test_event();
-    
-    // Act
-    let message = formatter.format_task_completion(&event);
-    
-    // Assert
-    assert!(message.contains("✅"));
-    assert!(message.contains(&event.title));
-}
-```
+### Release Integration
+- **Feature Flags**: Use feature flags for experimental features
+- **Backward Compatibility**: Maintain API compatibility when possible
+- **Migration Guides**: Provide clear migration instructions for breaking changes
+- **Performance Impact**: Document performance characteristics
+- **Security Impact**: Highlight security implications and recommendations
 
-## 📊 Performance Considerations
+## 🤝 Community Engagement
 
-### Performance Guidelines
-- **Async/Await**: Use async functions for I/O operations
-- **Memory Allocation**: Minimize unnecessary allocations
-- **CPU Usage**: Profile CPU-intensive operations
-- **Caching**: Cache expensive computations when appropriate
+### Getting Help
+- **Technical Questions**: Create GitHub Discussion with `question` label
+- **Feature Requests**: Create GitHub Issue with `enhancement` label  
+- **Bug Reports**: Create GitHub Issue with detailed reproduction steps
+- **Security Issues**: Use private vulnerability reporting
+- **Architecture Discussions**: Join community design sessions
 
-### Benchmarking
-```rust
-#[cfg(test)]
-mod benches {
-    use super::*;
-    use std::time::Instant;
-    
-    #[test]
-    fn benchmark_event_processing() {
-        let start = Instant::now();
-        // ... operation to benchmark
-        let duration = start.elapsed();
-        assert!(duration.as_millis() < 100, "Processing too slow: {:?}", duration);
-    }
-}
-```
-
-## 📚 Documentation
-
-### Documentation Standards
-- **Public APIs**: Document all public functions and types
-- **Examples**: Include usage examples in doc comments
-- **Error Cases**: Document when functions return errors
-- **Panics**: Document when functions might panic
-
-```rust
-/// Processes a Telegram event and sends notifications.
-/// 
-/// # Arguments
-/// * `event` - The event to process
-/// 
-/// # Returns
-/// * `Ok(())` - Event processed successfully
-/// * `Err(_)` - Processing failed (invalid event, network error, etc.)
-/// 
-/// # Examples
-/// ```
-/// let processor = EventProcessor::new();
-/// processor.process_event(&event).await?;
-/// ```
-pub async fn process_event(&self, event: &Event) -> anyhow::Result<()> {
-    // Implementation
-}
-```
-
-### Documentation Types
-- **README.md**: Project overview and basic usage
-- **QUICKSTART.md**: Step-by-step setup guide
-- **API Documentation**: Generated from rustdoc comments
-- **Examples**: Practical usage examples
-- **Architecture**: High-level design documentation
-
-## 🔍 Code Review Process
-
-### Review Checklist
-- [ ] **Functionality**: Does the code work as intended?
-- [ ] **Style**: Follows project conventions?
-- [ ] **Performance**: No obvious performance issues?
-- [ ] **Security**: No security vulnerabilities?
-- [ ] **Tests**: Adequate test coverage?
-- [ ] **Documentation**: Clear and complete?
-- [ ] **Breaking Changes**: Properly documented?
-
-### Review Guidelines
-- **Be Constructive**: Provide helpful feedback
-- **Be Specific**: Point to exact lines and suggest improvements
-- **Be Respectful**: Maintain a positive and professional tone
-- **Learn Together**: Use reviews as learning opportunities
-
-## 🏷️ Release Process
-
-### Version Numbering
-We follow [Semantic Versioning](https://semver.org/):
-- **MAJOR**: Breaking changes
-- **MINOR**: New features (backward compatible)
-- **PATCH**: Bug fixes (backward compatible)
-
-### Release Checklist
-1. **Update Version**: Bump version in `Cargo.toml`
-2. **Update Changelog**: Document all changes
-3. **Test Thoroughly**: Run full test suite
-4. **Performance Check**: Validate performance benchmarks
-5. **Documentation**: Update docs for new features
-6. **Security Review**: Ensure no security regressions
-7. **Tag Release**: Create git tag and GitHub release
-
-## 📞 Getting Help
-
-### Communication Channels
-- **GitHub Issues**: Bug reports and feature requests
-- **GitHub Discussions**: General questions and ideas
-- **Code Review**: Pull request discussions
-
-### Questions?
-- **Architecture Questions**: Ask in GitHub Discussions
-- **Implementation Help**: Comment on relevant issues
-- **Security Concerns**: Create private security report
-
-## 🙏 Recognition
-
-Contributors are recognized in several ways:
-- **CHANGELOG.md**: Major contributions noted in releases
-- **GitHub Contributors**: Automatic recognition on repository
-- **Documentation**: Contributor acknowledgments
-
-## 📜 License
-
-By contributing to CC Telegram Bridge, you agree that your contributions will be licensed under the MIT License.
+### Contribution Recognition
+- **Contributors**: Listed in README.md and release notes
+- **Major Features**: Highlighted in changelog and announcements
+- **Bug Fixes**: Acknowledged in issue resolution
+- **Documentation**: Credited in documentation improvements
+- **Code Reviews**: Recognized for review contributions
 
 ---
 
-**Thank you for contributing to CC Telegram Bridge!** 🚀
+**Ready to start?** Choose your contribution area and follow this workflow for effective collaboration!
 
-Your contributions help make this project better for everyone. Whether you're fixing bugs, adding features, or improving documentation, every contribution matters.
+**Need architecture context?** Review our [Architecture Guide](./architecture.md) before implementing major changes.
 
-**Happy coding!** ❤️
+**Questions about testing?** Check our [Testing Guide](./testing.md) for comprehensive testing procedures.

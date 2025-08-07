@@ -1,1182 +1,757 @@
-# System Architecture Overview
+# CCTelegram MCP Server System Overview
 
-## 🏗️ Executive Summary
+**Detailed technical architecture and system design for CCTelegram MCP Server**
 
-The CCTelegram MCP Server provides a secure, scalable, and resilient bridge between Model Context Protocol (MCP) clients and Telegram notifications. This document outlines the system's architecture, design decisions, and integration patterns for enterprise deployment.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=for-the-badge&logo=typescript)](../README.md) [![Node.js](https://img.shields.io/badge/Node.js-20+-339933?style=for-the-badge&logo=nodedotjs)](../README.md) [![MCP Protocol](https://img.shields.io/badge/MCP%20Protocol-Compatible-7209B7?style=for-the-badge&logo=protocol)](https://spec.modelcontextprotocol.io/)
 
-### Key Architectural Principles
+---
 
-1. **Security by Design**: Multi-layered security with authentication, authorization, input validation, and secure logging
-2. **Resilience & Reliability**: Circuit breakers, retry mechanisms, health monitoring, and automatic recovery
-3. **Observability**: Comprehensive monitoring, structured logging, distributed tracing, and performance metrics
-4. **Scalability**: Horizontal scaling, load balancing, and resource optimization
-5. **Compliance**: OWASP Top 10 compliance, enterprise security standards, and audit trails
+## 🏗️ System Architecture Overview
 
-## 🎯 System Context
-
-### Business Requirements
-
-- **Real-time Notifications**: Instant delivery of development events to Telegram
-- **Interactive Workflows**: Approval requests and user response processing
-- **System Management**: Bridge process control and health monitoring
-- **Enterprise Integration**: Secure API access with authentication and rate limiting
-- **Compliance**: Security controls meeting enterprise standards
-
-### Technical Requirements
-
-- **Protocol Compliance**: Full MCP specification support
-- **High Availability**: 99.9% uptime with automatic failover
-- **Performance**: <500ms response time, 1000+ requests/minute capacity
-- **Security**: OWASP compliance with zero critical vulnerabilities
-- **Monitoring**: Real-time health checks and performance metrics
-
-## 🏛️ High-Level Architecture
+The CCTelegram MCP Server is a TypeScript-based Node.js application that implements the Model Context Protocol (MCP) specification to provide seamless integration between Claude Code and the CCTelegram notification system.
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        CC[Claude Code]
-        MC[MCP Clients]
-        API[API Consumers]
+    subgraph "External Interface"
+        CC[Claude Code IDE]
+        DEV[Developer]
     end
     
-    subgraph "Gateway Layer"
-        LB[Load Balancer]
-        RP[Reverse Proxy]
-        WAF[Web Application Firewall]
+    subgraph "MCP Server Core" {#mcp-core}
+        PROTOCOL[MCP Protocol Handler]
+        REGISTRY[Tool Registry]
+        VALIDATOR[Input Validator]
+        SERIALIZER[Data Serializer]
     end
     
-    subgraph "Application Layer"
-        MCP1[MCP Server Instance 1]
-        MCP2[MCP Server Instance 2]
-        MCP3[MCP Server Instance 3]
-        
-        subgraph "Security Framework"
-            AUTH[Authentication]
-            AUTHZ[Authorization]
-            VAL[Input Validation]
-            RL[Rate Limiting]
-        end
-        
-        subgraph "Observability System"
-            METRICS[Metrics Collection]
-            LOGGING[Structured Logging]
-            TRACING[Distributed Tracing]
-            HEALTH[Health Monitoring]
-        end
-        
-        subgraph "Resilience Framework"
-            CB[Circuit Breakers]
-            RETRY[Retry Mechanisms]
-            ERR[Error Handling]
-            REC[Auto Recovery]
-        end
+    subgraph "Tool Framework" {#tool-framework}
+        EVENT_TOOLS[Event Tools]
+        BRIDGE_TOOLS[Bridge Management]
+        RESPONSE_TOOLS[Response Tools]
+        STATUS_TOOLS[Status Tools]
     end
     
-    subgraph "Integration Layer"
-        BRIDGE[CCTelegram Bridge]
-        TASK[Task Management]
-        MON[System Monitoring]
+    subgraph "Processing Layer"
+        EVENT_PROC[Event Processor]
+        FILE_HANDLER[File Handler]
+        RESPONSE_PROC[Response Processor]
+        HEALTH_MON[Health Monitor]
     end
     
-    subgraph "External Services"
-        TG[Telegram Bot API]
-        PROM[Prometheus]
-        GR[Grafana]
+    subgraph "Bridge Communication"
+        FILE_SYS[File System Interface]
+        EVENT_FILES[Event Files]
+        RESPONSE_FILES[Response Files]
+        STATUS_FILES[Status Files]
     end
     
-    CC --> LB
-    MC --> LB
-    API --> LB
+    DEV --> CC
+    CC -->|MCP Protocol| PROTOCOL
+    PROTOCOL --> REGISTRY
+    REGISTRY --> EVENT_TOOLS
+    REGISTRY --> BRIDGE_TOOLS
+    REGISTRY --> RESPONSE_TOOLS
+    REGISTRY --> STATUS_TOOLS
     
-    LB --> RP
-    RP --> WAF
-    WAF --> MCP1
-    WAF --> MCP2
-    WAF --> MCP3
+    EVENT_TOOLS --> VALIDATOR
+    VALIDATOR --> SERIALIZER
+    SERIALIZER --> EVENT_PROC
+    EVENT_PROC --> FILE_HANDLER
     
-    MCP1 --> AUTH
-    MCP2 --> AUTH
-    MCP3 --> AUTH
+    FILE_HANDLER --> FILE_SYS
+    FILE_SYS --> EVENT_FILES
+    FILE_SYS --> RESPONSE_FILES
+    FILE_SYS --> STATUS_FILES
     
-    AUTH --> AUTHZ
-    AUTHZ --> VAL
-    VAL --> RL
+    RESPONSE_TOOLS --> RESPONSE_PROC
+    STATUS_TOOLS --> HEALTH_MON
     
-    MCP1 --> METRICS
-    MCP2 --> LOGGING
-    MCP3 --> TRACING
-    
-    MCP1 --> CB
-    MCP2 --> RETRY
-    MCP3 --> ERR
-    
-    MCP1 --> BRIDGE
-    MCP2 --> BRIDGE
-    MCP3 --> BRIDGE
-    
-    BRIDGE --> TG
-    METRICS --> PROM
-    PROM --> GR
+    style CC fill:#FF8C42,color:#fff
+    style PROTOCOL fill:#2da199,color:#fff
+    style EVENT_TOOLS fill:#E6522C,color:#fff
+    style FILE_SYS fill:#26A5E4,color:#fff
 ```
 
-## 🔧 Component Architecture
+---
 
-### 1. MCP Server Core
+## 🔌 MCP Core Components
 
-#### Primary Responsibilities
-- **Protocol Implementation**: Full MCP specification compliance
-- **Tool Registration**: 16 MCP tools for Telegram integration
-- **Resource Management**: Event templates, bridge status, response data
-- **Request Routing**: Secure routing to appropriate handlers
-- **Response Formatting**: Standardized JSON response structures
+### **MCP Protocol Handler** {#mcp-core}
 
-#### Key Components
+The core MCP implementation that handles protocol compliance and communication with Claude Code.
 
 ```typescript
-// Core Server Structure
-export class MCPServer {
-  private server: Server;
-  private bridgeClient: CCTelegramBridgeClient;
-  private securityManager: SecurityManager;
-  private observabilityManager: ObservabilityManager;
-  private resilienceManager: ResilienceManager;
+interface MCPProtocolHandler {
+  // Protocol version and capabilities
+  version: string
+  capabilities: MCPCapabilities
   
-  // Tool handlers for 16 MCP tools
-  private toolHandlers: Map<string, ToolHandler>;
+  // Connection management
+  connect(): Promise<void>
+  disconnect(): Promise<void>
   
-  // Resource providers
-  private resourceProviders: Map<string, ResourceProvider>;
-}
-```
-
-#### Tool Architecture
-
-```typescript
-// Tool Handler Interface
-export interface ToolHandler {
-  name: string;
-  description: string;
-  inputSchema: JSONSchema;
-  permissions: string[];
+  // Tool registration and discovery
+  registerTool(tool: MCPTool): void
+  getTools(): MCPTool[]
   
-  execute(args: any, context: SecurityContext): Promise<ToolResult>;
-  validate(args: any): ValidationResult;
+  // Request handling
+  handleRequest(request: MCPRequest): Promise<MCPResponse>
+  
+  // Error handling
+  handleError(error: Error): MCPErrorResponse
 }
 
-// Example: Telegram Event Tool
-export class TelegramEventTool implements ToolHandler {
-  name = 'send_telegram_event';
-  permissions = ['telegram:send', 'events:create'];
+class MCPServer implements MCPProtocolHandler {
+  private tools: Map<string, MCPTool> = new Map()
+  private validator: InputValidator
+  private serializer: DataSerializer
   
-  async execute(args: TelegramEventArgs, context: SecurityContext): Promise<ToolResult> {
-    // 1. Validate input
-    // 2. Apply security context
-    // 3. Rate limit check
-    // 4. Send to bridge
-    // 5. Return formatted result
+  constructor(config: MCPServerConfig) {
+    this.validator = new InputValidator(config.validation)
+    this.serializer = new DataSerializer(config.serialization)
+  }
+  
+  async handleRequest(request: MCPRequest): Promise<MCPResponse> {
+    // Validate request
+    const validation = await this.validator.validate(request)
+    if (!validation.valid) {
+      return this.handleError(new ValidationError(validation.errors))
+    }
+    
+    // Execute tool
+    const tool = this.tools.get(request.method)
+    if (!tool) {
+      return this.handleError(new ToolNotFoundError(request.method))
+    }
+    
+    const result = await tool.execute(request.params)
+    return this.serializer.serialize(result)
   }
 }
 ```
 
-### 2. Security Framework
+### **Tool Registry & Framework** {#tool-framework}
 
-#### Multi-Layer Security Architecture
-
-```mermaid
-graph LR
-    REQ[Request] --> AUTH[Authentication]
-    AUTH --> AUTHZ[Authorization]
-    AUTHZ --> VAL[Input Validation]
-    VAL --> RL[Rate Limiting]
-    RL --> PROC[Process Request]
-    PROC --> AUDIT[Audit Logging]
-    AUDIT --> RESP[Response]
-```
-
-#### Security Components
+Modular tool architecture with consistent interfaces and automatic registration.
 
 ```typescript
-// Security Context Management
-export interface SecurityContext {
-  clientId: string;
-  authenticated: boolean;
-  permissions: string[];
-  rateLimitInfo: RateLimitInfo;
-  sessionData: SessionData;
+interface MCPTool {
+  name: string
+  description: string
+  inputSchema: JSONSchema7
+  handler: ToolHandler
+  category: ToolCategory
+  validation?: CustomValidation
 }
 
-// Authentication Manager
-export class AuthenticationManager {
-  authenticateApiKey(apiKey: string): SecurityContext;
-  validateSession(sessionId: string): SecurityContext;
-  revokeAccess(clientId: string): void;
+enum ToolCategory {
+  EVENTS = 'events',
+  BRIDGE = 'bridge', 
+  RESPONSES = 'responses',
+  STATUS = 'status'
 }
 
-// Authorization Engine  
-export class AuthorizationEngine {
-  hasPermission(context: SecurityContext, resource: string, action: string): boolean;
-  checkToolAccess(context: SecurityContext, toolName: string): boolean;
-  enforceRBAC(context: SecurityContext, operation: Operation): void;
-}
-
-// Input Validation Pipeline
-export class ValidationPipeline {
-  validateToolInput(toolName: string, input: any): ValidationResult;
-  sanitizeInput(input: any): any;
-  checkSecurityConstraints(input: any): SecurityCheckResult;
-}
-```
-
-#### Security Controls Implementation
-
-| Control | Implementation | OWASP Mapping |
-|---------|---------------|---------------|
-| **Authentication** | API key validation with client identification | A07 - Authentication Failures |
-| **Authorization** | Role-based access control (RBAC) | A01 - Broken Access Control |
-| **Input Validation** | Joi schema validation with sanitization | A03 - Injection |
-| **Rate Limiting** | Token bucket algorithm with client-specific limits | A04 - Insecure Design |
-| **Secure Logging** | PII redaction with structured audit trails | A09 - Security Logging |
-| **Error Handling** | Sanitized error responses with correlation IDs | A05 - Security Misconfiguration |
-
-### 3. Bridge Integration Layer
-
-#### CCTelegram Bridge Communication
-
-```typescript
-// Bridge Client Architecture
-export class CCTelegramBridgeClient {
-  private httpClient: AxiosInstance;
-  private connectionPool: ConnectionPool;
-  private retryManager: RetryManager;
-  private healthChecker: HealthChecker;
+class ToolRegistry {
+  private tools: Map<string, MCPTool> = new Map()
+  private categories: Map<ToolCategory, Set<string>> = new Map()
   
-  // Core bridge operations
-  async sendEvent(event: CCTelegramEvent): Promise<EventResponse>;
-  async getBridgeStatus(): Promise<BridgeStatus>;
-  async getTelegramResponses(): Promise<TelegramResponse[]>;
-  
-  // Bridge process management
-  async startBridge(): Promise<BridgeOperationResult>;
-  async stopBridge(): Promise<BridgeOperationResult>;
-  async restartBridge(): Promise<BridgeOperationResult>;
-  
-  // Health and monitoring
-  async performHealthCheck(): Promise<HealthResult>;
-  async getMetrics(): Promise<BridgeMetrics>;
-}
-```
-
-#### Communication Protocol
-
-```mermaid
-sequenceDiagram
-    participant MCP as MCP Server
-    participant BC as Bridge Client
-    participant BRIDGE as CCTelegram Bridge
-    participant TG as Telegram API
+  register(tool: MCPTool): void {
+    // Validate tool structure
+    this.validateTool(tool)
     
-    MCP->>BC: sendEvent(event)
-    BC->>BC: Validate event
-    BC->>BC: Apply retry policy
-    BC->>BRIDGE: POST /events
-    BRIDGE->>BRIDGE: Process event
-    BRIDGE->>TG: Send message
-    TG-->>BRIDGE: Message sent
-    BRIDGE-->>BC: Event response
-    BC-->>MCP: Success result
-```
-
-#### Error Handling & Recovery
-
-```typescript
-// Resilient Bridge Communication
-export class ResilientBridgeClient extends CCTelegramBridgeClient {
-  private circuitBreaker: CircuitBreaker;
-  private retryExecutor: RetryExecutor;
-  private fallbackHandler: FallbackHandler;
+    // Register tool
+    this.tools.set(tool.name, tool)
+    
+    // Categorize tool
+    if (!this.categories.has(tool.category)) {
+      this.categories.set(tool.category, new Set())
+    }
+    this.categories.get(tool.category)!.add(tool.name)
+  }
   
-  async sendEventResilient(event: CCTelegramEvent): Promise<EventResponse> {
-    return await this.circuitBreaker.execute(async () => {
-      return await this.retryExecutor.executeWithRetry(async () => {
-        try {
-          return await super.sendEvent(event);
-        } catch (error) {
-          if (this.isRetryableError(error)) {
-            throw error; // Let retry mechanism handle
-          }
-          
-          // Try fallback approach
-          return await this.fallbackHandler.handleFailure(event, error);
-        }
-      });
-    });
+  getByCategory(category: ToolCategory): MCPTool[] {
+    const toolNames = this.categories.get(category) || new Set()
+    return Array.from(toolNames).map(name => this.tools.get(name)!)
   }
 }
 ```
 
-### 4. Observability System
+---
 
-#### Comprehensive Monitoring Architecture
+## 📊 Event Processing System
 
-```mermaid
-graph TB
-    subgraph "Data Collection"
-        METRICS[Metrics Collector]
-        LOGS[Structured Logger]
-        TRACES[Tracing Manager]
-        HEALTH[Health Checker]
-    end
-    
-    subgraph "Data Processing"
-        AGG[Aggregation Engine]
-        FILTER[Filtering Rules]
-        ENRICH[Data Enrichment]
-    end
-    
-    subgraph "Storage & Analysis"
-        PROM[Prometheus]
-        LOGS_DB[Log Database]
-        TRACE_DB[Trace Database]
-    end
-    
-    subgraph "Alerting & Visualization"
-        ALERT[Alert Manager]
-        DASH[Grafana Dashboard]
-        NOTIF[Notifications]
-    end
-    
-    METRICS --> AGG
-    LOGS --> FILTER
-    TRACES --> ENRICH
-    HEALTH --> AGG
-    
-    AGG --> PROM
-    FILTER --> LOGS_DB
-    ENRICH --> TRACE_DB
-    
-    PROM --> ALERT
-    PROM --> DASH
-    ALERT --> NOTIF
-```
+### **Event Validation Framework** {#event-validation}
 
-#### Observability Components
+Comprehensive multi-layer validation system with schema, business logic, and security validation.
 
 ```typescript
-// Observability Manager
-export class ObservabilityManager {
-  private metricsCollector: MetricsCollector;
-  private structuredLogger: StructuredLogger;
-  private tracingManager: TracingManager;
-  private healthChecker: HealthChecker;
-  private alertingEngine: AlertingEngine;
-  private dashboardManager: DashboardManager;
+interface ValidationResult {
+  valid: boolean
+  errors: ValidationError[]
+  warnings?: ValidationWarning[]
+  sanitized?: any
+}
+
+class EventValidator {
+  private schemaValidator: JSONSchemaValidator
+  private businessValidator: BusinessRuleValidator
+  private securityValidator: SecurityValidator
   
-  // Initialize all observability components
-  async initialize(config: ObservabilityConfig): Promise<void>;
+  async validate(event: any): Promise<ValidationResult> {
+    // Layer 1: Schema validation
+    const schemaResult = await this.schemaValidator.validate(event)
+    if (!schemaResult.valid) {
+      return schemaResult
+    }
+    
+    // Layer 2: Business rule validation
+    const businessResult = await this.businessValidator.validate(event)
+    if (!businessResult.valid) {
+      return businessResult
+    }
+    
+    // Layer 3: Security validation
+    const securityResult = await this.securityValidator.validate(event)
+    if (!securityResult.valid) {
+      return securityResult
+    }
+    
+    return {
+      valid: true,
+      errors: [],
+      sanitized: securityResult.sanitized
+    }
+  }
+}
+
+// 14 ValidationError types for comprehensive error handling
+enum ValidationErrorType {
+  SCHEMA_VIOLATION = 'schema_violation',
+  MISSING_REQUIRED_FIELD = 'missing_required_field',
+  INVALID_FIELD_TYPE = 'invalid_field_type',
+  FIELD_LENGTH_EXCEEDED = 'field_length_exceeded',
+  INVALID_ENUM_VALUE = 'invalid_enum_value',
+  INVALID_UUID_FORMAT = 'invalid_uuid_format',
+  INVALID_TIMESTAMP_FORMAT = 'invalid_timestamp_format',
+  BUSINESS_RULE_VIOLATION = 'business_rule_violation',
+  SECURITY_VIOLATION = 'security_violation',
+  RATE_LIMIT_EXCEEDED = 'rate_limit_exceeded',
+  DUPLICATE_EVENT = 'duplicate_event',
+  INVALID_EVENT_TYPE = 'invalid_event_type',
+  CONTENT_TOO_LARGE = 'content_too_large',
+  FORBIDDEN_CONTENT = 'forbidden_content'
+}
+```
+
+### **Event Serialization & Optimization** {#event-serialization}
+
+High-performance serialization with 86.3% payload reduction and forward compatibility.
+
+```typescript
+interface SerializationConfig {
+  omitNullFields: boolean      // 86.3% payload reduction
+  fieldNaming: 'snake_case'    // Consistent JSON naming
+  forwardCompatibility: boolean // Unknown field handling
+  compressionEnabled: boolean   // Additional compression
+}
+
+class EventSerializer {
+  private config: SerializationConfig
   
-  // Collect and expose metrics
-  collectMetrics(): SystemMetrics;
+  constructor(config: SerializationConfig) {
+    this.config = config
+  }
   
-  // Log with structured context
-  log(level: LogLevel, message: string, context: LogContext): void;
+  serialize(event: Event): string {
+    let processed = event
+    
+    // Remove null/undefined fields for payload optimization
+    if (this.config.omitNullFields) {
+      processed = this.omitNullFields(processed)
+    }
+    
+    // Convert field names to snake_case
+    if (this.config.fieldNaming === 'snake_case') {
+      processed = this.toSnakeCase(processed)
+    }
+    
+    // Apply compression if enabled
+    if (this.config.compressionEnabled) {
+      return this.compress(JSON.stringify(processed))
+    }
+    
+    return JSON.stringify(processed)
+  }
   
-  // Trace operations
-  startTrace(operation: string): TraceContext;
+  deserialize(data: string): Event {
+    let parsed = JSON.parse(data)
+    
+    // Handle unknown fields for forward compatibility
+    if (this.config.forwardCompatibility) {
+      parsed = this.handleUnknownFields(parsed)
+    }
+    
+    return parsed
+  }
+  
+  private omitNullFields(obj: any): any {
+    if (obj === null || obj === undefined) return undefined
+    if (typeof obj !== 'object') return obj
+    
+    const result: any = {}
+    for (const [key, value] of Object.entries(obj)) {
+      const processed = this.omitNullFields(value)
+      if (processed !== undefined) {
+        result[key] = processed
+      }
+    }
+    return result
+  }
+}
+
+// Serialization performance benchmarks
+interface SerializationBenchmarks {
+  averageSerializationTime: '72.82μs'
+  averageDeserializationTime: '60.549μs'
+  payloadReduction: '86.3%'
+  throughput: '10,000+ events/second'
+}
+```
+
+### **Event Type System** {#event-types}
+
+Comprehensive event type system supporting 44+ structured event types with validation.
+
+```typescript
+// Base event interface
+interface BaseEvent {
+  type: EventType
+  title: string
+  description: string
+  source?: string
+  timestamp?: string
+  task_id?: string
+  data?: Record<string, any>
+}
+
+// Event type enumeration (44+ types)
+enum EventType {
+  // Task Management (5 types)
+  TASK_STARTED = 'task_started',
+  TASK_PROGRESS = 'task_progress', 
+  TASK_COMPLETION = 'task_completion',
+  TASK_FAILED = 'task_failed',
+  TASK_CANCELLED = 'task_cancelled',
+  
+  // Code Development (6 types)
+  CODE_GENERATION = 'code_generation',
+  CODE_ANALYSIS = 'code_analysis',
+  CODE_REFACTORING = 'code_refactoring',
+  CODE_REVIEW = 'code_review',
+  CODE_TESTING = 'code_testing',
+  CODE_DEPLOYMENT = 'code_deployment',
+  
+  // File System (5 types)
+  FILE_CREATED = 'file_created',
+  FILE_MODIFIED = 'file_modified',
+  FILE_DELETED = 'file_deleted',
+  FILE_MOVED = 'file_moved',
+  FILE_PERMISSIONS_CHANGED = 'file_permissions_changed',
+  
+  // Build & Development (8 types)
+  BUILD_STARTED = 'build_started',
+  BUILD_COMPLETED = 'build_completed',
+  BUILD_FAILED = 'build_failed',
+  DEPLOYMENT_STARTED = 'deployment_started',
+  DEPLOYMENT_COMPLETED = 'deployment_completed',
+  DEPLOYMENT_FAILED = 'deployment_failed',
+  TEST_SUITE_RUN = 'test_suite_run',
+  LINT_CHECK = 'lint_check',
+  
+  // System Monitoring (5 types)
+  PERFORMANCE_ALERT = 'performance_alert',
+  ERROR_OCCURRED = 'error_occurred', 
+  SYSTEM_HEALTH = 'system_health',
+  
+  // User Interaction (3 types)
+  APPROVAL_REQUEST = 'approval_request',
+  USER_RESPONSE = 'user_response',
+  
+  // Notifications (4 types)
+  INFO_NOTIFICATION = 'info_notification',
+  ALERT_NOTIFICATION = 'alert_notification',
+  PROGRESS_UPDATE = 'progress_update',
+  
+  // Git & Version Control (7 types)
+  GIT_COMMIT = 'git_commit',
+  GIT_PUSH = 'git_push',
+  GIT_PULL = 'git_pull',
+  GIT_BRANCH_CREATED = 'git_branch_created',
+  GIT_BRANCH_DELETED = 'git_branch_deleted',
+  GIT_MERGE = 'git_merge',
+  GIT_TAG = 'git_tag'
+}
+
+// Type-specific event interfaces
+interface TaskCompletionEvent extends BaseEvent {
+  type: EventType.TASK_COMPLETION
+  duration_ms?: number
+  files_affected?: string[]
+  results?: string
+}
+
+interface PerformanceAlertEvent extends BaseEvent {
+  type: EventType.PERFORMANCE_ALERT
+  current_value: number
+  threshold: number
+  severity: 'low' | 'medium' | 'high' | 'critical'
+}
+```
+
+---
+
+## 🔄 Communication Architecture
+
+### **File System Interface** {#file-interface}
+
+High-performance file-based communication layer with atomic operations and monitoring.
+
+```typescript
+interface FileSystemInterface {
+  // Directory configuration
+  eventDirectory: string       // ~/.cc_telegram/events/
+  responseDirectory: string    // ~/.cc_telegram/responses/
+  statusDirectory: string      // ~/.cc_telegram/status/
+  
+  // File operations
+  writeEvent(event: Event): Promise<string>
+  readResponse(responseId: string): Promise<Response>
+  getStatus(): Promise<SystemStatus>
+  cleanup(maxAge: number): Promise<number>
+}
+
+class FileSystemManager implements FileSystemInterface {
+  private eventDir: string
+  private responseDir: string
+  private statusDir: string
+  
+  constructor(config: FileSystemConfig) {
+    this.eventDir = path.resolve(config.eventDirectory)
+    this.responseDir = path.resolve(config.responseDirectory)
+    this.statusDir = path.resolve(config.statusDirectory)
+    
+    // Ensure directories exist
+    this.ensureDirectories()
+  }
+  
+  async writeEvent(event: Event): Promise<string> {
+    const filename = this.generateFilename(event)
+    const filepath = path.join(this.eventDir, filename)
+    
+    // Atomic write operation
+    const tempPath = filepath + '.tmp'
+    await fs.writeFile(tempPath, JSON.stringify(event), 'utf8')
+    await fs.rename(tempPath, filepath)
+    
+    return filename
+  }
+  
+  private generateFilename(event: Event): string {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const uuid = crypto.randomUUID()
+    return `${timestamp}-${uuid}.json`
+  }
+}
+```
+
+### **Bridge Coordination** {#bridge-coordination}
+
+Seamless coordination with Rust Bridge component through file-based protocols.
+
+```typescript
+interface BridgeCoordination {
+  // Process management
+  checkBridgeProcess(): Promise<ProcessStatus>
+  startBridge(): Promise<boolean>
+  stopBridge(): Promise<boolean>
+  restartBridge(): Promise<boolean>
+  
+  // Communication
+  sendEvent(event: Event): Promise<void>
+  getResponse(eventId: string): Promise<Response | null>
   
   // Health monitoring
-  performHealthCheck(): HealthResult;
+  getHealth(): Promise<BridgeHealth>
+  ping(): Promise<boolean>
 }
 
-// Metrics Collection
-export interface SystemMetrics {
-  // System metrics
-  cpu_usage_percent: number;
-  memory_usage_bytes: number;
-  disk_usage_percent: number;
-  network_io_bytes: number;
+class BridgeManager implements BridgeCoordination {
+  private processMonitor: ProcessMonitor
+  private fileInterface: FileSystemInterface
+  private healthChecker: HealthChecker
   
-  // Application metrics
-  http_requests_total: Counter;
-  http_request_duration_seconds: Histogram;
-  mcp_tool_calls_total: Counter;
-  bridge_connection_status: Gauge;
-  
-  // Security metrics
-  authentication_failures_total: Counter;
-  rate_limit_violations_total: Counter;
-  security_events_total: Counter;
-  
-  // Business metrics
-  telegram_messages_sent_total: Counter;
-  approval_requests_total: Counter;
-  task_completions_total: Counter;
-}
-```
-
-#### Health Monitoring
-
-```typescript
-// Health Check Framework
-export interface HealthCheck {
-  id: string;
-  name: string;
-  type: 'system' | 'dependency' | 'custom';
-  critical: boolean;
-  timeout: number;
-  interval: number;
-  
-  execute(): Promise<HealthCheckResult>;
-}
-
-// Health Check Results
-export interface HealthCheckResult {
-  status: 'pass' | 'fail' | 'warn';
-  description: string;
-  observedValue?: any;
-  observedUnit?: string;
-  time: string;
-  componentId?: string;
-  componentType?: string;
-}
-
-// Built-in Health Checks
-export class SystemHealthChecks {
-  static cpuUsageCheck(): HealthCheck;
-  static memoryUsageCheck(): HealthCheck;
-  static diskSpaceCheck(): HealthCheck;
-  static bridgeConnectivityCheck(): HealthCheck;
-  static telegramApiCheck(): HealthCheck;
-  static databaseConnectionCheck(): HealthCheck;
-}
-```
-
-### 5. Resilience Framework
-
-#### Resilience Patterns Implementation
-
-```typescript
-// Circuit Breaker Implementation
-export class CircuitBreaker {
-  private state: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
-  private failureCount: number = 0;
-  private lastFailureTime: number = 0;
-  
-  constructor(
-    private failureThreshold: number = 5,
-    private recoveryTimeout: number = 60000,
-    private successThreshold: number = 3
-  ) {}
-  
-  async execute<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.state === 'OPEN') {
-      if (Date.now() - this.lastFailureTime < this.recoveryTimeout) {
-        throw new CircuitBreakerError('Circuit breaker is OPEN');
-      }
-      this.state = 'HALF_OPEN';
+  async checkBridgeProcess(): Promise<ProcessStatus> {
+    const pid = await this.processMonitor.findProcess('cctelegram-bridge')
+    
+    if (!pid) {
+      return { status: 'not_running', pid: null }
     }
     
+    const health = await this.ping()
+    return {
+      status: health ? 'running' : 'unhealthy',
+      pid,
+      memory_usage: await this.getMemoryUsage(pid),
+      cpu_usage: await this.getCpuUsage(pid)
+    }
+  }
+  
+  async ping(): Promise<boolean> {
     try {
-      const result = await operation();
-      this.onSuccess();
-      return result;
+      const testEvent = {
+        type: 'system_health',
+        title: 'Health Check',
+        description: 'MCP Server health check'
+      }
+      
+      await this.fileInterface.writeEvent(testEvent)
+      return true
     } catch (error) {
-      this.onFailure();
-      throw error;
+      return false
     }
   }
 }
+```
 
-// Retry Mechanisms
-export class RetryExecutor {
-  constructor(
-    private maxAttempts: number = 3,
-    private baseDelay: number = 1000,
-    private maxDelay: number = 10000,
-    private exponentialBase: number = 2,
-    private jitterEnabled: boolean = true
-  ) {}
+---
+
+## 🔐 Security Architecture
+
+### **Input Validation & Sanitization**
+
+Multi-layer security validation with XSS prevention and injection protection.
+
+```typescript
+class SecurityValidator {
+  private xssProtection: XSSProtection
+  private injectionProtection: InjectionProtection
+  private contentFilter: ContentFilter
   
-  async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
-    let lastError: Error;
-    
-    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
-      try {
-        return await operation();
-      } catch (error) {
-        lastError = error as Error;
-        
-        if (attempt < this.maxAttempts && this.isRetryable(error)) {
-          await this.delay(this.calculateDelay(attempt));
-        }
-      }
+  async validate(input: any): Promise<ValidationResult> {
+    // XSS protection
+    const xssResult = this.xssProtection.sanitize(input)
+    if (!xssResult.safe) {
+      return { valid: false, errors: [xssResult.error] }
     }
     
-    throw new RetryExhaustedException(
-      `Operation failed after ${this.maxAttempts} attempts`,
-      lastError!
-    );
+    // Injection protection
+    const injectionResult = this.injectionProtection.validate(xssResult.sanitized)
+    if (!injectionResult.safe) {
+      return { valid: false, errors: [injectionResult.error] }
+    }
+    
+    // Content filtering
+    const contentResult = this.contentFilter.filter(injectionResult.sanitized)
+    
+    return {
+      valid: true,
+      errors: [],
+      sanitized: contentResult.filtered
+    }
   }
 }
 ```
 
-## 🔄 Data Flow Architecture
+### **Audit Logging & Monitoring**
 
-### Request Processing Pipeline
-
-```mermaid
-graph TD
-    START[Request Received] --> AUTH{Authentication}
-    AUTH -->|Valid| AUTHZ{Authorization}
-    AUTH -->|Invalid| REJECT[Reject Request]
-    
-    AUTHZ -->|Authorized| VALIDATE{Input Validation}
-    AUTHZ -->|Unauthorized| REJECT
-    
-    VALIDATE -->|Valid| RATELIMIT{Rate Limit Check}
-    VALIDATE -->|Invalid| REJECT
-    
-    RATELIMIT -->|Within Limits| PROCESS[Process Request]
-    RATELIMIT -->|Exceeded| REJECT
-    
-    PROCESS --> BRIDGE{Bridge Communication}
-    BRIDGE -->|Success| LOG[Audit Log]
-    BRIDGE -->|Failure| RETRY{Retry Logic}
-    
-    RETRY -->|Retry| BRIDGE
-    RETRY -->|Give Up| ERROR[Error Response]
-    
-    LOG --> SUCCESS[Success Response]
-    
-    REJECT --> AUDIT[Security Audit Log]
-    ERROR --> AUDIT
-    SUCCESS --> METRICS[Update Metrics]
-    AUDIT --> METRICS
-```
-
-### Event Processing Workflow
-
-```mermaid
-sequenceDiagram
-    participant CLIENT as MCP Client
-    participant SERVER as MCP Server
-    participant SECURITY as Security Framework
-    participant BRIDGE as Bridge Client
-    participant TELEGRAM as Telegram API
-    participant MONITOR as Monitoring
-    
-    CLIENT->>SERVER: send_telegram_event(event)
-    SERVER->>SECURITY: authenticate & authorize
-    SECURITY-->>SERVER: security context
-    
-    SERVER->>SECURITY: validate input
-    SECURITY-->>SERVER: validated data
-    
-    SERVER->>SECURITY: check rate limits
-    SECURITY-->>SERVER: rate limit OK
-    
-    SERVER->>BRIDGE: sendEvent(validated_event)
-    BRIDGE->>BRIDGE: apply resilience patterns
-    BRIDGE->>TELEGRAM: POST message
-    TELEGRAM-->>BRIDGE: message sent
-    BRIDGE-->>SERVER: event response
-    
-    SERVER->>MONITOR: record metrics
-    SERVER->>SECURITY: audit log
-    SERVER-->>CLIENT: success response
-```
-
-## 🛡️ Security Architecture
-
-### Defense in Depth Strategy
-
-```mermaid
-graph TB
-    subgraph "Perimeter Security"
-        FIREWALL[Firewall Rules]
-        WAF[Web Application Firewall]
-        DDOS[DDoS Protection]
-    end
-    
-    subgraph "Network Security" 
-        TLS[TLS Encryption]
-        VPN[VPN Access]
-        SEGMENT[Network Segmentation]
-    end
-    
-    subgraph "Application Security"
-        AUTH[Authentication]
-        AUTHZ[Authorization]
-        VALIDATE[Input Validation]
-        SANITIZE[Output Sanitization]
-    end
-    
-    subgraph "Data Security"
-        ENCRYPT[Data Encryption]
-        REDACT[PII Redaction]
-        AUDIT[Audit Logging]
-        BACKUP[Secure Backups]
-    end
-    
-    subgraph "Runtime Security"
-        MONITOR[Security Monitoring]
-        DETECT[Threat Detection]
-        RESPOND[Incident Response]
-        FORENSICS[Digital Forensics]
-    end
-    
-    FIREWALL --> TLS
-    WAF --> AUTH
-    DDOS --> AUTHZ
-    
-    TLS --> VALIDATE
-    VPN --> SANITIZE
-    SEGMENT --> ENCRYPT
-    
-    AUTH --> MONITOR
-    AUTHZ --> DETECT
-    VALIDATE --> RESPOND
-    
-    ENCRYPT --> FORENSICS
-    AUDIT --> FORENSICS
-```
-
-### Security Controls Matrix
-
-| Layer | Control | Implementation | CVSS Mitigation |
-|-------|---------|----------------|-----------------|
-| **Network** | TLS Encryption | TLS 1.3 with strong cipher suites | Prevents man-in-the-middle attacks |
-| **Application** | Authentication | API key validation with client identification | Prevents unauthorized access (CVSS 9.0) |
-| **Application** | Authorization | RBAC with least privilege principle | Prevents privilege escalation |
-| **Application** | Input Validation | Joi schema validation with whitelisting | Prevents injection attacks (CVSS 8.5) |
-| **Application** | Rate Limiting | Token bucket with client-specific limits | Prevents DoS attacks |
-| **Data** | Secure Logging | Structured logging with PII redaction | Prevents information disclosure (CVSS 7.0) |
-| **Data** | Error Sanitization | Generic error messages with correlation IDs | Prevents system information leakage |
-| **Runtime** | Security Monitoring | Real-time threat detection and alerting | Enables rapid incident response |
-
-## 📈 Scalability & Performance
-
-### Horizontal Scaling Strategy
-
-```mermaid
-graph TB
-    subgraph "Load Balancer Tier"
-        LB1[Primary Load Balancer]
-        LB2[Secondary Load Balancer]
-    end
-    
-    subgraph "Application Tier"
-        APP1[MCP Server 1]
-        APP2[MCP Server 2]
-        APP3[MCP Server 3]
-        APP4[MCP Server 4]
-        APP5[MCP Server N...]
-    end
-    
-    subgraph "Bridge Tier"
-        BRIDGE1[Bridge Instance 1]
-        BRIDGE2[Bridge Instance 2]
-        BRIDGE3[Bridge Instance 3]
-    end
-    
-    subgraph "External Services"
-        TELEGRAM[Telegram API]
-        MONITORING[Monitoring Stack]
-    end
-    
-    LB1 --> APP1
-    LB1 --> APP2
-    LB1 --> APP3
-    LB2 --> APP4
-    LB2 --> APP5
-    
-    APP1 --> BRIDGE1
-    APP2 --> BRIDGE1
-    APP3 --> BRIDGE2
-    APP4 --> BRIDGE2
-    APP5 --> BRIDGE3
-    
-    BRIDGE1 --> TELEGRAM
-    BRIDGE2 --> TELEGRAM
-    BRIDGE3 --> TELEGRAM
-    
-    APP1 --> MONITORING
-    APP2 --> MONITORING
-    APP3 --> MONITORING
-```
-
-### Performance Characteristics
-
-| Component | Metric | Target | Scaling Factor |
-|-----------|--------|---------|----------------|
-| **MCP Server** | Response Time | <500ms (P95) | Linear with instances |
-| **MCP Server** | Throughput | 1000 req/min per instance | Horizontal scaling |
-| **Bridge Client** | Connection Pool | 10 connections per instance | Fixed per instance |
-| **Security Framework** | Auth Overhead | <10ms per request | Constant time |
-| **Observability** | Metrics Collection | <5ms per operation | Constant overhead |
-| **Database** | Query Time | <100ms (P95) | Optimized indexes |
-
-### Auto-Scaling Configuration
-
-```yaml
-# Kubernetes HPA Configuration
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: cctelegram-mcp-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: cctelegram-mcp
-  minReplicas: 3
-  maxReplicas: 20
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-  - type: Pods
-    pods:
-      metric:
-        name: http_requests_per_second
-      target:
-        type: AverageValue
-        averageValue: "500"
-```
-
-## 🔌 Integration Patterns
-
-### MCP Client Integration
+Comprehensive security event logging with sanitization and retention policies.
 
 ```typescript
-// Standard MCP Client Integration
-export class MCPClientIntegration {
-  private client: Client;
-  private transport: StdioClientTransport;
+interface AuditLog {
+  timestamp: string
+  eventType: SecurityEventType
+  severity: SecuritySeverity
+  source: string
+  sanitizedData: any
+  userId?: string
+  ipAddress?: string
+  userAgent?: string
+}
+
+class SecurityAuditor {
+  private logger: SecureLogger
   
-  async connect(): Promise<void> {
-    this.transport = new StdioClientTransport({
-      command: 'npx',
-      args: ['-y', 'cctelegram-mcp-server']
-    });
+  logSecurityEvent(event: SecurityEvent): void {
+    const auditEntry: AuditLog = {
+      timestamp: new Date().toISOString(),
+      eventType: event.type,
+      severity: event.severity,
+      source: event.source,
+      sanitizedData: this.sanitizeForLogging(event.data),
+      userId: event.userId,
+      ipAddress: this.maskIP(event.ipAddress),
+      userAgent: this.sanitizeUserAgent(event.userAgent)
+    }
     
-    this.client = new Client({
-      name: 'integration-client',
-      version: '1.0.0'
-    }, {
-      capabilities: { tools: {} }
-    });
-    
-    await this.client.connect(this.transport);
-  }
-  
-  async callTool(name: string, args: any): Promise<any> {
-    return await this.client.request({
-      method: 'tools/call',
-      params: { name, arguments: args }
-    }, 'CallToolResultSchema');
+    this.logger.logSecure(auditEntry)
   }
 }
 ```
-
-### Task Management System Integration
-
-```typescript
-// TaskMaster Integration Pattern
-export class TaskMasterIntegration {
-  private mcpClient: MCPClientIntegration;
-  
-  async onTaskCompleted(task: Task): Promise<void> {
-    await this.mcpClient.callTool('send_task_completion', {
-      task_id: task.id,
-      title: task.title,
-      results: task.results,
-      files_affected: task.files_affected,
-      duration_ms: task.duration_ms
-    });
-  }
-  
-  async requestApproval(task: Task): Promise<ApprovalResponse> {
-    const result = await this.mcpClient.callTool('send_approval_request', {
-      title: `Approval Required: ${task.title}`,
-      description: task.description,
-      options: ['Approve', 'Reject', 'Request Changes']
-    });
-    
-    // Wait for response
-    return await this.waitForApproval(result.event_id);
-  }
-}
-```
-
-### CI/CD Pipeline Integration
-
-```typescript
-// CI/CD Pipeline Integration
-export class CIPipelineIntegration {
-  private mcpClient: MCPClientIntegration;
-  
-  async onBuildStarted(build: BuildInfo): Promise<void> {
-    await this.mcpClient.callTool('send_telegram_event', {
-      type: 'task_started',
-      title: `Build Started: ${build.branch}`,
-      description: `Building commit ${build.commit_sha}`,
-      task_id: build.id,
-      source: 'ci-pipeline',
-      data: {
-        branch: build.branch,
-        commit: build.commit_sha,
-        author: build.author
-      }
-    });
-  }
-  
-  async onBuildCompleted(build: BuildInfo, success: boolean): Promise<void> {
-    await this.mcpClient.callTool('send_telegram_event', {
-      type: success ? 'build_completed' : 'build_failed',
-      title: `Build ${success ? 'Completed' : 'Failed'}: ${build.branch}`,
-      description: success 
-        ? `Successfully built and deployed`
-        : `Build failed with ${build.error_count} errors`,
-      task_id: build.id,
-      source: 'ci-pipeline',
-      data: {
-        success,
-        duration_ms: build.duration_ms,
-        test_results: build.test_results,
-        deployment_url: build.deployment_url
-      }
-    });
-  }
-}
-```
-
-## 🚀 Deployment Architecture
-
-### Container Architecture
-
-```dockerfile
-# Multi-stage build for optimal image size
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY . .
-RUN npm run build
-
-FROM node:20-alpine AS runtime
-
-# Security: Run as non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S mcp -u 1001
-
-WORKDIR /app
-
-# Copy built application
-COPY --from=builder --chown=mcp:nodejs /app/dist ./dist
-COPY --from=builder --chown=mcp:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=mcp:nodejs /app/package.json ./
-
-# Security: Set proper permissions
-RUN chmod -R 755 /app
-RUN chmod -R 644 /app/dist
-
-USER mcp
-
-EXPOSE 8080 9090
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "const http = require('http'); \
-    const options = { host: 'localhost', port: 8080, path: '/health', timeout: 2000 }; \
-    const req = http.request(options, (res) => { \
-      if (res.statusCode === 200) process.exit(0); else process.exit(1); \
-    }); \
-    req.on('error', () => process.exit(1)); \
-    req.end();"
-
-CMD ["node", "dist/index.js"]
-```
-
-### Kubernetes Deployment
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cctelegram-mcp
-  labels:
-    app: cctelegram-mcp
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: cctelegram-mcp
-  template:
-    metadata:
-      labels:
-        app: cctelegram-mcp
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1001
-        fsGroup: 1001
-      containers:
-      - name: mcp-server
-        image: cctelegram/mcp-server:1.8.5
-        ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 9090
-          name: metrics
-        env:
-        - name: NODE_ENV
-          value: "production"
-        - name: MCP_ENABLE_AUTH
-          value: "true"
-        - name: TELEGRAM_BOT_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: telegram-secrets
-              key: bot-token
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1Gi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop:
-            - ALL
-```
-
-## 📊 Monitoring & Observability Architecture
-
-### Metrics Architecture
-
-```mermaid
-graph TB
-    subgraph "Metrics Sources"
-        APP[Application Metrics]
-        SYS[System Metrics]
-        BIZ[Business Metrics]
-        SEC[Security Metrics]
-    end
-    
-    subgraph "Collection & Processing"
-        PROM[Prometheus Server]
-        AGG[Aggregation Rules]
-        ALERT[Alertmanager]
-    end
-    
-    subgraph "Storage & Querying"
-        TSDB[Time Series Database]
-        QUERY[Query Engine]
-    end
-    
-    subgraph "Visualization & Alerting"
-        GRAF[Grafana Dashboards]
-        SLACK[Slack Notifications]
-        EMAIL[Email Alerts]
-        PAGER[PagerDuty]
-    end
-    
-    APP --> PROM
-    SYS --> PROM
-    BIZ --> PROM
-    SEC --> PROM
-    
-    PROM --> AGG
-    AGG --> ALERT
-    PROM --> TSDB
-    
-    TSDB --> QUERY
-    QUERY --> GRAF
-    
-    ALERT --> SLACK
-    ALERT --> EMAIL
-    ALERT --> PAGER
-```
-
-### Dashboard Architecture
-
-```typescript
-// Grafana Dashboard Configuration
-export const MCPServerDashboard = {
-  dashboard: {
-    title: "CCTelegram MCP Server",
-    panels: [
-      {
-        title: "Request Rate",
-        type: "graph",
-        targets: [{
-          expr: "rate(http_requests_total[5m])",
-          legendFormat: "{{method}} {{status}}"
-        }]
-      },
-      {
-        title: "Response Time",
-        type: "graph", 
-        targets: [{
-          expr: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
-          legendFormat: "95th percentile"
-        }]
-      },
-      {
-        title: "Error Rate",
-        type: "singlestat",
-        targets: [{
-          expr: "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])",
-          legendFormat: "Error Rate"
-        }]
-      },
-      {
-        title: "Bridge Health",
-        type: "stat",
-        targets: [{
-          expr: "bridge_connection_status",
-          legendFormat: "Bridge Status"
-        }]
-      }
-    ]
-  }
-};
-```
-
-## 🔄 Future Architecture Considerations
-
-### Microservices Evolution
-
-```mermaid
-graph TB
-    subgraph "Current Monolithic Architecture"
-        MONO[MCP Server + Bridge Client + Security + Observability]
-    end
-    
-    subgraph "Future Microservices Architecture"
-        API[API Gateway]
-        AUTH_SVC[Authentication Service]
-        EVENT_SVC[Event Processing Service]
-        BRIDGE_SVC[Bridge Management Service]
-        NOTIF_SVC[Notification Service]
-        MONITOR_SVC[Monitoring Service]
-    end
-    
-    subgraph "Shared Infrastructure"
-        MSG_QUEUE[Message Queue]
-        CONFIG_SVC[Configuration Service]
-        LOG_AGG[Log Aggregation]
-        METRICS_STORE[Metrics Store]
-    end
-    
-    MONO -.->|Evolution Path| API
-    
-    API --> AUTH_SVC
-    API --> EVENT_SVC
-    API --> BRIDGE_SVC
-    
-    EVENT_SVC --> MSG_QUEUE
-    BRIDGE_SVC --> MSG_QUEUE
-    NOTIF_SVC --> MSG_QUEUE
-    
-    AUTH_SVC --> CONFIG_SVC
-    EVENT_SVC --> LOG_AGG
-    MONITOR_SVC --> METRICS_STORE
-```
-
-### Technology Roadmap
-
-| Phase | Timeline | Focus | Technologies |
-|-------|----------|-------|-------------|
-| **Phase 1** | Q1 2025 | Security Hardening | Enhanced authentication, RBAC, audit trails |
-| **Phase 2** | Q2 2025 | Performance Optimization | Connection pooling, caching, async processing |
-| **Phase 3** | Q3 2025 | Advanced Observability | Distributed tracing, APM, custom metrics |
-| **Phase 4** | Q4 2025 | Microservices Migration | Service mesh, event sourcing, CQRS |
-| **Phase 5** | 2026 | AI/ML Integration | Intelligent alerting, predictive scaling |
 
 ---
 
-## 📋 Architecture Decision Records (ADRs)
+## 📈 Performance Optimization
 
-### ADR-001: MCP Protocol Implementation
-- **Decision**: Implement full MCP specification compliance
-- **Rationale**: Future-proof integration with evolving Claude Code ecosystem
-- **Consequences**: Additional complexity but better long-term compatibility
+### **Performance Monitoring & Optimization**
 
-### ADR-002: TypeScript for Core Implementation  
-- **Decision**: Use TypeScript for type safety and developer experience
-- **Rationale**: Better maintainability, IDE support, and error prevention
-- **Consequences**: Build step required but significant quality benefits
+Built-in performance monitoring with optimization strategies and benchmarking.
 
-### ADR-003: Security-First Architecture
-- **Decision**: Implement comprehensive security framework from start
-- **Rationale**: Enterprise deployment requires robust security controls
-- **Consequences**: Additional complexity but mandatory for production use
+```typescript
+interface PerformanceMetrics {
+  responseTime: {
+    average: number
+    p95: number
+    p99: number
+  }
+  
+  throughput: {
+    eventsPerSecond: number
+    requestsPerMinute: number
+  }
+  
+  resources: {
+    memoryUsageMB: number
+    cpuUsagePercent: number
+    fileDescriptors: number
+  }
+  
+  errors: {
+    errorRate: number
+    errorsByType: Map<string, number>
+  }
+}
 
-### ADR-004: Observability by Design
-- **Decision**: Built-in comprehensive monitoring and observability
-- **Rationale**: Production systems require deep visibility for operations
-- **Consequences**: Performance overhead but essential for reliability
-
-### ADR-005: Bridge Integration Pattern
-- **Decision**: HTTP-based communication with CCTelegram Bridge
-- **Rationale**: Language agnostic, well-understood protocol, easy to debug
-- **Consequences**: Network dependency but clear separation of concerns
+class PerformanceMonitor {
+  private metrics: PerformanceMetrics
+  private benchmarks: BenchmarkCollector
+  
+  async collectMetrics(): Promise<PerformanceMetrics> {
+    return {
+      responseTime: await this.measureResponseTimes(),
+      throughput: await this.measureThroughput(),
+      resources: await this.measureResourceUsage(),
+      errors: await this.collectErrorMetrics()
+    }
+  }
+  
+  async runBenchmarks(): Promise<BenchmarkResults> {
+    return {
+      serialization: await this.benchmarks.serializationBenchmark(),
+      validation: await this.benchmarks.validationBenchmark(),
+      fileIO: await this.benchmarks.fileIOBenchmark(),
+      endToEnd: await this.benchmarks.endToEndBenchmark()
+    }
+  }
+}
+```
 
 ---
 
-## 🎯 Quality Attributes
+## 🔧 Configuration Management
 
-### Performance
-- **Response Time**: <500ms (95th percentile)
-- **Throughput**: 1000+ requests/minute per instance
-- **Resource Usage**: <1GB memory, <2 CPU cores per instance
-- **Scalability**: Linear scaling up to 50 instances
+### **Environment Configuration**
 
-### Reliability
-- **Availability**: 99.9% uptime (8.7 hours downtime/year)
-- **Recovery Time**: <15 minutes for service restart
-- **Data Durability**: Zero message loss with proper error handling
-- **Fault Tolerance**: Graceful degradation with circuit breakers
+Comprehensive configuration management with validation and hot reloading.
 
-### Security
-- **Authentication**: Strong API key validation with client identification
-- **Authorization**: Role-based access control with least privilege
-- **Data Protection**: Encryption in transit, PII redaction in logs
-- **Compliance**: OWASP Top 10 compliance, enterprise security standards
-
-### Maintainability
-- **Code Quality**: >90% test coverage, TypeScript strict mode
-- **Documentation**: Comprehensive API docs, architecture documentation
-- **Monitoring**: Full observability with metrics, logs, and traces
-- **Deployment**: Automated CI/CD with infrastructure as code
+```typescript
+interface MCPServerConfiguration {
+  // Core settings
+  server: {
+    port: number
+    host: string
+    timeout: number
+    maxConnections: number
+  }
+  
+  // File system configuration
+  filesystem: {
+    eventDirectory: string
+    responseDirectory: string
+    statusDirectory: string
+    cleanupInterval: number
+    maxFileAge: number
+  }
+  
+  // Performance settings
+  performance: {
+    cacheEnabled: boolean
+    cacheTTL: number
+    maxConcurrentOperations: number
+    compressionEnabled: boolean
+  }
+  
+  // Security configuration
+  security: {
+    validationEnabled: boolean
+    sanitizationLevel: 'strict' | 'moderate' | 'permissive'
+    auditLogging: boolean
+    rateLimitEnabled: boolean
+    maxRequestSize: number
+  }
+  
+  // Monitoring settings
+  monitoring: {
+    metricsEnabled: boolean
+    healthCheckInterval: number
+    performanceLogging: boolean
+    alertThresholds: AlertThresholds
+  }
+}
+```
 
 ---
 
-*This architecture overview provides the foundation for understanding, deploying, and maintaining the CCTelegram MCP Server system. For specific implementation details, refer to the component-specific documentation in the respective directories.*
+## 🔗 Integration Points
+
+### **External System Integration**
+
+Integration patterns and protocols for external system connectivity.
+
+```typescript
+interface ExternalIntegration {
+  // Claude Code integration
+  claudeCode: {
+    mcpProtocolVersion: string
+    toolCapabilities: ToolCapability[]
+    connectionTimeout: number
+  }
+  
+  // Bridge integration
+  bridge: {
+    communicationProtocol: 'file-system'
+    eventDirectory: string
+    responseTimeout: number
+    healthCheckInterval: number
+  }
+  
+  // Monitoring integration
+  monitoring: {
+    prometheusEnabled: boolean
+    metricsEndpoint: string
+    healthEndpoint: string
+    alertWebhook: string
+  }
+}
+```
+
+---
+
+*System Overview Documentation - Version 1.8.5*  
+*Last updated: August 2025 | Architecture Review: November 2025*
+
+## See Also
+
+- **[MCP Server API](../api/README.md)** - Complete API reference and tool documentation
+- **[Architecture Guide](README.md)** - High-level architecture overview
+- **[Configuration Reference](../../reference/configuration.md)** - Configuration options and tuning
+- **[Development Guide](../../development/architecture.md)** - Development architecture and patterns
