@@ -156,16 +156,54 @@ cctelegram/
 
 ## 📚 Documentation
 
-| Guide | Description |
-| --- | --- |
-| 🚀 **[Complete Setup Guide](docs/setup/QUICKSTART.md)** | Detailed installation, configuration, and deployment |
-| 🔧 **[Features & Capabilities](docs/reference/FEATURES.md)** | All features, API reference, event types, monitoring |
-| 🔒 **[Security & Compliance](SECURITY.md)** | **NEW**: Enterprise security, OWASP compliance, zero vulnerabilities |
-| 🎛️ **[MCP Integration](mcp-server/README.md)** | [Claude Code](https://github.com/anthropics/claude-code) MCP server setup and usage |
-| 📖 **[Technical Reference](docs/reference/EVENT_SYSTEM.md)** | Event system architecture and implementation |
-| 🛡️ **[Security Audits](docs/security/)** | Complete security audit reports and remediation |
-| 🧪 **[Testing Guide](test/)** | Unit tests and testing framework documentation |
-| 🔧 **[Development Guide](docs/development/CONTRIBUTING.md)** | Contributing guidelines and development setup |
+<div align="center">
+
+### 🏠 **[Documentation Hub →](docs/README.md)**
+
+_Your complete navigation center with visual user journeys_
+
+</div>
+
+<div class="doc-nav-grid">
+
+### 🚀 **Get Started** (2-3 clicks to success)
+
+| **For Developers** | **For Administrators** | **For Contributors** |
+| :-: | :-: | :-: |
+| **[🔌 MCP Server Setup →](docs/mcp-server/README.md)**<br/>Claude Code integration | **[🏗️ Enterprise Deploy →](docs/administration/README.md)**<br/>Production deployment | **[🤝 Contributing →](docs/development/CONTRIBUTING.md)**<br/>Development setup |
+| **[🌉 Bridge Setup →](docs/setup/QUICKSTART.md)**<br/>Background service | **[🛡️ Security Hardening →](docs/security/)**<br/>Security assessment | **[🏗️ Architecture →](docs/development/architecture.md)**<br/>System design |
+| **[⚡ First Test →](docs/mcp-server/examples/)**<br/>Send first notification | **[📊 Monitoring →](docs/administration/monitoring.md)**<br/>Observability stack | **[🧪 Testing →](docs/development/testing.md)**<br/>Quality assurance |
+
+### 📋 **Daily Reference** (Quick lookup)
+
+| **Commands & APIs** | **Troubleshooting** | **Configuration** |
+| :-: | :-: | :-: |
+| **[📖 Quick Reference →](docs/reference/QUICK_REFERENCE.md)**<br/>Daily commands & APIs | **[❌ Installation Issues →](docs/user-guide/troubleshooting.md)**<br/>Common problems | **[⚙️ Config Reference →](docs/reference/configuration.md)**<br/>Environment & tuning |
+| **[🎯 Event System →](docs/reference/EVENT_SYSTEM.md)**<br/>44+ event types | **[🐛 Error Codes →](docs/mcp-server/operations/troubleshooting/error-codes.md)**<br/>Error reference | **[🔒 Security Guide →](docs/administration/security-guide.md)**<br/>Hardening procedures |
+| **[🔧 Features Matrix →](docs/reference/FEATURES.md)**<br/>All capabilities | **[⚡ Performance →](docs/mcp-server/operations/troubleshooting/diagnostic-commands.md)**<br/>Performance issues | **[📊 Monitoring →](docs/administration/monitoring.md)**<br/>Observability setup |
+
+</div>
+
+### 🎨 **Visual System Overview**
+
+```mermaid
+graph LR
+    A[👩‍💻 Claude Code] -->|MCP Protocol| B[🔌 MCP Server v1.8.5]
+    B -->|Event Files| C[🌉 Bridge v0.8.5]
+    C -->|Bot API| D[📱 Telegram]
+
+    style A fill:#FF8C42,color:#fff
+    style B fill:#2da199,color:#fff
+    style C fill:#FF6B6B,color:#fff
+    style D fill:#26A5E4,color:#fff
+```
+
+**🎯 Complete Documentation Experience**:
+
+- **[🏠 Documentation Hub](docs/README.md)** - Visual navigation with user journey mapping
+- **[📚 Reference Library](docs/reference/)** - Technical deep-dives and API documentation
+- **[🛠️ Operations Center](docs/administration/)** - Production deployment and maintenance
+- **[🔒 Security Center](docs/security/)** - Comprehensive security documentation
 
 ---
 

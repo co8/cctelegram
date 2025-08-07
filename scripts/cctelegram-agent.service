@@ -1,0 +1,47 @@
+[Unit]
+Description=CCTelegram Communication Agent
+Documentation=https://github.com/co8/cctelegram
+After=network.target
+After=cctelegram-mcp.service
+Wants=cctelegram-mcp.service
+
+[Service]
+Type=simple
+User=cctelegram
+Group=cctelegram
+WorkingDirectory=/Users/enrique/Documents/cctelegram
+ExecStart=/usr/bin/node /Users/enrique/Documents/cctelegram/scripts/cctelegram-agent.js /Users/enrique/Documents/cctelegram
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Environment
+Environment=NODE_ENV=production
+Environment=MCP_SERVER_URL=http://localhost:3000
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/Users/enrique/Documents/cctelegram
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictRealtime=true
+
+# Resource limits
+LimitNOFILE=4096
+MemoryLimit=256M
+CPUQuota=50%
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cctelegram-agent
+
+[Install]
+WantedBy=multi-user.target
