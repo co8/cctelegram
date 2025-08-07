@@ -81,7 +81,7 @@ Task 23.5 focused on creating comprehensive security documentation and implement
 
 ### 5. **Development Team Security Guidelines** ✅
 
-**File**: `/@docs/security/DEVELOPMENT_SECURITY_GUIDELINES.md`
+**File**: `/docs/security/DEVELOPMENT_SECURITY_GUIDELINES.md`
 
 **Comprehensive Coverage**:
 - **Secure Coding Standards**: Language-specific security patterns for Rust and TypeScript

@@ -63,7 +63,7 @@ This separation provides:
 ### 📁 Documentation Structure
 
 ```
-@docs/
+docs/
 ├── README.md                    # Main documentation index - start here
 ├── assets/                      # Screenshots, images, and media assets
 ├── development/                 # Development and contribution guidelines

@@ -26,7 +26,7 @@ The **MCP Server** is your primary interface with the CCTelegram notification ec
 - **Benchmarking Suite**: Continuous performance validation and regression detection
 
 ### 📤 MCP Tools Available
-- **🔔 Event Notifications** - [44+ event types](../@docs/reference/EVENT_SYSTEM.md) with rich formatting
+- **🔔 Event Notifications** - [44+ event types](../docs/reference/EVENT_SYSTEM.md) with rich formatting
 - **✅ Task Completion** - Detailed task notifications with results
 - **⚠️ Performance Alerts** - Threshold-based monitoring alerts
 - **📝 Approval Workflows** - Interactive approval requests

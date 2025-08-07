@@ -426,4 +426,4 @@ curl -H "Authorization: Bearer ${PACT_BROKER_TOKEN}" ${PACT_BROKER_URL}/
 - [Consumer-Driven Contract Testing](https://martinfowler.com/articles/consumerDrivenContracts.html)
 - [API Evolution Best Practices](https://docs.microsoft.com/en-us/azure/architecture/best-practices/api-design)
 - [Semantic Versioning](https://semver.org/)
-- [CCTelegram Project Documentation](../../@docs/)
+- [CCTelegram Project Documentation](../../docs/)

@@ -145,7 +145,7 @@ cargo clippy -- -D warnings  # See all warnings
 - `CHANGELOG.md` - Needs updating with recent changes
 - `Cargo.toml` - Version 0.6.0, needs bump to 0.7.0
 - `package.json` - Version 1.5.0, needs bump to 1.6.0 after fixes
-- Security audits in `@docs/security/` - Need updates
+- Security audits in `docs/security/` - Need updates
 
 ---
 

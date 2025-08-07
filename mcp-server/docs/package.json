@@ -11,7 +11,7 @@
     "docs:serve": "vitepress serve",
     "api:generate": "typedoc --options typedoc.config.js",
     "api:clean": "rm -rf api/",
-    "copy:openapi": "cp ../../@docs/mcp-server/api/openapi.yaml ./public/openapi.yaml",
+    "copy:openapi": "cp ../../docs/mcp-server/api/openapi.yaml ./public/openapi.yaml",
     "clean": "rm -rf .vitepress/dist .vitepress/cache api/",
     "docs:version": "node scripts/version-docs.js",
     "docs:deploy": "node scripts/deploy-docs.js",
