@@ -189,7 +189,7 @@ graph TB
     subgraph "Dashboard Layout"
         subgraph "Header Section"
             ST[System Status<br/>🟢 HEALTHY]
-            VER[Version Info<br/>v0.8.5]
+            VER[Version Info<br/>v0.9.0]
             UP[Uptime<br/>1d 2h 15m]
         end
         
@@ -489,7 +489,7 @@ graph TB
         subgraph "Status Indicators"
             ST[🟢 System Status<br/>HEALTHY]
             UP[⏱️ Uptime<br/>99.9%]
-            VER[📋 Version<br/>v0.8.5]
+            VER[📋 Version<br/>v0.9.0]
         end
         
         subgraph "Key Metrics"

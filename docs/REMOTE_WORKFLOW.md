@@ -1,7 +1,7 @@
 # 🚀 Comprehensive Remote Work Workflow for CCTelegram
 
-**Bridge Version**: v0.8.5  
-**MCP Server Version**: v1.8.5
+**Bridge Version**: v0.9.0  
+**MCP Server Version**: v1.9.0
 
 ## Overview
 
@@ -9,8 +9,8 @@ This document establishes a comprehensive remote work workflow integrating CCTel
 
 ## 📊 Current Project Status
 
-- **Bridge Version**: v0.8.5 (Production Ready)
-- **MCP Server Version**: v1.8.5 (Claude Code Ready)
+- **Bridge Version**: v0.9.0 (Production Ready)
+- **MCP Server Version**: v1.9.0 (Claude Code Ready)
 - **CCTelegram Bridge**: ✅ Running and Healthy
 - **Git Branch**: main (clean, ready for commits)
 - **Documentation Status**: Current and up-to-date
@@ -256,6 +256,6 @@ This workflow ensures continuous visibility, maintains project momentum, and pro
 
 ---
 **Document Version**: 2.0.0 (August 2025)  
-**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
-**TaskMaster AI Integration**: v1.8.5  
+**Compatible with**: CCTelegram Bridge v0.9.0, MCP Server v1.9.0  
+**TaskMaster AI Integration**: v1.9.0  
 **Last Updated**: August 2025

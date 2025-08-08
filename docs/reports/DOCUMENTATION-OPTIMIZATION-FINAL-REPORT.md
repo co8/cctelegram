@@ -194,8 +194,8 @@ The project introduced **39+ professional Mermaid diagrams** across all document
 #### **System Architecture Diagrams**
 ```mermaid
 graph TB
-    A[Claude Code] -->|MCP Protocol| B[MCP Server v1.8.5]
-    B -->|Events & Commands| C[CCTelegram Bridge v0.8.5] 
+    A[Claude Code] -->|MCP Protocol| B[MCP Server v1.9.0]
+    B -->|Events & Commands| C[CCTelegram Bridge v0.9.0] 
     C -->|Bot API| D[Telegram Platform]
     D -->|User Interactions| E[Remote Developers]
     E -->|Commands & Responses| C

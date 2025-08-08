@@ -1,7 +1,7 @@
 # Queue Manager (SubAgent Gamma) - Startup Event Processing
 
-**Bridge Version**: v0.8.5  
-**MCP Server Version**: v1.8.5
+**Bridge Version**: v0.9.0  
+**MCP Server Version**: v1.9.0
 
 **SubAgent Gamma** provides intelligent queue management for handling startup event bursts without violating Telegram's rate limits. It integrates seamlessly with SubAgent Alpha's rate limiting and SubAgent Beta's retry logic.
 
@@ -306,6 +306,6 @@ Expected output:
 
 ---
 **Document Version**: 2.0.0 (August 2025)  
-**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Compatible with**: CCTelegram Bridge v0.9.0, MCP Server v1.9.0  
 **Dependencies**: Redis 6.0+, tokio 1.45+  
 **Last Updated**: August 2025

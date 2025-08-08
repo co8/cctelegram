@@ -5,7 +5,7 @@
 **Task**: Create common events for cc-telegram
 **Status**: ✅ **COMPLETED**
 **Date**: July 31, 2025
-**Version**: CC Telegram Bridge v0.8.5
+**Version**: CC Telegram Bridge v0.9.0
 
 ## Implementation Summary
 

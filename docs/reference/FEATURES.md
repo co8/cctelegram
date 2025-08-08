@@ -26,7 +26,7 @@
 
 ---
 
-## 🤖 MCP Server Capabilities (v1.8.5)
+## 🤖 MCP Server Capabilities (v1.9.0)
 
 ### Tool Categories & Features
 
@@ -149,7 +149,7 @@ get_task_status:
 
 ---
 
-## 🌉 Bridge Capabilities (v0.8.5)
+## 🌉 Bridge Capabilities (v0.9.0)
 
 ### Performance & Reliability Matrix
 | Feature | Capability | Performance | Reliability |
@@ -163,7 +163,7 @@ get_task_status:
 | **🛡️ Input Validation** | 14 validation types | <25ms avg | 100% coverage |
 | **📊 Metrics Export** | Prometheus format | <200ms avg | 99.95% availability |
 
-### Large Message Protocol (NEW in v0.8.5)
+### Large Message Protocol (NEW in v0.9.0)
 ```yaml
 capabilities:
   max_message_size: 100KB+
@@ -542,4 +542,4 @@ pre {
 }
 </style>
 
-*Complete feature reference for CCTelegram v0.8.5 / v1.8.5 - Updated: August 2025*
+*Complete feature reference for CCTelegram v0.9.0 / v1.9.0 - Updated: August 2025*

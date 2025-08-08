@@ -150,8 +150,8 @@
 
 ### **Claude Code Integration**
 - **Task Master AI**: Complete integration with automated task management
-- **MCP Server**: v1.8.5 with full Claude Code compatibility
-- **Bridge System**: v0.8.5 with seamless Claude development workflow
+- **MCP Server**: v1.9.0 with full Claude Code compatibility
+- **Bridge System**: v0.9.0 with seamless Claude development workflow
 - **Developer Tools**: Comprehensive development and debugging capabilities
 
 ### **External Integrations**

@@ -1,7 +1,7 @@
 # CCTelegram Message Delivery Monitoring System
 
-**Bridge Version**: v0.8.5  
-**MCP Server Version**: v1.8.5
+**Bridge Version**: v0.9.0  
+**MCP Server Version**: v1.9.0
 
 ## Task 34.4: Complete Integration Report
 
@@ -253,5 +253,5 @@ The monitoring system is now ready for production deployment! 🚀
 
 ---
 **Document Version**: 2.0.0 (August 2025)  
-**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Compatible with**: CCTelegram Bridge v0.9.0, MCP Server v1.9.0  
 **Last Updated**: August 2025

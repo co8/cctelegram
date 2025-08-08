@@ -405,7 +405,7 @@ const overview = await mcp__cctelegram__todo({
 
 ---
 
-*Monitoring System Reference - v0.8.5/v1.8.5*  
+*Monitoring System Reference - v0.9.0/v1.9.0*  
 *Last updated: August 2025 | Next review: November 2025*
 
 ## See Also

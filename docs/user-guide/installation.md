@@ -249,7 +249,7 @@ cd cctelegram
 ### 4.2 Expected Startup Messages
 
 ```
-2024-08-07T20:30:00.000Z  INFO Starting CCTelegram Bridge v0.8.5
+2024-08-07T20:30:00.000Z  INFO Starting CCTelegram Bridge v0.9.0
 2024-08-07T20:30:00.001Z  INFO Configuration loaded successfully  
 2024-08-07T20:30:00.002Z  INFO Telegram bot connected: @myccbridge_bot
 2024-08-07T20:30:00.003Z  INFO Health check server started on port 8080

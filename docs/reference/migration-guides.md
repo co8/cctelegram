@@ -32,10 +32,10 @@ timeline
                : Enterprise features
     
     section Current
-        v0.8.5 : Large Message Protocol
+        v0.9.0 : Large Message Protocol
                : TaskMaster integration
                : Enhanced reliability
-        v1.8.5 : MCP Server maturity
+        v1.9.0 : MCP Server maturity
                : 16 specialized tools
                : Advanced monitoring
 ```
@@ -47,27 +47,27 @@ timeline
 ### Supported Upgrade Paths
 | From Version | To Version | Migration Type | Compatibility | Data Loss Risk | Estimated Time |
 |--------------|------------|----------------|---------------|----------------|----------------|
-| **v0.8.4** | v0.8.5 | 🟢 Automatic | 100% | None | <5 minutes |
-| **v0.8.3** | v0.8.5 | 🟡 Semi-auto | 95% | Low | 10-15 minutes |
-| **v0.8.0-0.8.2** | v0.8.5 | 🟡 Semi-auto | 90% | Low | 15-30 minutes |
-| **v0.7.x** | v0.8.5 | 🔴 Manual | 80% | Medium | 30-60 minutes |
-| **v0.6.x** | v0.8.5 | 🔴 Manual | 70% | Medium | 1-2 hours |
-| **<v0.6.0** | v0.8.5 | 🔴 Clean Install | 50% | High | 2+ hours |
+| **v0.8.4** | v0.9.0 | 🟢 Automatic | 100% | None | <5 minutes |
+| **v0.8.3** | v0.9.0 | 🟡 Semi-auto | 95% | Low | 10-15 minutes |
+| **v0.8.0-0.8.2** | v0.9.0 | 🟡 Semi-auto | 90% | Low | 15-30 minutes |
+| **v0.7.x** | v0.9.0 | 🔴 Manual | 80% | Medium | 30-60 minutes |
+| **v0.6.x** | v0.9.0 | 🔴 Manual | 70% | Medium | 1-2 hours |
+| **<v0.6.0** | v0.9.0 | 🔴 Clean Install | 50% | High | 2+ hours |
 
 ### MCP Server Compatibility
 | Bridge Version | MCP Server Version | Compatibility | Features |
 |----------------|-------------------|---------------|----------|
-| **v0.8.5** | v1.8.5 | ✅ Perfect | All features available |
-| **v0.8.5** | v1.7.x-v1.8.4 | ✅ Good | Large messages may be limited |
-| **v0.8.4** | v1.8.5 | ✅ Good | New MCP tools unavailable |
-| **v0.8.0-0.8.3** | v1.8.5 | 🟡 Partial | Limited feature set |
-| **<v0.8.0** | v1.8.5 | ❌ Incompatible | Upgrade bridge first |
+| **v0.9.0** | v1.9.0 | ✅ Perfect | All features available |
+| **v0.9.0** | v1.7.x-v1.8.4 | ✅ Good | Large messages may be limited |
+| **v0.8.4** | v1.9.0 | ✅ Good | New MCP tools unavailable |
+| **v0.8.0-0.8.3** | v1.9.0 | 🟡 Partial | Limited feature set |
+| **<v0.8.0** | v1.9.0 | ❌ Incompatible | Upgrade bridge first |
 
 ---
 
-## 🚀 v0.8.5 Migration Guide
+## 🚀 v0.9.0 Migration Guide
 
-### From v0.8.4 to v0.8.5 (Automatic)
+### From v0.8.4 to v0.9.0 (Automatic)
 
 #### Pre-Migration Checklist
 - [ ] **Backup Configuration**: `cp ~/.cc_telegram/config.toml ~/.cc_telegram/config.toml.backup`
@@ -79,7 +79,7 @@ timeline
 ```bash
 # 1. Download new versions
 cd cctelegram
-git checkout v0.8.5
+git checkout v0.9.0
 cd mcp-server
 
 # 2. Update MCP Server (automatic migration)
@@ -127,7 +127,7 @@ curl http://localhost:8080/health/migration
 curl http://localhost:8080/metrics | grep -E "cctelegram_(memory|processing)"
 ```
 
-### From v0.8.3 to v0.8.5 (Semi-Automatic)
+### From v0.8.3 to v0.9.0 (Semi-Automatic)
 
 #### Breaking Changes
 1. **Environment Variables**: Some config moved to environment variables
@@ -165,14 +165,14 @@ EOF
 ```
 
 #### Configuration Migration
-| v0.8.3 Setting | v0.8.5 Location | Action Required |
+| v0.8.3 Setting | v0.9.0 Location | Action Required |
 |----------------|-----------------|-----------------|
 | `telegram.bot_token` | Environment Variable | Move to `TELEGRAM_BOT_TOKEN` |
 | `telegram.allowed_users` | Environment Variable | Move to `TELEGRAM_ALLOWED_USERS` |
 | `paths.*` | Environment Variables | Move to `CC_TELEGRAM_*_DIR` |
 | `timeout` | `[timeouts]` section | Update structure |
 
-### From v0.7.x to v0.8.5 (Manual Migration)
+### From v0.7.x to v0.9.0 (Manual Migration)
 
 #### Major Changes
 - **Complete Security Overhaul**: New authentication system
@@ -184,7 +184,7 @@ EOF
 ```yaml
 recommended_approach: "parallel_deployment"
 steps:
-  1. "Deploy v0.8.5 alongside v0.7.x"
+  1. "Deploy v0.9.0 alongside v0.7.x"
   2. "Migrate configurations manually"
   3. "Test thoroughly in parallel"
   4. "Switch traffic gradually"
@@ -197,7 +197,7 @@ rollback_capability: "Immediate"
 #### Data Migration Scripts
 ```bash
 #!/bin/bash
-# v0.7.x to v0.8.5 migration script
+# v0.7.x to v0.9.0 migration script
 
 # Backup current installation
 tar -czf cctelegram-v0.7-backup.tar.gz ~/.cc_telegram/
@@ -210,13 +210,13 @@ import os
 old_events_dir = "~/.cc_telegram/events"
 new_events_dir = "~/.cc_telegram/events_migrated"
 
-# Migrate event files from old format to new v0.8.5 format
+# Migrate event files from old format to new v0.9.0 format
 # (Implementation would handle specific format changes)
 EOF
 
 # Update configuration structure
 cat > ~/.cc_telegram/config.toml << 'EOF'
-# v0.8.5 configuration - manually adapted from v0.7.x
+# v0.9.0 configuration - manually adapted from v0.7.x
 [telegram]
 timezone = "Europe/Berlin"
 message_style = "concise"
@@ -243,7 +243,7 @@ EOF
 ## 📊 Compatibility Matrix
 
 ### Feature Compatibility Across Versions
-| Feature | v0.6.x | v0.7.x | v0.8.0-0.8.4 | v0.8.5 | Status |
+| Feature | v0.6.x | v0.7.x | v0.8.0-0.8.4 | v0.9.0 | Status |
 |---------|--------|--------|--------------|--------|---------|
 | **Basic Notifications** | ✅ | ✅ | ✅ | ✅ | Stable |
 | **Event Validation** | ❌ | ✅ | ✅ | ✅ | Stable |
@@ -255,7 +255,7 @@ EOF
 | **Zero Message Loss** | ❌ | ✅ | ✅ | ✅ | Stable |
 
 ### API Compatibility
-| API Endpoint | v0.8.0 | v0.8.5 | Changes | Breaking |
+| API Endpoint | v0.8.0 | v0.9.0 | Changes | Breaking |
 |--------------|--------|--------|---------|----------|
 | `GET /health` | ✅ | ✅ | Enhanced response format | ❌ |
 | `GET /metrics` | ✅ | ✅ | Additional metrics | ❌ |
@@ -267,7 +267,7 @@ EOF
 
 ## 🛡️ Rollback Procedures
 
-### Automatic Rollback (v0.8.4 ↔ v0.8.5)
+### Automatic Rollback (v0.8.4 ↔ v0.9.0)
 ```bash
 # Rollback to previous version
 cd cctelegram
@@ -392,7 +392,7 @@ new_features_baseline:
 ### Pre-Migration Planning
 ```yaml
 migration_plan:
-  project: "CCTelegram v0.8.4 → v0.8.5 Upgrade"
+  project: "CCTelegram v0.8.4 → v0.9.0 Upgrade"
   
   stakeholders:
     - technical_lead: "System Administrator"
@@ -642,4 +642,4 @@ code {
 }
 </style>
 
-*Complete migration guide for CCTelegram v0.8.5 / v1.8.5 - Updated: August 2025*
+*Complete migration guide for CCTelegram v0.9.0 / v1.9.0 - Updated: August 2025*

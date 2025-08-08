@@ -456,7 +456,7 @@ spec:
     spec:
       containers:
       - name: mcp-server
-        image: cctelegram/mcp-server:v1.8.5
+        image: cctelegram/mcp-server:v1.9.0
         ports:
         - containerPort: 8080
           name: http

@@ -83,7 +83,7 @@ echo "User ID: $TELEGRAM_ALLOWED_USERS"
 You should see:
 
 ```
-2024-07-31T20:30:00.000Z  INFO Starting CC Telegram Bridge v0.8.5
+2024-07-31T20:30:00.000Z  INFO Starting CC Telegram Bridge v0.9.0
 2024-07-31T20:30:00.001Z  INFO Configuration loaded successfully
 2024-07-31T20:30:00.002Z  INFO Performance monitoring initialized
 2024-07-31T20:30:00.003Z  INFO Health check server started on port 8080

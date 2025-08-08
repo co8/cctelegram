@@ -218,13 +218,13 @@ graph TB
         C[Project Workspace]
     end
     
-    subgraph "🔌 CCTelegram MCP Server v1.8.5"
+    subgraph "🔌 CCTelegram MCP Server v1.9.0"
         D[MCP Protocol Handler]
         E[Event Processor]
         F[File System Interface]
     end
     
-    subgraph "🌉 CCTelegram Bridge v0.8.5"
+    subgraph "🌉 CCTelegram Bridge v0.9.0"
         G[File Watcher]
         H[Event Validator] 
         I[Message Queue]

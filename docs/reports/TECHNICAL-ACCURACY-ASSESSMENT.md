@@ -19,10 +19,10 @@ Comprehensive audit of version numbers, links, build references, and technical s
 
 | Component | Current Version | Documentation Status | Accuracy |
 |-----------|----------------|---------------------|----------|
-| **CCTelegram Bridge (Rust)** | v0.8.5 | ✅ Consistent | 100% |
-| **MCP Server (TypeScript)** | v1.8.5 | ✅ Consistent | 100% |
+| **CCTelegram Bridge (Rust)** | v0.9.0 | ✅ Consistent | 100% |
+| **MCP Server (TypeScript)** | v1.9.0 | ✅ Consistent | 100% |
 | **MCP SDK Dependency** | ^1.17.1 | ✅ Up-to-date | 100% |
-| **Release Package** | v0.8.5/v1.8.5 | ✅ Consistent | 100% |
+| **Release Package** | v0.9.0/v1.9.0 | ✅ Consistent | 100% |
 
 **Validation Sources**:
 - `/package.json` → `"version": "0.8.5"`

@@ -13,8 +13,8 @@ CCTelegram uses a multi-layered configuration approach combining **environment v
 graph TB
     A[Environment Variables] --> C[Runtime Config]
     B[TOML Files] --> C
-    C --> D[Bridge v0.8.5]
-    C --> E[MCP Server v1.8.5]
+    C --> D[Bridge v0.9.0]
+    C --> E[MCP Server v1.9.0]
     
     subgraph "Security Layer"
         F[Bot Token]
@@ -303,7 +303,7 @@ memory_queue_max_size = 10000              # Max events in memory queue
 memory_queue_overflow_behavior = "drop_oldest" # "drop_oldest" | "drop_newest" | "block"
 ```
 
-### Large Message Protocol (v0.8.5)
+### Large Message Protocol (v0.9.0)
 ```toml
 [large_message]
 max_message_size_kb = 100                  # Maximum message size (KB)
@@ -501,7 +501,7 @@ solutions:
 ### Version Compatibility Matrix
 | Version | Config Format | Breaking Changes | Migration Required |
 |---------|---------------|------------------|-------------------|
-| v0.8.5 | TOML + Environment | Large Message Protocol | Automatic |
+| v0.9.0 | TOML + Environment | Large Message Protocol | Automatic |
 | v0.8.4 | TOML + Environment | Tier Configuration | Manual |
 | v0.8.3 | TOML Only | Environment Variables | Manual |
 
@@ -594,4 +594,4 @@ pre {
 }
 </style>
 
-*Complete configuration reference for CCTelegram v0.8.5 / v1.8.5 - Updated: August 2025*
+*Complete configuration reference for CCTelegram v0.9.0 / v1.9.0 - Updated: August 2025*

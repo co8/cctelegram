@@ -1,7 +1,7 @@
 # File Debouncing System Documentation
 
-**Bridge Version**: v0.8.5  
-**MCP Server Version**: v1.8.5
+**Bridge Version**: v0.9.0  
+**MCP Server Version**: v1.9.0
 
 ## Overview
 
@@ -386,6 +386,6 @@ let debug_config = DebounceConfig {
 
 ---
 **Document Version**: 2.0.0 (August 2025)  
-**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Compatible with**: CCTelegram Bridge v0.9.0, MCP Server v1.9.0  
 **Dependencies**: tokio v1.45+, notify v6.1+, sha2 v0.10+  
 **Last Updated**: August 2025

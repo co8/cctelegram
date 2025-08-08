@@ -20,8 +20,8 @@
   - **Contributor Journey**: From zero to pull request workflow
 
 - **🎛️ Component Dashboard** - Real-time health status for both components:
-  - **MCP Server v1.8.5**: TypeScript integration hub with performance metrics
-  - **Bridge v0.8.5**: Rust communication engine with reliability stats
+  - **MCP Server v1.9.0**: TypeScript integration hub with performance metrics
+  - **Bridge v0.9.0**: Rust communication engine with reliability stats
 
 - **📚 Documentation Ecosystem** - Structured access to all documentation:
   - **Quick Reference Hub**: 4x3 matrix for daily lookup needs
@@ -153,7 +153,7 @@ Comprehensive coverage for all user types:
 ### **🏠 Central Navigation Hub Created**
 - **Enhanced `/docs/README.md`**: Comprehensive navigation center with visual journey mapping
 - **5 Interactive Mermaid Diagrams**: System architecture and user workflow visualizations
-- **Real-time Component Dashboards**: Health status for MCP Server v1.8.5 and Bridge v0.8.5
+- **Real-time Component Dashboards**: Health status for MCP Server v1.9.0 and Bridge v0.9.0
 - **Smart Context-Aware Navigation**: Intent-based routing with quick access patterns
 
 ### **📚 Main README Enhanced** 
@@ -233,5 +233,5 @@ Built to support the ongoing documentation evolution:
 
 ---
 
-*Documentation Hub Creation Report - CCTelegram v0.8.5/v1.8.5*  
+*Documentation Hub Creation Report - CCTelegram v0.9.0/v1.9.0*  
 *Generated: August 7, 2025*

@@ -32,36 +32,14 @@ send_telegram_message "Hello from Claude Code! MCP integration is working! 🎉"
 
 CCTelegram provides **20+ specialized MCP tools** organized into logical groups:
 
-```mermaid
-mindmap
-  root((CCTelegram MCP))
-    Event Tools
-      send_telegram_event
-      send_telegram_message
-      send_task_completion
-      send_performance_alert
-      send_approval_request
-    Bridge Management
-      start_bridge
-      stop_bridge  
-      restart_bridge
-      ensure_bridge_running
-      check_bridge_process
-    Information & Status
-      get_bridge_status
-      list_event_types
-      get_telegram_responses
-    Workflow Integration
-      get_task_status
-      todo
-      process_pending_responses
-    Maintenance
-      clear_old_responses
-    Mode Control
-      switch_to_nomad_mode
-      switch_to_local_mode
-      switch_to_mute_mode
-```
+**Tool Categories:**
+
+- **Event Tools**: send_telegram_event, send_telegram_message, send_task_completion, send_performance_alert, send_approval_request
+- **Bridge Management**: start_bridge, stop_bridge, restart_bridge, ensure_bridge_running, check_bridge_process  
+- **Information & Status**: get_bridge_status, list_event_types, get_telegram_responses
+- **Workflow Integration**: get_task_status, todo, process_pending_responses
+- **Maintenance**: clear_old_responses
+- **Mode Control**: switch_to_nomad_mode, switch_to_local_mode, switch_to_mute_mode
 
 ---
 

@@ -1,7 +1,7 @@
 # Large Message Protocol (Task 39.6)
 
-**Bridge Version**: v0.8.5  
-**MCP Server Version**: v1.8.5
+**Bridge Version**: v0.9.0  
+**MCP Server Version**: v1.9.0
 
 ## Overview
 
@@ -293,7 +293,7 @@ This completes the Large Message Protocol implementation for Task 39.6, providin
 
 ---
 **Document Version**: 2.0.0 (August 2025)  
-**Compatible with**: CCTelegram Bridge v0.8.5, MCP Server v1.8.5  
+**Compatible with**: CCTelegram Bridge v0.9.0, MCP Server v1.9.0  
 **Dependencies**: Redis 6.0+, tokio v1.45+, flate2 v1.0+, sha2 v0.10+  
 **Integration**: Tasks 39.1-39.5 (Compression, Queue, Redis, Integrity, Monitoring)  
 **Last Updated**: August 2025

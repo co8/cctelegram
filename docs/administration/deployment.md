@@ -972,5 +972,5 @@ graph LR
 ---
 
 **Last Updated**: August 2025  
-**Version Compatibility**: Bridge v0.8.5, MCP Server v1.8.5  
+**Version Compatibility**: Bridge v0.9.0, MCP Server v1.9.0  
 **Deployment Types**: Single-server, High-availability, Container, Systemd
