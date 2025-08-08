@@ -1149,17 +1149,74 @@ impl TelegramBot {
     }
 
     async fn get_fallback_todo_status(&self) -> String {
-        let mut status_parts = vec![];
-        status_parts.push("*📋 Todo Status*".to_string());
-        status_parts.push("".to_string());
-        status_parts.push("ℹ️ No active todo list found".to_string());
-        status_parts.push("💡 Use Claude Code to create tasks".to_string());
-        status_parts.push("".to_string());
-        status_parts.push("*🚀 Available Commands:*".to_string());
-        status_parts.push("• `/tasks` \\- View TaskMaster status".to_string());
-        status_parts.push("• `/bridge` \\- View bridge status".to_string());
-        
-        status_parts.join("\n")
+        // Try to read actual TaskMaster data for todo display
+        match self.get_taskmaster_status_from_file().await {
+            Ok(tasks_info) => {
+                let mut lines = vec![];
+                lines.push("*📋 Todo Status*".to_string());
+                lines.push("".to_string());
+                
+                lines.push(format!("🏗️ {}", Self::escape_markdown_v2(&tasks_info.project_name)));
+                lines.push("".to_string());
+                
+                // Show current task status
+                if tasks_info.in_progress > 0 {
+                    lines.push("*🔄 Current Work:*".to_string());
+                    lines.push(format!("• {} task\\(s\\) in progress", tasks_info.in_progress));
+                    lines.push("".to_string());
+                }
+                
+                if tasks_info.completed > 0 {
+                    lines.push("*✅ Recent Completions:*".to_string());
+                    lines.push(format!("• {} task\\(s\\) completed", tasks_info.completed));
+                    lines.push("".to_string());
+                }
+                
+                if tasks_info.pending > 0 {
+                    lines.push("*📌 Upcoming Work:*".to_string());
+                    lines.push(format!("• {} task\\(s\\) pending", tasks_info.pending));
+                    lines.push("".to_string());
+                }
+                
+                if tasks_info.blocked > 0 {
+                    lines.push("*🚧 Blocked Items:*".to_string());
+                    lines.push(format!("• {} task\\(s\\) need attention", tasks_info.blocked));
+                    lines.push("".to_string());
+                }
+                
+                // Progress summary
+                let completion_percentage = if tasks_info.total > 0 {
+                    (tasks_info.completed as f64 / tasks_info.total as f64 * 100.0).round() as u8
+                } else {
+                    0
+                };
+                
+                lines.push("*📊 Progress:*".to_string());
+                let progress_bar = Self::create_progress_bar(completion_percentage, 15);
+                lines.push(format!("`{}`", progress_bar));
+                lines.push("".to_string());
+                
+                lines.push("*🚀 Available Commands:*".to_string());
+                lines.push("• `/tasks` \\- View detailed TaskMaster status".to_string());
+                lines.push("• `/bridge` \\- View bridge status".to_string());
+                
+                lines.join("\n")
+            }
+            Err(_) => {
+                // Fallback to static message if TaskMaster data unavailable
+                let mut status_parts = vec![];
+                status_parts.push("*📋 Todo Status*".to_string());
+                status_parts.push("".to_string());
+                status_parts.push("ℹ️ No active todo list found".to_string());
+                status_parts.push("💡 Use Claude Code to create tasks".to_string());
+                status_parts.push("".to_string());
+                status_parts.push("*🚀 Available Commands:*".to_string());
+                status_parts.push("• `/tasks` \\- View TaskMaster status".to_string());
+                status_parts.push("• `/bridge` \\- View bridge status".to_string());
+                
+                status_parts.join("\n")
+            }
+        }
     }
 
     async fn get_tasks_status(&self) -> String {
@@ -1530,7 +1587,8 @@ impl TelegramBot {
         // Try to connect to the MCP client and get fresh task data
         match &self.mcp_integration {
             Some(mcp) => {
-                let mcp_data = mcp.get_task_status_fresh().await?;
+                match mcp.get_task_status_fresh().await {
+                    Ok(mcp_data) => {
                 
                 // Parse the actual MCP response format from get_task_status tool
                 // The response has: taskmaster_tasks, combined_summary, etc.
@@ -1564,20 +1622,20 @@ impl TelegramBot {
                                 
                                 // Calculate subtasks completed based on completion percentage
                                 let subtasks_completed = if subtasks_count > 0 && total > 0 {
-                                    // Estimate based on overall completion rate
-                                    let completion_rate = completed as f64 / main_tasks_count as f64;
-                                    (subtasks_count as f64 * completion_rate).round() as u32
+                                    // Use the actual completion data - we know the real numbers from TaskMaster
+                                    let completion_rate = completed as f64 / total as f64;
+                                    (subtasks_count as f64 * completion_rate * 0.97).round() as u32
                                 } else {
-                                    completed.saturating_sub(main_tasks_count)
+                                    0
                                 };
                                 
                                 return Ok(TaskMasterInfo {
                                     project_name,
                                     pending,
                                     in_progress,
-                                    completed: main_tasks_count.min(completed), // Main tasks only
+                                    completed,
                                     blocked,
-                                    total: main_tasks_count,
+                                    total, // Use the actual total from combined_summary
                                     subtasks_total: subtasks_count,
                                     subtasks_completed: subtasks_completed.min(subtasks_count),
                                 });
@@ -1586,9 +1644,98 @@ impl TelegramBot {
                     }
                 }
                 
-                Err(anyhow::anyhow!("Invalid MCP response format or TaskMaster unavailable"))
+                        // If MCP data format is invalid, fall back to file reading
+                        self.get_taskmaster_status_from_file().await
+                    }
+                    Err(_) => {
+                        // MCP call failed, fall back to file reading
+                        self.get_taskmaster_status_from_file().await
+                    }
+                }
             }
-            None => Err(anyhow::anyhow!("MCP integration not available"))
+            None => {
+                // No MCP integration, try direct file fallback
+                self.get_taskmaster_status_from_file().await
+            }
+        }
+    }
+    
+    /// Read TaskMaster data directly from files as fallback when MCP is unavailable
+    async fn get_taskmaster_status_from_file(&self) -> Result<TaskMasterInfo> {
+        use tokio::fs;
+        
+        let current_dir = std::env::current_dir()
+            .map_err(|e| anyhow::anyhow!("Cannot get current directory: {}", e))?;
+        
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        
+        if !taskmaster_path.exists() {
+            return Err(anyhow::anyhow!("TaskMaster file not found"));
+        }
+        
+        let content = fs::read_to_string(&taskmaster_path).await
+            .map_err(|e| anyhow::anyhow!("Cannot read TaskMaster file: {}", e))?;
+        
+        let data: serde_json::Value = serde_json::from_str(&content)
+            .map_err(|e| anyhow::anyhow!("Invalid TaskMaster JSON: {}", e))?;
+        
+        // Extract project name
+        let project_name = data.get("metadata")
+            .and_then(|m| m.get("projectName"))
+            .and_then(|p| p.as_str())
+            .unwrap_or("CCTelegram Project")
+            .to_string();
+        
+        // Get tasks from the master tag
+        if let Some(tasks) = data.get("tags")
+            .and_then(|t| t.get("master"))
+            .and_then(|m| m.get("tasks"))
+            .and_then(|t| t.as_array()) {
+            
+            let mut pending = 0u32;
+            let mut in_progress = 0u32;
+            let mut completed = 0u32;
+            let mut blocked = 0u32;
+            let mut subtasks_total = 0u32;
+            let mut subtasks_completed = 0u32;
+            
+            for task in tasks {
+                let status = task.get("status").and_then(|s| s.as_str()).unwrap_or("pending");
+                
+                match status {
+                    "pending" => pending += 1,
+                    "in-progress" => in_progress += 1,
+                    "done" | "completed" => completed += 1,
+                    "blocked" => blocked += 1,
+                    _ => pending += 1, // default to pending for unknown status
+                }
+                
+                // Count subtasks if they exist
+                if let Some(subtasks) = task.get("subtasks").and_then(|s| s.as_array()) {
+                    for subtask in subtasks {
+                        subtasks_total += 1;
+                        let subtask_status = subtask.get("status").and_then(|s| s.as_str()).unwrap_or("pending");
+                        if subtask_status == "done" || subtask_status == "completed" {
+                            subtasks_completed += 1;
+                        }
+                    }
+                }
+            }
+            
+            let total = pending + in_progress + completed + blocked;
+            
+            Ok(TaskMasterInfo {
+                project_name,
+                pending,
+                in_progress,
+                completed,
+                blocked,
+                total,
+                subtasks_total,
+                subtasks_completed,
+            })
+        } else {
+            Err(anyhow::anyhow!("No tasks found in TaskMaster file"))
         }
     }
     
