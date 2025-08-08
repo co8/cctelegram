@@ -1613,141 +1613,65 @@ impl TelegramBot {
         // Try to connect to the MCP client and get fresh task data
         match &self.mcp_integration {
             Some(mcp) => {
-                match mcp.get_task_status_fresh().await {
-                    Ok(mcp_data) => {
-                        debug!("✓ Raw MCP data received: {}", serde_json::to_string_pretty(&mcp_data).unwrap_or("Failed to serialize".to_string()));
+                let mcp_data = mcp.get_task_status_fresh().await?;
                 
-                // Parse the actual MCP response format from TaskMaster MCP integration
-                // The response has direct structure: data.stats, data.tasks, etc.
-                if let Some(data) = mcp_data.get("data") {
-                    if let Some(stats) = data.get("stats") {
-                        // Extract main task counts
-                        let main_completed = stats.get("completed").and_then(|c| c.as_u64()).unwrap_or(0) as u32;
-                        let main_pending = stats.get("pending").and_then(|p| p.as_u64()).unwrap_or(0) as u32;
-                        let main_in_progress = stats.get("inProgress").and_then(|p| p.as_u64()).unwrap_or(0) as u32;
-                        let main_blocked = stats.get("blocked").and_then(|b| b.as_u64()).unwrap_or(0) as u32;
-                        let main_total = stats.get("total").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
-                        
-                        // Extract subtask counts
-                        let empty_object = serde_json::Value::Object(serde_json::Map::new());
-                        let subtask_stats = stats.get("subtasks").unwrap_or(&empty_object);
-                        let subtasks_completed = subtask_stats.get("completed").and_then(|c| c.as_u64()).unwrap_or(0) as u32;
-                        let subtasks_total = subtask_stats.get("total").and_then(|t| t.as_u64()).unwrap_or(0) as u32;
-                        
-                        // Calculate combined totals
-                        let total_completed = main_completed + subtasks_completed;
-                        let total_pending = main_pending + subtask_stats.get("pending").and_then(|p| p.as_u64()).unwrap_or(0) as u32;
-                        let total_in_progress = main_in_progress + subtask_stats.get("inProgress").and_then(|p| p.as_u64()).unwrap_or(0) as u32;
-                        let total_blocked = main_blocked + subtask_stats.get("blocked").and_then(|b| b.as_u64()).unwrap_or(0) as u32;
-                        let grand_total = main_total + subtasks_total;
-                        
-                        // Get project name
-                        let project_name = "CCTelegram Project".to_string();
-                        
-                        return Ok(TaskMasterInfo {
-                            project_name,
-                            pending: total_pending,
-                            in_progress: total_in_progress,
-                            completed: total_completed,
-                            blocked: total_blocked,
-                            total: grand_total,
-                            subtasks_total: subtasks_total,
-                            subtasks_completed,
-                        });
-                    }
-                }
-                
-                        // If MCP data format is invalid, fall back to file reading
-                        self.get_taskmaster_status_from_file().await
-                    }
-                    Err(_) => {
-                        // MCP call failed, fall back to file reading
-                        self.get_taskmaster_status_from_file().await
-                    }
-                }
-            }
-            None => {
-                // No MCP integration, try direct file fallback
-                self.get_taskmaster_status_from_file().await
-            }
-        }
-    }
-    
-    /// Read TaskMaster data directly from files as fallback when MCP is unavailable
-    async fn get_taskmaster_status_from_file(&self) -> Result<TaskMasterInfo> {
-        use tokio::fs;
-        
-        let current_dir = std::env::current_dir()
-            .map_err(|e| anyhow::anyhow!("Cannot get current directory: {}", e))?;
-        
-        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
-        
-        if !taskmaster_path.exists() {
-            return Err(anyhow::anyhow!("TaskMaster file not found"));
-        }
-        
-        let content = fs::read_to_string(&taskmaster_path).await
-            .map_err(|e| anyhow::anyhow!("Cannot read TaskMaster file: {}", e))?;
-        
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| anyhow::anyhow!("Invalid TaskMaster JSON: {}", e))?;
-        
-        // Extract project name
-        let project_name = data.get("metadata")
-            .and_then(|m| m.get("projectName"))
-            .and_then(|p| p.as_str())
-            .unwrap_or("CCTelegram Project")
-            .to_string();
-        
-        // Get tasks from the new data structure
-        if let Some(tasks) = data.get("data")
-            .and_then(|d| d.get("tasks"))
-            .and_then(|t| t.as_array()) {
-            
-            let mut pending = 0u32;
-            let mut in_progress = 0u32;
-            let mut completed = 0u32;
-            let mut blocked = 0u32;
-            let mut subtasks_total = 0u32;
-            let mut subtasks_completed = 0u32;
-            
-            for task in tasks {
-                let status = task.get("status").and_then(|s| s.as_str()).unwrap_or("pending");
-                
-                match status {
-                    "pending" => pending += 1,
-                    "in-progress" => in_progress += 1,
-                    "done" | "completed" => completed += 1,
-                    "blocked" => blocked += 1,
-                    _ => pending += 1, // default to pending for unknown status
-                }
-                
-                // Count subtasks if they exist
-                if let Some(subtasks) = task.get("subtasks").and_then(|s| s.as_array()) {
-                    for subtask in subtasks {
-                        subtasks_total += 1;
-                        let subtask_status = subtask.get("status").and_then(|s| s.as_str()).unwrap_or("pending");
-                        if subtask_status == "done" || subtask_status == "completed" {
-                            subtasks_completed += 1;
+                // Parse the actual MCP response format from get_task_status tool
+                // The response has: taskmaster_tasks, combined_summary, etc.
+                if let Some(taskmaster_tasks) = mcp_data.get("taskmaster_tasks") {
+                    if let Some(available) = taskmaster_tasks.get("available").and_then(|a| a.as_bool()) {
+                        if available {
+                            // Extract project name
+                            let project_name = taskmaster_tasks.get("project_name")
+                                .and_then(|p| p.as_str())
+                                .unwrap_or("CCTelegram Project")
+                                .to_string();
+                            
+                            // Extract task counts directly from taskmaster_tasks
+                            let main_tasks_count = taskmaster_tasks.get("main_tasks_count")
+                                .and_then(|m| m.as_u64()).unwrap_or(0) as u32;
+                            let subtasks_count = taskmaster_tasks.get("subtasks_count")
+                                .and_then(|s| s.as_u64()).unwrap_or(0) as u32;
+                            
+                            // Extract status counts from combined_summary
+                            if let Some(combined_summary) = mcp_data.get("combined_summary") {
+                                let pending = combined_summary.get("total_pending")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let in_progress = combined_summary.get("total_in_progress")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let completed = combined_summary.get("total_completed")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let blocked = combined_summary.get("total_blocked")
+                                    .and_then(|p| p.as_u64()).unwrap_or(0) as u32;
+                                let total = combined_summary.get("grand_total")
+                                    .and_then(|t| t.as_u64()).unwrap_or(0) as u32;
+                                
+                                // Calculate subtasks completed based on completion percentage
+                                let subtasks_completed = if subtasks_count > 0 && total > 0 {
+                                    // Estimate based on overall completion rate
+                                    let completion_rate = completed as f64 / main_tasks_count as f64;
+                                    (subtasks_count as f64 * completion_rate).round() as u32
+                                } else {
+                                    completed.saturating_sub(main_tasks_count)
+                                };
+                                
+                                return Ok(TaskMasterInfo {
+                                    project_name,
+                                    pending,
+                                    in_progress,
+                                    completed: main_tasks_count.min(completed), // Main tasks only
+                                    blocked,
+                                    total: main_tasks_count,
+                                    subtasks_total: subtasks_count,
+                                    subtasks_completed: subtasks_completed.min(subtasks_count),
+                                });
+                            }
                         }
                     }
                 }
+                
+                Err(anyhow::anyhow!("Invalid MCP response format or TaskMaster unavailable"))
             }
-            
-            let total = pending + in_progress + completed + blocked;
-            
-            Ok(TaskMasterInfo {
-                project_name,
-                pending,
-                in_progress,
-                completed,
-                blocked,
-                total,
-                subtasks_total,
-                subtasks_completed,
-            })
-        } else {
-            Err(anyhow::anyhow!("No tasks found in TaskMaster file"))
+            None => Err(anyhow::anyhow!("MCP integration not available"))
         }
     }
     
