@@ -82,7 +82,7 @@ cargo install cargo-watch
 ```bash
 # 1. Fork repository on GitHub
 # 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/cctelegram.git
+git clone https://github.com/co8/cctelegram.git
 cd cctelegram
 
 # 3. Add upstream remote
