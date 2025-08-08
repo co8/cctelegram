@@ -1712,7 +1712,7 @@
             "description": "Modify the /bridge command's response message to include an InlineKeyboardMarkup with a 'FIX' button. Implement the basic structure for the callback query handler that will be triggered when this button is pressed.",
             "dependencies": [],
             "details": "This subtask focuses on the initial user interface and backend wiring. The /bridge command handler will be updated to generate the button with a unique callback data string (e.g., 'bridge_fix_request'). A new handler function will be registered to listen for this specific callback data, preparing the foundation for the diagnostic and repair logic. The initial handler should simply acknowledge the button press by editing the message.",
-            "status": "pending",
+            "status": "in-progress",
             "testStrategy": "Unit test the /bridge command handler to verify that the response contains the correct InlineKeyboardMarkup and button. Create a mock test for the callback handler to ensure it correctly identifies and responds to the 'bridge_fix_request' query."
           },
           {
@@ -1788,7 +1788,7 @@
     },
     "metadata": {
       "created": "2025-08-08T10:49:02.725Z",
-      "updated": "2025-08-08T12:05:13.238Z",
+      "updated": "2025-08-08T12:05:20.987Z",
       "description": "Tasks for data context"
     }
   },
