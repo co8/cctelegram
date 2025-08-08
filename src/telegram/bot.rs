@@ -1144,17 +1144,99 @@ impl TelegramBot {
     }
 
     fn format_todo_response(&self, todo_data: &serde_json::Value) -> String {
-        // Extract text content from MCP response
+        // Extract text content from enhanced MCP response
         if let Some(content) = todo_data.get("content").and_then(|c| c.as_array()) {
             if let Some(first_content) = content.first() {
                 if let Some(text) = first_content.get("text").and_then(|t| t.as_str()) {
-                    return text.to_string();
+                    // Apply Telegram-specific formatting optimizations
+                    return self.optimize_todo_for_telegram(text);
                 }
             }
         }
         
-        // Fallback formatting
-        "*📋 Todo Status*\n\n✅ MCP integration active\n💫 Live data available".to_string()
+        // If direct text extraction from MCP response fails, try to parse as todo data
+        if let Some(text) = todo_data.as_str() {
+            return self.optimize_todo_for_telegram(text);
+        }
+        
+        // Fallback formatting with live status
+        let timestamp = chrono::Utc::now().format("%H:%M").to_string();
+        format!("*📋 Live Todo Dashboard*\n\n✅ MCP integration active\n🕐 Updated: {}\n\n💡 Try refreshing with `/todo`", timestamp)
+    }
+
+    fn optimize_todo_for_telegram(&self, text: &str) -> String {
+        let mut optimized = text.to_string();
+        
+        // Telegram-specific optimizations for better mobile display
+        optimized = optimized
+            // Ensure proper markdown escaping for Telegram
+            .replace("*", "\\*")
+            .replace("_", "\\_")
+            .replace("[", "\\[")
+            .replace("]", "\\]")
+            .replace("(", "\\(")
+            .replace(")", "\\)")
+            .replace("~", "\\~")
+            .replace("`", "\\`")
+            .replace(">", "\\>")
+            .replace("#", "\\#")
+            .replace("+", "\\+")
+            .replace("-", "\\-")
+            .replace("=", "\\=")
+            .replace("|", "\\|")
+            .replace("{", "\\{")
+            .replace("}", "\\}")
+            .replace(".", "\\.")
+            .replace("!", "\\!");
+        
+        // Restore important formatting
+        optimized = optimized
+            .replace("\\# ", "# ")  // Keep headers
+            .replace("\\*\\*", "**")  // Keep bold
+            .replace("\\`", "`");    // Keep code formatting
+            
+        // Limit line length for better mobile display
+        let lines: Vec<String> = optimized.lines()
+            .map(|line| {
+                if line.len() > 60 && !line.starts_with("#") {
+                    // Break long lines at word boundaries
+                    self.wrap_line(line, 60)
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect();
+        
+        lines.join("\n")
+    }
+
+    fn wrap_line(&self, line: &str, max_width: usize) -> String {
+        if line.len() <= max_width {
+            return line.to_string();
+        }
+        
+        let mut result = Vec::new();
+        let mut current_line = String::new();
+        
+        for word in line.split_whitespace() {
+            if current_line.len() + word.len() + 1 > max_width {
+                if !current_line.is_empty() {
+                    result.push(current_line);
+                    current_line = String::new();
+                }
+            }
+            
+            if !current_line.is_empty() {
+                current_line.push(' ');
+            }
+            current_line.push_str(word);
+        }
+        
+        if !current_line.is_empty() {
+            result.push(current_line);
+        }
+        
+        result.join("\n")
     }
 
     async fn get_fallback_todo_status(&self) -> String {

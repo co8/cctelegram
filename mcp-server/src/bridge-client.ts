@@ -1438,6 +1438,161 @@ export class CCTelegramBridgeClient {
   }
 
   /**
+   * Get live Claude Code session tasks with enhanced detection mechanisms
+   */
+  private async getLiveClaudeCodeTasks(projectPath: string): Promise<any> {
+    const attempted_sources: string[] = [];
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+
+    // Enhanced search for Claude Code session data
+    const todoSearchPaths = [
+      // Project-specific locations
+      path.join(projectPath, '.claude', 'session', 'todos.json'),
+      path.join(projectPath, '.claude', 'todos.json'),
+      path.join(projectPath, '.cc_todos.json'),
+      path.join(projectPath, '.claude_session.json'),
+      
+      // User global locations
+      path.join(homeDir, '.claude', 'session', 'current_todos.json'),
+      path.join(homeDir, '.claude', 'todos.json'),
+      path.join(homeDir, '.cc_telegram', 'session_todos.json'),
+      
+      // Temporary session locations
+      '/tmp/claude_code_session.json',
+      path.join(process.env.TMPDIR || '/tmp', 'claude_todos.json')
+    ];
+
+    const fsOptimizer = getFsOptimizer();
+    const pathExistsMap = await fsOptimizer.batchPathExists(todoSearchPaths);
+    
+    let mostRecentTodos: any = null;
+    let mostRecentTime = 0;
+    let bestSource = 'unknown';
+
+    // Check all possible todo locations and find the most recent one
+    for (const todoPath of todoSearchPaths) {
+      attempted_sources.push(todoPath);
+      
+      if (pathExistsMap.get(todoPath)) {
+        try {
+          const stats = await fs.stat(todoPath);
+          const mtime = stats.mtime.getTime();
+          
+          if (mtime > mostRecentTime) {
+            const todoData = await fs.readJSON(todoPath);
+            
+            // Validate that this looks like todo data
+            if (this.isValidTodoData(todoData)) {
+              mostRecentTodos = todoData;
+              mostRecentTime = mtime;
+              bestSource = todoPath;
+            }
+          }
+        } catch (error) {
+          // Continue to next path on error
+          secureLog('debug', 'Failed to read todo file', {
+            path: sanitizePath(todoPath),
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      }
+    }
+
+    // Try to detect active Claude Code process and extract todos
+    if (!mostRecentTodos) {
+      try {
+        const activeTodos = await this.detectActiveClaudeCodeTodos();
+        if (activeTodos) {
+          mostRecentTodos = activeTodos;
+          bestSource = 'active_process';
+          mostRecentTime = Date.now();
+        }
+      } catch (error) {
+        secureLog('debug', 'Failed to detect active Claude Code todos', {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    if (mostRecentTodos) {
+      return {
+        tasks: Array.isArray(mostRecentTodos) ? mostRecentTodos : mostRecentTodos.tasks || [],
+        source: bestSource,
+        session_active: mostRecentTime > (Date.now() - 300000), // Active if updated within 5 minutes
+        last_updated: new Date(mostRecentTime).toISOString(),
+        attempted_sources: attempted_sources.slice(0, 5) // Limit logged paths
+      };
+    }
+
+    return {
+      tasks: [],
+      source: 'none',
+      session_active: false,
+      last_updated: null,
+      attempted_sources: attempted_sources.slice(0, 5)
+    };
+  }
+
+  /**
+   * Validate that data structure looks like valid todo data
+   */
+  private isValidTodoData(data: any): boolean {
+    if (!data) return false;
+    
+    // Handle both array format and object with tasks property
+    const tasks = Array.isArray(data) ? data : data.tasks;
+    if (!Array.isArray(tasks)) return false;
+    
+    // Check if tasks have expected properties
+    return tasks.length === 0 || (
+      tasks.some((task: any) => 
+        task && 
+        typeof task === 'object' && 
+        (task.content || task.title || task.description)
+      )
+    );
+  }
+
+  /**
+   * Try to detect active Claude Code session todos from process information
+   */
+  private async detectActiveClaudeCodeTodos(): Promise<any> {
+    try {
+      // Look for Claude Code process environment or temp files
+      const { stdout } = await execAsync('pgrep -f "claude" || true').catch(() => ({ stdout: '' }));
+      
+      if (stdout.trim()) {
+        // Try to find recently modified files that might contain session state
+        const tempDir = process.env.TMPDIR || '/tmp';
+        const recentFiles = await fs.readdir(tempDir).catch(() => []);
+        
+        for (const file of recentFiles) {
+          if (file.includes('claude') && file.includes('todo')) {
+            try {
+              const filePath = path.join(tempDir, file);
+              const stats = await fs.stat(filePath);
+              
+              // If modified within last 10 minutes
+              if (Date.now() - stats.mtime.getTime() < 600000) {
+                const data = await fs.readJSON(filePath);
+                if (this.isValidTodoData(data)) {
+                  return data;
+                }
+              }
+            } catch (error) {
+              // Continue checking other files
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Process detection failed, return null
+    }
+    
+    return null;
+  }
+
+  /**
    * Generate task summary from task array
    */
   private generateTaskSummary(tasks: any[]): { pending: number; in_progress: number; completed: number; blocked: number } {
@@ -1515,43 +1670,25 @@ export class CCTelegramBridgeClient {
       // Determine project root
       const projectPath = projectRoot || process.cwd();
       
-      // Get Claude Code session tasks (if available through environment or files)
+      // Get Claude Code session tasks (enhanced live session detection)
       if (taskSystem === 'claude-code' || taskSystem === 'both') {
         try {
-          // Check for Claude Code todo files in common locations (optimized batch check)
-          const possibleTodoPaths = [
-            path.join(projectPath, '.claude', 'todos.json'),
-            path.join(process.env.HOME || '/tmp', '.claude', 'todos.json'),
-            path.join(projectPath, '.cc_todos.json')
-          ];
-
-          const fsOptimizer = getFsOptimizer();
-          const pathExistsMap = await fsOptimizer.batchPathExists(possibleTodoPaths);
+          const claudeTasks = await this.getLiveClaudeCodeTasks(projectPath);
           
-          let claudeTasks = null;
-          for (const todoPath of possibleTodoPaths) {
-            if (pathExistsMap.get(todoPath)) {
-              try {
-                claudeTasks = await fs.readJSON(todoPath);
-                break;
-              } catch (error) {
-                // Continue to next path
-              }
-            }
-          }
-
-          if (claudeTasks) {
-            let filteredTasks = claudeTasks;
+          if (claudeTasks && claudeTasks.tasks && claudeTasks.tasks.length > 0) {
+            let filteredTasks = claudeTasks.tasks;
             if (statusFilter) {
-              filteredTasks = claudeTasks.filter((task: any) => task.status === statusFilter);
+              filteredTasks = claudeTasks.tasks.filter((task: any) => task.status === statusFilter);
             }
 
             result.claude_code_tasks = {
               available: true,
-              source: 'session_todos',
-              total_count: claudeTasks.length,
+              source: claudeTasks.source || 'live_session',
+              session_active: claudeTasks.session_active || false,
+              last_updated: claudeTasks.last_updated,
+              total_count: claudeTasks.tasks.length,
               filtered_count: filteredTasks.length,
-              summary: this.generateTaskSummary(claudeTasks)
+              summary: this.generateTaskSummary(claudeTasks.tasks)
             };
 
             if (!summaryOnly) {
@@ -1560,12 +1697,15 @@ export class CCTelegramBridgeClient {
           } else {
             result.claude_code_tasks = {
               available: false,
-              message: 'No Claude Code session tasks found. Tasks may be managed in-memory or not yet persisted.'
+              session_active: false,
+              message: 'No Claude Code session tasks found. Tasks may be managed in-memory or session may be inactive.',
+              attempted_sources: claudeTasks?.attempted_sources || []
             };
           }
         } catch (error) {
           result.claude_code_tasks = {
             available: false,
+            session_active: false,
             error: error instanceof Error ? error.message : 'Unknown error accessing Claude Code tasks'
           };
         }
@@ -1612,67 +1752,198 @@ export class CCTelegramBridgeClient {
   }
 
   /**
-   * Generate formatted todo display with completed, current, and upcoming sections
+   * Generate formatted todo display with live Claude Code session integration
    */
   async getTodoDisplay(
     projectRoot?: string,
-    taskSystem: 'claude-code' | 'taskmaster' | 'both' = 'taskmaster',
-    sections: string[] = ['completed', 'current', 'upcoming'],
+    taskSystem: 'claude-code' | 'taskmaster' | 'both' = 'both', // Changed default to 'both'
+    sections: string[] = ['current', 'upcoming', 'completed'],
     limitCompleted: number = 5,
     showSubtasks: boolean = true
   ): Promise<string> {
     try {
-      // Get all tasks
+      // Get all tasks from both systems
       const taskData = await this.getTaskStatus(projectRoot, taskSystem, undefined, false);
       
       const lines: string[] = [];
-      lines.push('# 📋 Todo List');
-      lines.push(`*Generated: ${new Date().toLocaleString()}*`);
+      const timestamp = new Date().toLocaleTimeString();
+      
+      // Header with live session status
+      lines.push('# 📋 Live Todo Dashboard');
+      lines.push(`*Last updated: ${timestamp}*`);
+      
+      // Show session status if available
+      if (taskData.claude_code_tasks?.available) {
+        const sessionIcon = taskData.claude_code_tasks.session_active ? '🟢 LIVE' : '🟡 CACHED';
+        const lastUpdate = taskData.claude_code_tasks.last_updated 
+          ? new Date(taskData.claude_code_tasks.last_updated).toLocaleTimeString()
+          : 'unknown';
+        lines.push(`*${sessionIcon} Claude Code Session (${lastUpdate})*`);
+      }
+      
       lines.push('');
 
-      // Helper function to format task with optional subtasks
-      const formatTask = (task: any, indent: string = '') => {
+      // Helper function to format task with system badge and status
+      const formatTask = (task: any, indent: string = '', system: string = '') => {
         const statusIcon = this.getStatusIcon(task.status);
+        const systemBadge = system ? ` \`${system}\`` : '';
         const priorityBadge = task.priority ? ` [${task.priority.toUpperCase()}]` : '';
-        return `${indent}${statusIcon} **${task.title}**${priorityBadge}`;
+        const title = task.title || task.content || task.description || 'Untitled Task';
+        return `${indent}${statusIcon} **${title}**${systemBadge}${priorityBadge}`;
       };
 
-      // Process each section
+      // Process each section with data from both systems
       for (const section of sections) {
-        const sectionTasks = this.getTasksForSection(taskData, section, limitCompleted, showSubtasks);
+        const allSectionTasks = this.getCombinedSectionTasks(taskData, section, limitCompleted);
         
-        if (sectionTasks.length === 0) continue;
+        if (allSectionTasks.length === 0) continue;
 
-        lines.push(`## ${this.getSectionTitle(section)} (${sectionTasks.length})`);
+        lines.push(`## ${this.getSectionTitle(section)} (${allSectionTasks.length})`);
         lines.push('');
 
-        for (const task of sectionTasks) {
-          lines.push(formatTask(task));
+        for (const taskGroup of allSectionTasks) {
+          lines.push(formatTask(taskGroup.task, '', taskGroup.system));
           
-          if (showSubtasks && task.subtasks && task.subtasks.length > 0) {
-            for (const subtask of task.subtasks) {
-              lines.push(formatTask(subtask, '  → '));
+          // Show subtasks for TaskMaster tasks
+          if (showSubtasks && taskGroup.task.subtasks && taskGroup.task.subtasks.length > 0) {
+            for (const subtask of taskGroup.task.subtasks) {
+              lines.push(formatTask(subtask, '  → ', taskGroup.system));
             }
           }
+          
+          // Show task details if from Claude Code session
+          if (taskGroup.system === 'Claude' && taskGroup.task.details) {
+            lines.push(`  *${taskGroup.task.details.substring(0, 100)}...*`);
+          }
+          
           lines.push('');
         }
       }
 
-      // Add summary statistics
+      // Enhanced summary with both systems
       lines.push('---');
-      lines.push('## 📊 Summary');
-      if (taskData.taskmaster_tasks?.summary) {
-        const summary = taskData.taskmaster_tasks.summary;
-        lines.push(`• **Completed:** ${summary.completed || 0}`);
-        lines.push(`• **In Progress:** ${summary.in_progress || 0}`);
-        lines.push(`• **Pending:** ${summary.pending || 0}`);
-        lines.push(`• **Blocked:** ${summary.blocked || 0}`);
-        lines.push(`• **Total:** ${taskData.taskmaster_tasks.total_count || 0}`);
+      lines.push('## 📊 Live Summary');
+      
+      // Claude Code session summary
+      if (taskData.claude_code_tasks?.available && taskData.claude_code_tasks.summary) {
+        const ccSummary = taskData.claude_code_tasks.summary;
+        lines.push('### 🎯 Claude Code Session');
+        lines.push(`• **Active:** ${ccSummary.in_progress || 0} | **Pending:** ${ccSummary.pending || 0} | **Done:** ${ccSummary.completed || 0}`);
       }
+      
+      // TaskMaster summary
+      if (taskData.taskmaster_tasks?.summary) {
+        const tmSummary = taskData.taskmaster_tasks.summary;
+        lines.push('### 📋 TaskMaster Project');
+        lines.push(`• **Active:** ${tmSummary.in_progress || 0} | **Pending:** ${tmSummary.pending || 0} | **Done:** ${tmSummary.completed || 0}`);
+        if (tmSummary.blocked > 0) {
+          lines.push(`• **Blocked:** ${tmSummary.blocked}`);
+        }
+      }
+      
+      // Combined totals
+      if (taskData.combined_summary) {
+        const combined = taskData.combined_summary;
+        lines.push('### 🔄 Combined Total');
+        lines.push(`• **All Active:** ${combined.in_progress || 0} | **All Pending:** ${combined.pending || 0} | **All Done:** ${combined.completed || 0}`);
+      }
+
+      // Add quick commands reminder
+      lines.push('');
+      lines.push('---');
+      lines.push('**Quick Commands:** `/tasks` • `/bridge` • `/todo`');
 
       return lines.join('\n');
     } catch (error) {
-      return `❌ Error generating todo display: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      return `❌ **Todo Dashboard Error**\n\n${errorMsg}\n\n💡 Try \`/bridge\` to check system status`;
+    }
+  }
+
+  /**
+   * Combine tasks from both Claude Code session and TaskMaster for a specific section
+   */
+  private getCombinedSectionTasks(taskData: any, section: string, limitCompleted: number): Array<{task: any, system: string}> {
+    const combinedTasks: Array<{task: any, system: string}> = [];
+    
+    // Get Claude Code session tasks
+    if (taskData.claude_code_tasks?.available && taskData.claude_code_tasks.tasks) {
+      const claudeTasks = this.filterTasksBySection(taskData.claude_code_tasks.tasks, section, limitCompleted);
+      for (const task of claudeTasks) {
+        combinedTasks.push({ task, system: 'Claude' });
+      }
+    }
+    
+    // Get TaskMaster tasks
+    if (taskData.taskmaster_tasks?.tasks) {
+      const taskmasterTasks = this.filterTasksBySection(taskData.taskmaster_tasks.tasks, section, limitCompleted);
+      for (const task of taskmasterTasks) {
+        combinedTasks.push({ task, system: 'TaskMaster' });
+      }
+    }
+    
+    // Sort by priority and status for better display
+    return combinedTasks.sort((a, b) => {
+      // Prioritize in_progress tasks
+      if (a.task.status === 'in_progress' && b.task.status !== 'in_progress') return -1;
+      if (b.task.status === 'in_progress' && a.task.status !== 'in_progress') return 1;
+      
+      // Then by priority if available
+      const aPriority = this.getPriorityValue(a.task.priority);
+      const bPriority = this.getPriorityValue(b.task.priority);
+      if (aPriority !== bPriority) return bPriority - aPriority; // Higher priority first
+      
+      // Finally by system (Claude Code session first for current work)
+      if (section === 'current' && a.system === 'Claude' && b.system !== 'Claude') return -1;
+      if (section === 'current' && b.system === 'Claude' && a.system !== 'Claude') return 1;
+      
+      return 0;
+    });
+  }
+
+  /**
+   * Filter tasks by section type
+   */
+  private filterTasksBySection(tasks: any[], section: string, limitCompleted: number): any[] {
+    let filtered: any[] = [];
+    
+    switch (section) {
+      case 'completed':
+        filtered = tasks.filter((task: any) => 
+          task.status === 'completed' || task.status === 'done'
+        ).slice(-limitCompleted); // Most recent completed
+        break;
+      case 'current':
+        filtered = tasks.filter((task: any) => 
+          task.status === 'in_progress' || task.status === 'in-progress'
+        );
+        break;
+      case 'upcoming':
+        filtered = tasks.filter((task: any) => 
+          task.status === 'pending'
+        );
+        break;
+      case 'blocked':
+        filtered = tasks.filter((task: any) => 
+          task.status === 'blocked'
+        );
+        break;
+      default:
+        filtered = tasks.filter((task: any) => task.status === section);
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Convert priority string to numeric value for sorting
+   */
+  private getPriorityValue(priority?: string): number {
+    switch (priority?.toLowerCase()) {
+      case 'high': case 'urgent': return 3;
+      case 'medium': case 'normal': return 2;
+      case 'low': return 1;
+      default: return 0;
     }
   }
 
@@ -1714,41 +1985,6 @@ export class CCTelegramBridgeClient {
     }
   }
 
-  /**
-   * Filter tasks for specific section
-   */
-  private getTasksForSection(taskData: any, section: string, limitCompleted: number, showSubtasks: boolean): any[] {
-    const allTasks = taskData.taskmaster_tasks?.tasks || [];
-    
-    let filteredTasks: any[] = [];
-    
-    switch (section) {
-      case 'completed':
-        filteredTasks = allTasks.filter((task: any) => 
-          task.status === 'completed' || task.status === 'done'
-        ).slice(-limitCompleted); // Get most recent completed
-        break;
-      case 'current':
-        filteredTasks = allTasks.filter((task: any) => 
-          task.status === 'in_progress' || task.status === 'in-progress'
-        );
-        break;
-      case 'upcoming':
-        filteredTasks = allTasks.filter((task: any) => 
-          task.status === 'pending'
-        );
-        break;
-      case 'blocked':
-        filteredTasks = allTasks.filter((task: any) => 
-          task.status === 'blocked'
-        );
-        break;
-      default:
-        filteredTasks = allTasks.filter((task: any) => task.status === section);
-    }
-
-    return filteredTasks;
-  }
 
   /**
    * Switch bridge to nomad mode (remote mode)
