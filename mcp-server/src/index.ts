@@ -345,6 +345,44 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
+        name: 'register_claude_todos',
+        description: 'Register current Claude Code session todos for access by the /todo command',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            todos: {
+              type: 'array',
+              description: 'Current todo list from Claude Code session',
+              items: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Unique identifier for the todo item'
+                  },
+                  content: {
+                    type: 'string',
+                    description: 'Description of the todo item'
+                  },
+                  status: {
+                    type: 'string',
+                    enum: ['pending', 'in_progress', 'completed', 'blocked'],
+                    description: 'Current status of the todo item'
+                  }
+                },
+                required: ['id', 'content', 'status']
+              }
+            },
+            session_id: {
+              type: 'string',
+              description: 'Optional session identifier for the Claude Code session',
+              default: 'default'
+            }
+          },
+          required: ['todos']
+        }
+      },
+      {
         name: 'todo',
         description: 'Display current todo list with completed tasks, current work, and upcoming tasks in organized sections',
         inputSchema: {
@@ -896,6 +934,33 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           clientId: securityContext.clientId,
           data: args,
           schemaKey: 'getTaskStatus'
+        });
+      }
+      case 'register_claude_todos': {
+        return await withSecurity(async () => {
+          const validatedArgs = validateInput(args, 'registerClaudeTodos');
+          const { todos, session_id = 'default' } = validatedArgs;
+          
+          const result = await client.registerClaudeTodos(todos, session_id);
+          
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: result.success,
+                  message: result.message,
+                  registered_count: result.registered_count,
+                  session_id: result.session_id
+                }, null, 2)
+              }
+            ]
+          };
+        }, {
+          toolName: name,
+          clientId: securityContext.clientId,
+          data: args,
+          schemaKey: 'registerClaudeTodos'
         });
       }
       case 'todo': {

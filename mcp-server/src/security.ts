@@ -353,6 +353,17 @@ export const inputSchemas = {
     ).default(['completed', 'current', 'upcoming']),
     limit_completed: Joi.number().integer().min(1).max(50).default(5),
     show_subtasks: Joi.boolean().default(true)
+  }),
+  
+  registerClaudeTodos: Joi.object({
+    todos: Joi.array().items(
+      Joi.object({
+        id: Joi.string().max(100).required(),
+        content: Joi.string().max(1000).required(),
+        status: Joi.string().valid('pending', 'in_progress', 'completed', 'blocked').required()
+      })
+    ).max(100).required(), // Limit to 100 todos
+    session_id: Joi.string().max(100).pattern(/^[a-zA-Z0-9\-_]+$/).default('default')
   })
 };
 

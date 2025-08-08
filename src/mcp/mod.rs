@@ -70,7 +70,7 @@ impl Default for McpConfig {
     fn default() -> Self {
         Self {
             max_connections: 10,
-            connection_timeout_ms: 5000,
+            connection_timeout_ms: 15000, // Increased from 5000 to 15000ms for slower MCP operations
             max_retries: 3,
             base_retry_delay_ms: 100,
             circuit_breaker_threshold: 5,

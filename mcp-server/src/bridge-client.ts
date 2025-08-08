@@ -1437,13 +1437,170 @@ export class CCTelegramBridgeClient {
     return flattened;
   }
 
+  // Storage for registered Claude Code todos
+  private claudeTodosStorage: Map<string, { todos: any[], timestamp: number }> = new Map();
+
+  /**
+   * Register Claude Code todos for the current session
+   */
+  async registerClaudeTodos(todos: any[], sessionId: string = 'default'): Promise<{
+    success: boolean;
+    message: string;
+    registered_count: number;
+    session_id: string;
+  }> {
+    try {
+      // Validate todos array
+      if (!Array.isArray(todos)) {
+        return {
+          success: false,
+          message: 'Todos must be an array',
+          registered_count: 0,
+          session_id: sessionId
+        };
+      }
+
+      // Validate each todo item
+      for (const todo of todos) {
+        if (!todo.id || !todo.content || !todo.status) {
+          return {
+            success: false,
+            message: 'Each todo must have id, content, and status fields',
+            registered_count: 0,
+            session_id: sessionId
+          };
+        }
+      }
+
+      // Store todos in memory
+      this.claudeTodosStorage.set(sessionId, {
+        todos: todos,
+        timestamp: Date.now()
+      });
+
+      // Also try to write to temporary file as backup
+      try {
+        const tempTodoPath = path.join(process.env.TMPDIR || '/tmp', 'claude_current_session_todos.json');
+        await fs.writeJSON(tempTodoPath, {
+          session_id: sessionId,
+          todos: todos,
+          timestamp: new Date().toISOString()
+        });
+      } catch (fileError) {
+        secureLog('debug', 'Failed to write todos to temporary file', { error: fileError instanceof Error ? fileError.message : 'Unknown error' });
+      }
+
+      secureLog('info', 'Successfully registered Claude Code todos', { 
+        sessionId, 
+        todoCount: todos.length,
+        timestamp: new Date().toISOString()
+      });
+
+      return {
+        success: true,
+        message: `Successfully registered ${todos.length} todos for session ${sessionId}`,
+        registered_count: todos.length,
+        session_id: sessionId
+      };
+
+    } catch (error) {
+      secureLog('error', 'Failed to register Claude Code todos', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        sessionId 
+      });
+      
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        registered_count: 0,
+        session_id: sessionId
+      };
+    }
+  }
+
+  /**
+   * Get in-memory Claude Code todos by accessing MCP session state
+   */
+  private async getInMemoryClaudeTodos(): Promise<{ tasks: any[] }> {
+    try {
+      // First, try to get from registered todos storage (highest priority)
+      const defaultSession = this.claudeTodosStorage.get('default');
+      if (defaultSession && defaultSession.todos.length > 0) {
+        // Check if data is not too old (within 1 hour)
+        const oneHour = 60 * 60 * 1000;
+        if (Date.now() - defaultSession.timestamp < oneHour) {
+          return { tasks: defaultSession.todos };
+        }
+      }
+
+      // Try to access global MCP session state if available
+      if (typeof global !== 'undefined' && global.__claude_mcp_session) {
+        const session = global.__claude_mcp_session;
+        if (session.todos && Array.isArray(session.todos)) {
+          return { tasks: session.todos };
+        }
+      }
+      
+      // Try environment variable approach for passing todos
+      const todosEnv = process.env.CLAUDE_CURRENT_TODOS;
+      if (todosEnv) {
+        try {
+          const todos = JSON.parse(todosEnv);
+          if (Array.isArray(todos)) {
+            return { tasks: todos };
+          }
+        } catch (e) {
+          secureLog('debug', 'Failed to parse CLAUDE_CURRENT_TODOS environment variable', { error: e instanceof Error ? e.message : 'Unknown error' });
+        }
+      }
+      
+      // Try reading from a temporary bridge file
+      const tempTodoPath = path.join(process.env.TMPDIR || '/tmp', 'claude_current_session_todos.json');
+      if (await fs.pathExists(tempTodoPath)) {
+        try {
+          const todoData = await fs.readJSON(tempTodoPath);
+          if (this.isValidTodoData(todoData)) {
+            const todos = Array.isArray(todoData) ? todoData : todoData.tasks || [];
+            return { tasks: todos };
+          }
+        } catch (e) {
+          secureLog('debug', 'Failed to read temporary todo bridge file', { path: tempTodoPath, error: e instanceof Error ? e.message : 'Unknown error' });
+        }
+      }
+      
+      return { tasks: [] };
+    } catch (error) {
+      secureLog('debug', 'Error accessing in-memory todos', { error: error instanceof Error ? error.message : 'Unknown error' });
+      return { tasks: [] };
+    }
+  }
+
   /**
    * Get live Claude Code session tasks with enhanced detection mechanisms
+   * Now supports both file-based and in-memory todo access
    */
   private async getLiveClaudeCodeTasks(projectPath: string): Promise<any> {
     const attempted_sources: string[] = [];
     const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
 
+    // First, try to access in-memory todos through MCP bridge mechanism
+    try {
+      const inMemoryTodos = await this.getInMemoryClaudeTodos();
+      if (inMemoryTodos.tasks.length > 0) {
+        return {
+          tasks: inMemoryTodos.tasks,
+          source: 'in-memory-session',
+          session_active: true,
+          last_updated: new Date().toISOString(),
+          attempted_sources: ['in-memory-claude-session']
+        };
+      }
+    } catch (error) {
+      // Fall back to file-based detection if in-memory access fails
+      secureLog('debug', 'In-memory todo access failed, falling back to file search', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+
+    // Fallback to file-based detection
     // Enhanced search for Claude Code session data
     const todoSearchPaths = [
       // Project-specific locations

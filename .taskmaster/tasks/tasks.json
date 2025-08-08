@@ -1547,6 +1547,221 @@
             "status": "done"
           }
         ]
+      },
+      {
+        "id": 42,
+        "title": "Implement /todo Command Bridge for Claude Code In-Memory Todos",
+        "description": "Develop a comprehensive bridge mechanism to enable the /todo command to read Claude Code's in-memory session todos, leveraging MCP tools, environment variables, and temporary files for data transfer.",
+        "details": "Design and implement a robust bridge mechanism allowing the CCTelegram MCP Server to access Claude Code's current session in-memory todo list. This involves:\n\n1.  **Claude Code Todo Exposure:**\n    *   Develop an internal API or interface within Claude Code to expose its in-memory todo list in a structured format (e.g., JSON).\n    *   Implement mechanisms for Claude Code to write this structured todo data to designated temporary files (e.g., in a secure, application-specific temp directory).\n    *   Investigate and implement, if feasible and secure, a method for Claude Code to update a specific environment variable with a serialized representation of the todo list (e.g., for small lists or a pointer to a file).\n    *   Integrate with existing or new MCP tools to allow them to query Claude Code's internal API for todos.\n\n2.  **MCP Server Bridge Implementation:**\n    *   Modify the /todo command handler in the MCP Server to invoke the new bridge mechanism.\n    *   Implement a prioritized retrieval strategy within the bridge:\n        *   Attempt to retrieve todos via a dedicated MCP tool call first.\n        *   If the MCP tool method fails or is unavailable, attempt to read from the designated temporary file.\n        *   As a fallback or for specific use cases, attempt to read from the environment variable.\n    *   Implement robust parsing of the todo data (e.g., JSON deserialization) from all retrieval methods.\n    *   Ensure proper error handling, including scenarios where Claude Code is not running, no todos are present, or data is malformed.\n    *   Implement cleanup mechanisms for temporary files after successful retrieval.\n\n3.  **Data Format and Security:**\n    *   Define a clear, consistent data schema (e.g., JSON array of todo objects) for the todo list across all transfer methods.\n    *   Address security considerations for temporary files (permissions, location) and environment variables (data sensitivity, size limits).\n\n4.  **Concurrency and Resilience:**\n    *   Consider concurrent access to temporary files or environment variables if multiple /todo commands are issued simultaneously.\n    *   Implement retry mechanisms or timeouts for inter-process communication.",
+        "testStrategy": "A comprehensive test strategy will be employed to ensure the reliability and correctness of the /todo command bridge:\n\n1.  **Unit Tests:**\n    *   Develop unit tests for Claude Code's todo exposure API/functions.\n    *   Create unit tests for the temporary file writing/reading logic, including edge cases like empty lists, large lists, and file access errors.\n    *   Test environment variable serialization/deserialization logic (if applicable).\n    *   Test the MCP Server's data parsing logic for various valid and invalid todo data formats.\n\n2.  **Integration Tests:**\n    *   **MCP Tool Integration:** Simulate Claude Code exposing todos via the MCP tool interface and verify the /todo command successfully retrieves them.\n    *   **Temporary File Integration:** Run Claude Code to write todos to a temporary file, then execute the /todo command and verify correct retrieval. Test scenarios with and without todos, and with malformed file content.\n    *   **Environment Variable Integration:** (If implemented) Set environment variables with todo data and verify the /todo command retrieves them correctly.\n    *   **Prioritization Testing:** Verify the bridge mechanism correctly falls back from MCP tool to temporary file, and then to environment variable, when primary methods are unavailable or fail.\n    *   **Error Handling:** Test scenarios where Claude Code is not running, the bridge data source is empty, corrupted, or inaccessible.\n    *   **Concurrency Testing:** Simulate multiple concurrent /todo command requests to ensure data integrity and prevent race conditions.\n\n3.  **End-to-End Tests:**\n    *   Deploy Claude Code and the MCP Server in a test environment.\n    *   Manually and/or automatically issue /todo commands via Telegram.\n    *   Verify that the displayed todo list accurately reflects the in-memory state of Claude Code.\n    *   Test the full user experience, including messages for no todos found or errors.",
+        "status": "pending",
+        "dependencies": [
+          14,
+          16
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Claude Code Todo Data Exposure and Persistence",
+            "description": "Develop the internal API within Claude Code to expose its in-memory todo list in a structured format and implement mechanisms for writing this data to designated temporary files and, if feasible, updating an environment variable.",
+            "dependencies": [],
+            "details": "Develop an internal API or interface within Claude Code to expose its in-memory todo list in a structured format (e.g., JSON). Implement mechanisms for Claude Code to write this structured todo data to designated temporary files (e.g., in a secure, application-specific temp directory). Investigate and implement, if feasible and secure, a method for Claude Code to update a specific environment variable with a serialized representation of the todo list (e.g., for small lists or a pointer to a file).",
+            "status": "done",
+            "testStrategy": "Develop unit tests for Claude Code's todo exposure API/functions. Create unit tests for the temporary file writing/reading logic, including edge cases like empty lists, malformed data, and file access permissions."
+          },
+          {
+            "id": 2,
+            "title": "Integrate MCP Tools for Direct Claude Code Todo Query",
+            "description": "Implement the necessary integration with existing or new MCP tools to allow them to directly query Claude Code's internal API for the todo list, establishing the primary retrieval method for the MCP Server.",
+            "dependencies": [
+              "42.1"
+            ],
+            "details": "Integrate with existing or new MCP tools to allow them to query Claude Code's internal API for todos. This involves developing the MCP tool interface and the Claude Code side of this specific communication channel for direct query.",
+            "status": "pending",
+            "testStrategy": "Develop integration tests for the MCP tool query mechanism, ensuring successful data retrieval and proper error handling when Claude Code is unavailable or returns no data via this method."
+          },
+          {
+            "id": 3,
+            "title": "Develop MCP Server Bridge Core Logic for File and Environment Variable Retrieval",
+            "description": "Implement the core logic within the MCP Server bridge to reliably read and parse todo data from designated temporary files and environment variables, including robust error handling, JSON deserialization, and temporary file cleanup.",
+            "dependencies": [
+              "42.1"
+            ],
+            "details": "Implement the logic to read from the designated temporary file and from the environment variable. Implement robust parsing of the todo data (e.g., JSON deserialization) from these retrieval methods. Ensure proper error handling, including scenarios where Claude Code is not running, no todos are present, or data is malformed. Implement cleanup mechanisms for temporary files after successful retrieval.",
+            "status": "pending",
+            "testStrategy": "Develop unit tests for the MCP Server's file and environment variable reading/parsing logic, covering valid data, empty data, malformed data, file not found, and permission issues. Test temporary file cleanup mechanisms."
+          },
+          {
+            "id": 4,
+            "title": "Implement MCP Server /todo Command Handler and Prioritized Retrieval Orchestration",
+            "description": "Modify the `/todo` command handler in the CCTelegram MCP Server to invoke the new bridge mechanism, implementing the prioritized retrieval strategy (MCP tool first, then temporary file, then environment variable) and presenting the retrieved data to the user.",
+            "dependencies": [
+              "42.2",
+              "42.3"
+            ],
+            "details": "Modify the /todo command handler in the MCP Server to invoke the new bridge mechanism. Implement a prioritized retrieval strategy within the bridge: Attempt to retrieve todos via a dedicated MCP tool call first. If the MCP tool method fails or is unavailable, attempt to read from the designated temporary file. As a fallback or for specific use cases, attempt to read from the environment variable.",
+            "status": "pending",
+            "testStrategy": "Develop integration tests for the `/todo` command handler, verifying the prioritization logic under various conditions (e.g., MCP tool available/unavailable, files present/absent, env var set/unset). Ensure correct display of todos to the user and proper error messages for failures."
+          },
+          {
+            "id": 5,
+            "title": "Define Data Schema, Address Security, Concurrency, and Finalize Testing Strategy",
+            "description": "Define a clear, consistent data schema for the todo list, address security considerations for temporary files and environment variables, implement mechanisms for concurrency and resilience (retries, timeouts), and finalize the comprehensive test strategy for the entire bridge.",
+            "dependencies": [
+              "42.1",
+              "42.2",
+              "42.3",
+              "42.4"
+            ],
+            "details": "Define a clear, consistent data schema (e.g., JSON array of todo objects) for the todo list across all transfer methods. Address security considerations for temporary files (permissions, location) and environment variables (data sensitivity, size limits). Consider concurrent access to temporary files or environment variables if multiple /todo commands are issued simultaneously. Implement retry mechanisms or timeouts for inter-process communication. This subtask also encompasses the overall 'Test Strategy' section from the original task description, ensuring all test types (unit, integration, system, security, performance) are planned and executed.",
+            "status": "pending",
+            "testStrategy": "Review and refine the overall test strategy for the /todo command bridge, ensuring comprehensive coverage including end-to-end system tests, security vulnerability assessments for data transfer methods, and performance testing under load. Document test plans and success criteria for the entire bridge mechanism."
+          }
+        ]
+      },
+      {
+        "id": 43,
+        "title": "Rename /cct:native to /cct:local and Standardize 'local' Terminology",
+        "description": "Rename the /cct:native command to /cct:local and perform a comprehensive, codebase-wide refactoring to replace all instances of 'native' with 'local' for consistency in local development mode.",
+        "details": "This task involves a global search-and-replace operation to ensure consistent terminology for the local development mode. The goal is to eliminate the term 'native' in favor of 'local' to improve clarity for developers and users.\n\nImplementation Steps:\n1.  **Global Codebase Search:** Perform a case-insensitive global search for the term \"native\" across the entire codebase to identify all files requiring modification.\n2.  **Command Handler Refactoring:**\n    *   Locate the command registration logic and change the command from `/cct:native` to `/cct:local`.\n    *   Rename the associated command handler function (e.g., `handleNativeCommand` to `handleLocalCommand`).\n    *   Update all internal references, comments, and log messages within the handler and related modules to use 'local'.\n3.  **Variable and Function Renaming:**\n    *   Systematically rename variables (e.g., `isNativeMode` -> `isLocalMode`, `nativeConfig` -> `localConfig`).\n    *   Rename functions and methods (e.g., `getNativeSettings()` -> `getLocalSettings()`, `switchToNative()` -> `switchToLocal()`).\n4.  **Configuration and Environment:**\n    *   Inspect all configuration files (e.g., `config.json`, `package.json` scripts), environment variable files (`.env`), and CI/CD pipeline configurations for keys or values related to \"native\" mode and update them.\n5.  **User-Facing Text:**\n    *   Review and update all user-facing strings, including command help text, success/error messages, status updates, and interactive prompts. For example, \"Switched to native mode\" must be changed to \"Switched to local mode\".\n6.  **Documentation Update:**\n    *   Thoroughly update all project documentation (README.md, API docs, user guides, developer setup instructions) to reflect the command rename and terminology change.\n    *   Ensure all code examples and command lists are corrected.",
+        "testStrategy": "A multi-layered testing approach is required to validate this refactoring and prevent regressions.\n\n1.  **Static Analysis and Linting:** Run linters and static analysis tools after the changes to catch any unresolved references or syntax errors introduced during the refactoring.\n2.  **Unit Test Updates:**\n    *   Search all test files for 'native' and update test descriptions, function/variable names, and assertions to use 'local'.\n    *   Ensure the entire unit test suite passes with 100% success.\n3.  **Integration Test Updates:**\n    *   Modify integration tests that involve the local development mode to use the new configuration, function names, and command.\n    *   Verify that modules depending on this mode's state continue to function correctly.\n4.  **End-to-End (E2E) Testing:**\n    *   Update existing E2E test scripts (e.g., Playwright tests) that use `/cct:native` to use `/cct:local` instead.\n    *   Add a new E2E test case to explicitly verify the change:\n        a.  Execute the old `/cct:native` command and assert that it fails or is unrecognized.\n        b.  Execute the new `/cct:local` command and assert that it successfully activates the local development mode.\n        c.  Capture and assert that any UI feedback (e.g., a confirmation message) correctly uses the term \"local\".\n5.  **Manual Verification:**\n    *   After all automated tests pass, perform a manual check by running the application.\n    *   Execute the `/help` command (or equivalent) and verify that `/cct:local` is listed correctly and `/cct:native` is gone.\n    *   Execute `/cct:local` and confirm the application behaves as expected.\n    *   Review application logs during manual testing to ensure no 'native' strings remain.",
+        "status": "pending",
+        "dependencies": [
+          14,
+          27,
+          40,
+          41
+        ],
+        "priority": "medium",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Refactor Command Registration and Handler for /cct:local",
+            "description": "Rename the /cct:native command to /cct:local at the registration point and refactor the associated command handler function and its immediate module.",
+            "dependencies": [],
+            "details": "Locate the command registration logic and change the command string from `/cct:native` to `/cct:local`. Rename the primary handler function (e.g., `handleNativeCommand`) to `handleLocalCommand`. Update all internal references, comments, and log messages within this specific handler's file/module to use 'local' instead of 'native'. This is the foundational change upon which others will build.",
+            "status": "pending",
+            "testStrategy": "Unit test the command registration to ensure `/cct:local` is recognized and `/cct:native` is not. Update unit tests for the handler function to reflect its new name and verify its core logic still functions correctly with the new terminology in its logs and outputs."
+          },
+          {
+            "id": 2,
+            "title": "Rename 'native' Variables, Functions, and Classes to 'local'",
+            "description": "Perform a comprehensive, codebase-wide refactoring to rename all programming identifiers like variables, functions, methods, and class names from 'native' to 'local'.",
+            "dependencies": [
+              "43.1"
+            ],
+            "details": "Systematically rename all relevant identifiers using IDE refactoring tools to ensure all call sites are updated. Examples include changing `isNativeMode` to `isLocalMode`, `nativeConfig` to `localConfig`, and `getNativeSettings()` to `getLocalSettings()`. This task excludes user-facing strings and configuration files, which are handled in subsequent subtasks.",
+            "status": "pending",
+            "testStrategy": "Run the entire unit and integration test suite to catch any broken references or regressions caused by the renaming. Use static analysis and linting tools to identify any remaining instances of 'native' identifiers that were missed."
+          },
+          {
+            "id": 3,
+            "title": "Update Configuration Files, Environment Variables, and CI/CD Pipelines",
+            "description": "Audit and update all configuration files, environment variable definitions, and CI/CD pipeline scripts to replace 'native' with 'local'.",
+            "dependencies": [
+              "43.2"
+            ],
+            "details": "Inspect all project configuration files (e.g., `config.json`, `package.json`), environment variable files (`.env`, `.env.example`), and CI/CD pipeline configurations (e.g., `.github/workflows/main.yml`) for keys, values, or script arguments related to 'native' mode and update them to 'local'.",
+            "status": "pending",
+            "testStrategy": "Manually test the application startup with the new configuration to ensure it correctly enters local mode. Trigger the CI/CD pipeline on a feature branch to verify that all steps execute successfully with the updated configuration."
+          },
+          {
+            "id": 4,
+            "title": "Standardize User-Facing Text and Messages",
+            "description": "Review and update all user-facing text, including command outputs, error messages, prompts, and UI elements, to use the term 'local' instead of 'native'.",
+            "dependencies": [
+              "43.1"
+            ],
+            "details": "Perform a global search for user-facing strings containing 'native'. Update all instances to ensure consistency. For example, change 'Switched to native mode.' to 'Switched to local mode.', and update the help text for the `/cct:local` command.",
+            "status": "pending",
+            "testStrategy": "Manually execute the `/cct:local` command and other related features, carefully reviewing all console output, prompts, and status messages for correct terminology. Write or update integration tests that assert the content of user-facing messages."
+          },
+          {
+            "id": 5,
+            "title": "Update All Project Documentation to Reflect 'local' Terminology",
+            "description": "Thoroughly update all project documentation, including READMEs, user guides, API documentation, and developer setup instructions, to replace 'native' with 'local'.",
+            "dependencies": [
+              "43.1",
+              "43.2",
+              "43.3",
+              "43.4"
+            ],
+            "details": "Review and edit all markdown files, generated API docs, and wikis. Ensure all references to the old `/cct:native` command are changed to `/cct:local`. Update all code examples, command lists, and conceptual explanations to use the new standardized 'local' terminology. Pay special attention to README.md and developer onboarding guides.",
+            "status": "pending",
+            "testStrategy": "Perform a peer review of all updated documentation for clarity, accuracy, and consistency. Follow the updated setup and usage guides from a clean environment to verify they are correct and easy to understand."
+          }
+        ]
+      },
+      {
+        "id": 44,
+        "title": "Implement Automated Troubleshooting 'FIX' Button for /bridge Command",
+        "description": "Add a 'FIX' button to the /bridge telegram command that provides automated troubleshooting and repair functionality for bridge connection issues, leveraging existing commands to provide a one-click solution.",
+        "details": "This task involves creating a new interactive component for the /bridge command to improve user experience and reduce manual troubleshooting.\n\nImplementation Steps:\n1. **UI Enhancement:**\n   - Modify the response handler for the `/bridge` command to include an `InlineKeyboardMarkup` with a single button labeled \"FIX\".\n   - This button will be associated with a unique callback query identifier, e.g., `bridge_fix_request`.\n\n2. **Callback Query Handler:**\n   - Implement a new handler to process the `bridge_fix_request` callback query.\n   - This handler will orchestrate the diagnostic and repair sequence, providing real-time feedback to the user by editing the original message.\n\n3. **Diagnostic Sequence:**\n   - The handler will execute a series of checks by reusing logic from existing system components and commands. The sequence should be:\n     a. **MCP Server Connectivity:** Check if the CCTelegram server can communicate with the MCP server. Reuse health check logic from Task 31.\n     b. **Claude Code Process Health:** Ping the Claude Code instance to ensure it's responsive.\n     c. **Data Transfer Path:** Verify the integrity of the data transfer mechanism (e.g., temporary file directory existence and permissions) as defined in Task 42.\n     d. **Configuration Check:** Read and validate essential environment variables and configuration settings for the bridge.\n\n4. **Automated Repair Logic:**\n   - Based on the diagnostic results, attempt automated repairs:\n     a. **MCP Server Unresponsive:** If the MCP server is down, attempt to trigger a restart command (e.g., via a secure, internal system call or API endpoint).\n     b. **Claude Code Unresponsive:** Attempt a graceful restart of the Claude Code bridge component.\n     c. **Permission Issues:** If file/directory permissions are incorrect, log a clear, actionable error message for the user. Do not attempt to auto-correct permissions for security reasons.\n\n5. **User Feedback:**\n   - For each step in the diagnostic and repair process, update the Telegram message to inform the user of the current action and its outcome (e.g., \"1. Checking MCP Server... OK\", \"2. Pinging Claude Code... FAILED\", \"3. Attempting restart... SUCCESS\").\n   - Conclude with a summary message indicating success or detailing any unrecoverable errors with guidance on manual intervention.",
+        "testStrategy": "A multi-layered testing strategy is required to ensure the reliability and safety of the automated repair functionality.\n\n1. **Unit Tests:**\n   - Create unit tests for the callback query handler, mocking the diagnostic and repair services.\n   - Write individual tests for each diagnostic function (e.g., `checkMcpStatus`, `verifyTempFileAccess`) to ensure they correctly identify both healthy and failed states.\n   - Unit test each repair function (e.g., `attemptMcpRestart`) using mocks to verify that the correct system commands/API calls are initiated without actually executing them.\n\n2. **Integration Tests:**\n   - Develop integration tests that run the full diagnostic-and-repair sequence against a controlled environment where specific components can be programmatically disabled.\n   - Test Case 1: Simulate a downed MCP server and verify the 'FIX' logic successfully identifies the issue, triggers the restart, and confirms the connection is re-established.\n   - Test Case 2: Simulate incorrect file permissions and verify the logic correctly identifies the problem and provides the appropriate, clear error message to the user without attempting a risky repair.\n   - Verify that all user-facing feedback messages are sent correctly and in the proper sequence.\n\n3. **End-to-End (E2E) Tests:**\n   - Extend the existing E2E test suite (from Task 41) to cover this new user flow.\n   - The test will automate: executing `/bridge`, clicking the 'FIX' button in a scenario where the bridge is intentionally broken (e.g., a stopped service), and asserting that the final message confirms a successful repair and a working connection.",
+        "status": "pending",
+        "dependencies": [
+          42,
+          43
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add 'FIX' Button to /bridge Command and Set Up Callback Handler",
+            "description": "Modify the /bridge command's response message to include an InlineKeyboardMarkup with a 'FIX' button. Implement the basic structure for the callback query handler that will be triggered when this button is pressed.",
+            "dependencies": [],
+            "details": "This subtask focuses on the initial user interface and backend wiring. The /bridge command handler will be updated to generate the button with a unique callback data string (e.g., 'bridge_fix_request'). A new handler function will be registered to listen for this specific callback data, preparing the foundation for the diagnostic and repair logic. The initial handler should simply acknowledge the button press by editing the message.",
+            "status": "pending",
+            "testStrategy": "Unit test the /bridge command handler to verify that the response contains the correct InlineKeyboardMarkup and button. Create a mock test for the callback handler to ensure it correctly identifies and responds to the 'bridge_fix_request' query."
+          },
+          {
+            "id": 2,
+            "title": "Develop Diagnostic Functions for Bridge Components",
+            "description": "Implement the series of diagnostic checks to assess the health of the bridge connection. This includes checking MCP server connectivity, Claude Code process health, data transfer path integrity, and configuration validity.",
+            "dependencies": [
+              "44.1"
+            ],
+            "details": "Create a set of modular functions, each responsible for a specific diagnostic check as outlined in the parent task. Reuse existing health check logic from Task 31 for MCP server connectivity and file/directory verification logic from Task 42 for the data transfer path. Implement new checks for pinging the Claude Code instance and validating essential environment variables. Each function should return a clear status (e.g., OK, FAILED) and a descriptive message.",
+            "status": "pending",
+            "testStrategy": "Write individual unit tests for each diagnostic function. Mock external services (MCP server, Claude Code process) and file system states to test both success and failure scenarios for each check."
+          },
+          {
+            "id": 3,
+            "title": "Develop Automated Repair Actions",
+            "description": "Create the functions responsible for attempting automated repairs based on the results of the diagnostic sequence. This includes logic for restarting the MCP server and the Claude Code component.",
+            "dependencies": [
+              "44.2"
+            ],
+            "details": "Implement functions to trigger restart commands for the MCP server and the Claude Code bridge component, using secure internal system calls or dedicated API endpoints. For issues that cannot be auto-repaired, such as file permission errors, the function should be designed to log a detailed, actionable error message rather than attempting to modify permissions directly, adhering to security best practices.",
+            "status": "pending",
+            "testStrategy": "Unit test the repair functions by mocking the system call or API endpoint interfaces. Verify that the correct restart commands are constructed and called for specific failure scenarios. Test the permission error handling to ensure it logs the correct message and does not attempt to execute system-level permission changes."
+          },
+          {
+            "id": 4,
+            "title": "Orchestrate Diagnostic/Repair Sequence with User Feedback",
+            "description": "Enhance the callback handler to execute the diagnostic and repair sequences in order, providing real-time feedback to the user by editing the original Telegram message at each step.",
+            "dependencies": [
+              "44.1",
+              "44.2",
+              "44.3"
+            ],
+            "details": "Within the 'bridge_fix_request' callback handler, orchestrate the execution flow. Call the diagnostic functions from Subtask 44.2 sequentially. After each check, edit the message to show the status (e.g., '1. Checking MCP Server... OK'). If a check fails, call the corresponding repair function from Subtask 44.3 and update the message again (e.g., '2. Attempting restart... SUCCESS'). The handler will conclude with a final summary message detailing the outcome.",
+            "status": "pending",
+            "testStrategy": "Develop integration tests for the callback handler. Mock the diagnostic and repair functions to control their outcomes (success, failure, repair success, repair failure) and verify that the handler calls them in the correct order and edits the Telegram message with the expected text at each stage of the process."
+          },
+          {
+            "id": 5,
+            "title": "Conduct End-to-End Testing and Finalize Feature",
+            "description": "Perform comprehensive end-to-end testing of the entire 'FIX' button workflow in a staging environment. This includes verifying the UI, callback handling, diagnostics, repairs, and user feedback loop.",
+            "dependencies": [
+              "44.4"
+            ],
+            "details": "This subtask involves testing the feature as a whole. Manually trigger the /bridge command, press the 'FIX' button, and observe the real-time updates. Simulate various failure conditions (e.g., stop the MCP server, kill the Claude Code process, change directory permissions) to ensure the diagnostic and repair logic functions correctly in a live-like environment. Document any unrecoverable error messages and ensure they provide clear guidance for manual intervention.",
+            "status": "pending",
+            "testStrategy": "Create a formal test plan covering various scenarios: a perfectly healthy system, MCP server down, Claude Code unresponsive, and incorrect file permissions. Execute the test plan in a staging environment that mirrors production. Verify that all message updates are timely and accurate and that the final summary is correct for each scenario."
+          }
+        ]
       }
     ],
     "filter": "all",
@@ -1570,16 +1785,15 @@
         "cancelled": 4,
         "completionPercentage": 96.99248120300751
       }
+    },
+    "metadata": {
+      "created": "2025-08-08T10:49:02.725Z",
+      "updated": "2025-08-08T11:37:57.821Z",
+      "description": "Tasks for data context"
     }
   },
   "version": {
     "version": "0.23.0",
     "name": "task-master-ai"
-  },
-  "tag": {
-    "currentTag": "master",
-    "availableTags": [
-      "master"
-    ]
   }
 }
