@@ -1699,7 +1699,7 @@
         "description": "Add a 'FIX' button to the /bridge telegram command that provides automated troubleshooting and repair functionality for bridge connection issues, leveraging existing commands to provide a one-click solution.",
         "details": "This task involves creating a new interactive component for the /bridge command to improve user experience and reduce manual troubleshooting.\n\nImplementation Steps:\n1. **UI Enhancement:**\n   - Modify the response handler for the `/bridge` command to include an `InlineKeyboardMarkup` with a single button labeled \"FIX\".\n   - This button will be associated with a unique callback query identifier, e.g., `bridge_fix_request`.\n\n2. **Callback Query Handler:**\n   - Implement a new handler to process the `bridge_fix_request` callback query.\n   - This handler will orchestrate the diagnostic and repair sequence, providing real-time feedback to the user by editing the original message.\n\n3. **Diagnostic Sequence:**\n   - The handler will execute a series of checks by reusing logic from existing system components and commands. The sequence should be:\n     a. **MCP Server Connectivity:** Check if the CCTelegram server can communicate with the MCP server. Reuse health check logic from Task 31.\n     b. **Claude Code Process Health:** Ping the Claude Code instance to ensure it's responsive.\n     c. **Data Transfer Path:** Verify the integrity of the data transfer mechanism (e.g., temporary file directory existence and permissions) as defined in Task 42.\n     d. **Configuration Check:** Read and validate essential environment variables and configuration settings for the bridge.\n\n4. **Automated Repair Logic:**\n   - Based on the diagnostic results, attempt automated repairs:\n     a. **MCP Server Unresponsive:** If the MCP server is down, attempt to trigger a restart command (e.g., via a secure, internal system call or API endpoint).\n     b. **Claude Code Unresponsive:** Attempt a graceful restart of the Claude Code bridge component.\n     c. **Permission Issues:** If file/directory permissions are incorrect, log a clear, actionable error message for the user. Do not attempt to auto-correct permissions for security reasons.\n\n5. **User Feedback:**\n   - For each step in the diagnostic and repair process, update the Telegram message to inform the user of the current action and its outcome (e.g., \"1. Checking MCP Server... OK\", \"2. Pinging Claude Code... FAILED\", \"3. Attempting restart... SUCCESS\").\n   - Conclude with a summary message indicating success or detailing any unrecoverable errors with guidance on manual intervention.",
         "testStrategy": "A multi-layered testing strategy is required to ensure the reliability and safety of the automated repair functionality.\n\n1. **Unit Tests:**\n   - Create unit tests for the callback query handler, mocking the diagnostic and repair services.\n   - Write individual tests for each diagnostic function (e.g., `checkMcpStatus`, `verifyTempFileAccess`) to ensure they correctly identify both healthy and failed states.\n   - Unit test each repair function (e.g., `attemptMcpRestart`) using mocks to verify that the correct system commands/API calls are initiated without actually executing them.\n\n2. **Integration Tests:**\n   - Develop integration tests that run the full diagnostic-and-repair sequence against a controlled environment where specific components can be programmatically disabled.\n   - Test Case 1: Simulate a downed MCP server and verify the 'FIX' logic successfully identifies the issue, triggers the restart, and confirms the connection is re-established.\n   - Test Case 2: Simulate incorrect file permissions and verify the logic correctly identifies the problem and provides the appropriate, clear error message to the user without attempting a risky repair.\n   - Verify that all user-facing feedback messages are sent correctly and in the proper sequence.\n\n3. **End-to-End (E2E) Tests:**\n   - Extend the existing E2E test suite (from Task 41) to cover this new user flow.\n   - The test will automate: executing `/bridge`, clicking the 'FIX' button in a scenario where the bridge is intentionally broken (e.g., a stopped service), and asserting that the final message confirms a successful repair and a working connection.",
-        "status": "in-progress",
+        "status": "done",
         "dependencies": [
           42,
           43
@@ -1712,7 +1712,7 @@
             "description": "Modify the /bridge command's response message to include an InlineKeyboardMarkup with a 'FIX' button. Implement the basic structure for the callback query handler that will be triggered when this button is pressed.",
             "dependencies": [],
             "details": "This subtask focuses on the initial user interface and backend wiring. The /bridge command handler will be updated to generate the button with a unique callback data string (e.g., 'bridge_fix_request'). A new handler function will be registered to listen for this specific callback data, preparing the foundation for the diagnostic and repair logic. The initial handler should simply acknowledge the button press by editing the message.",
-            "status": "in-progress",
+            "status": "done",
             "testStrategy": "Unit test the /bridge command handler to verify that the response contains the correct InlineKeyboardMarkup and button. Create a mock test for the callback handler to ensure it correctly identifies and responds to the 'bridge_fix_request' query."
           },
           {
@@ -1723,7 +1723,7 @@
               "44.1"
             ],
             "details": "Create a set of modular functions, each responsible for a specific diagnostic check as outlined in the parent task. Reuse existing health check logic from Task 31 for MCP server connectivity and file/directory verification logic from Task 42 for the data transfer path. Implement new checks for pinging the Claude Code instance and validating essential environment variables. Each function should return a clear status (e.g., OK, FAILED) and a descriptive message.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write individual unit tests for each diagnostic function. Mock external services (MCP server, Claude Code process) and file system states to test both success and failure scenarios for each check."
           },
           {
@@ -1734,7 +1734,7 @@
               "44.2"
             ],
             "details": "Implement functions to trigger restart commands for the MCP server and the Claude Code bridge component, using secure internal system calls or dedicated API endpoints. For issues that cannot be auto-repaired, such as file permission errors, the function should be designed to log a detailed, actionable error message rather than attempting to modify permissions directly, adhering to security best practices.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test the repair functions by mocking the system call or API endpoint interfaces. Verify that the correct restart commands are constructed and called for specific failure scenarios. Test the permission error handling to ensure it logs the correct message and does not attempt to execute system-level permission changes."
           },
           {
@@ -1747,7 +1747,7 @@
               "44.3"
             ],
             "details": "Within the 'bridge_fix_request' callback handler, orchestrate the execution flow. Call the diagnostic functions from Subtask 44.2 sequentially. After each check, edit the message to show the status (e.g., '1. Checking MCP Server... OK'). If a check fails, call the corresponding repair function from Subtask 44.3 and update the message again (e.g., '2. Attempting restart... SUCCESS'). The handler will conclude with a final summary message detailing the outcome.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Develop integration tests for the callback handler. Mock the diagnostic and repair functions to control their outcomes (success, failure, repair success, repair failure) and verify that the handler calls them in the correct order and edits the Telegram message with the expected text at each stage of the process."
           },
           {
@@ -1758,7 +1758,7 @@
               "44.4"
             ],
             "details": "This subtask involves testing the feature as a whole. Manually trigger the /bridge command, press the 'FIX' button, and observe the real-time updates. Simulate various failure conditions (e.g., stop the MCP server, kill the Claude Code process, change directory permissions) to ensure the diagnostic and repair logic functions correctly in a live-like environment. Document any unrecoverable error messages and ensure they provide clear guidance for manual intervention.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create a formal test plan covering various scenarios: a perfectly healthy system, MCP server down, Claude Code unresponsive, and incorrect file permissions. Execute the test plan in a staging environment that mirrors production. Verify that all message updates are timely and accurate and that the final summary is correct for each scenario."
           }
         ]
@@ -1788,7 +1788,7 @@
     },
     "metadata": {
       "created": "2025-08-08T10:49:02.725Z",
-      "updated": "2025-08-08T12:05:20.987Z",
+      "updated": "2025-08-08T18:55:03.784Z",
       "description": "Tasks for data context"
     }
   },
