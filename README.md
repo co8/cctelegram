@@ -201,33 +201,18 @@ cctelegram/
 
 ## 📚 Documentation
 
+**Complete documentation in 6 focused files:**
+
 <div align="center">
 
-### 🏠 **[Documentation Hub →](docs/README.md)**
-
-_Your complete navigation center with visual user journeys_
+| **Get Started** | **Power Users** | **Contributors & Operators** |
+| :-: | :-: | :-: |
+| **[📖 Overview →](docs/README.md)**<br/>Project overview & quick start | **[🔌 API Reference →](docs/API_REFERENCE.md)**<br/>All 20+ tools & 44+ events | **[🤝 Contributing →](docs/CONTRIBUTING.md)**<br/>Developer guide & architecture |
+| **[⚡ Installation →](docs/INSTALLATION.md)**<br/>Complete setup in <10 minutes | **[🔧 Troubleshooting →](docs/TROUBLESHOOTING.md)**<br/>Problem-solving & diagnostics | **[🛡️ Security →](docs/SECURITY.md)**<br/>Security policy & compliance |
 
 </div>
 
-<div class="doc-nav-grid">
-
-### 🚀 **Get Started** (2-3 clicks to success)
-
-| **For Developers** | **For Administrators** | **For Contributors** |
-| :-: | :-: | :-: |
-| **[🔌 MCP Server Setup →](docs/mcp-server/README.md)**<br/>Claude Code integration | **[🏗️ Enterprise Deploy →](docs/administration/README.md)**<br/>Production deployment | **[🤝 Contributing →](docs/development/CONTRIBUTING.md)**<br/>Development setup |
-| **[🌉 Bridge Setup →](docs/setup/QUICKSTART.md)**<br/>Background service | **[🛡️ Security Hardening →](docs/security/)**<br/>Security assessment | **[🏗️ Architecture →](docs/development/architecture.md)**<br/>System design |
-| **[⚡ First Test →](docs/mcp-server/examples/)**<br/>Send first notification | **[📊 Monitoring →](docs/administration/monitoring.md)**<br/>Observability stack | **[🧪 Testing →](docs/development/testing.md)**<br/>Quality assurance |
-
-### 📋 **Daily Reference** (Quick lookup)
-
-| **Commands & APIs** | **Troubleshooting** | **Configuration** |
-| :-: | :-: | :-: |
-| **[📖 Quick Reference →](docs/reference/QUICK_REFERENCE.md)**<br/>Daily commands & APIs | **[❌ Installation Issues →](docs/user-guide/troubleshooting.md)**<br/>Common problems | **[⚙️ Config Reference →](docs/reference/configuration.md)**<br/>Environment & tuning |
-| **[🎯 Event System →](docs/reference/EVENT_SYSTEM.md)**<br/>44+ event types | **[🐛 Error Codes →](docs/mcp-server/operations/troubleshooting/error-codes.md)**<br/>Error reference | **[🔒 Security Guide →](docs/administration/security-guide.md)**<br/>Hardening procedures |
-| **[🔧 Features Matrix →](docs/reference/FEATURES.md)**<br/>All capabilities | **[⚡ Performance →](docs/mcp-server/operations/troubleshooting/diagnostic-commands.md)**<br/>Performance issues | **[📊 Monitoring →](docs/administration/monitoring.md)**<br/>Observability setup |
-
-</div>
+**Total documentation: 1,970 lines across 6 files** (streamlined from 10,000+ lines across 97+ files)
 
 ### 🎨 **Visual System Overview**
 
@@ -243,12 +228,14 @@ graph LR
     style D fill:#26A5E4,color:#fff
 ```
 
-**🎯 Complete Documentation Experience**:
+**🎯 Streamlined Documentation Experience**:
 
-- **[🏠 Documentation Hub](docs/README.md)** - Visual navigation with user journey mapping
-- **[📚 Reference Library](docs/reference/)** - Technical deep-dives and API documentation
-- **[🛠️ Operations Center](docs/administration/)** - Production deployment and maintenance
-- **[🔒 Security Center](docs/security/)** - Comprehensive security documentation
+- **[📖 Overview](docs/README.md)** - Gateway with performance stats and user routing
+- **[⚡ Installation](docs/INSTALLATION.md)** - Complete setup guide with 95% success rate
+- **[🔌 API Reference](docs/API_REFERENCE.md)** - Comprehensive tool and event catalog
+- **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Practical problem-solving guide
+- **[🤝 Contributing](docs/CONTRIBUTING.md)** - Complete developer lifecycle guide  
+- **[🛡️ Security](docs/SECURITY.md)** - Production security and compliance
 
 ---
 
