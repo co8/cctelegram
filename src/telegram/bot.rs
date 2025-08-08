@@ -1159,8 +1159,10 @@ impl TelegramBot {
 
     async fn get_fallback_todo_status(&self) -> String {
         // Try to read actual TaskMaster data for todo display
-        match self.get_taskmaster_status_from_file().await {
-            Ok(tasks_info) => {
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        match self.read_taskmaster_tasks(&taskmaster_path).await {
+            Ok(Some(tasks_info)) => {
                 let mut lines = vec![];
                 lines.push("*📋 Todo Status*".to_string());
                 lines.push("".to_string());
@@ -1211,7 +1213,7 @@ impl TelegramBot {
                 
                 lines.join("\n")
             }
-            Err(_) => {
+            Ok(None) | Err(_) => {
                 // Fallback to static message if TaskMaster data unavailable
                 let mut status_parts = vec![];
                 status_parts.push("*📋 Todo Status*".to_string());
@@ -1248,17 +1250,29 @@ impl TelegramBot {
                 status_parts.push(format!("🏗️ {}", Self::escape_markdown_v2(&current_status)));
                 status_parts.push("".to_string()); // Spacing
                 
-                // Calculate completion percentage
+                // Calculate completion percentage - ensure it shows 100% when all tasks are done
                 let completion_percentage = if tasks_info.total > 0 {
-                    (tasks_info.completed as f64 / tasks_info.total as f64 * 100.0).round() as u8
+                    let percentage = (tasks_info.completed as f64 / tasks_info.total as f64 * 100.0).round() as u8;
+                    // Ensure 100% completion shows exactly 100%
+                    if tasks_info.completed >= tasks_info.total {
+                        100
+                    } else {
+                        percentage
+                    }
                 } else {
-                    0
+                    100 // No tasks means 100% completion
                 };
                 
                 let subtask_completion = if tasks_info.subtasks_total > 0 {
-                    (tasks_info.subtasks_completed as f64 / tasks_info.subtasks_total as f64 * 100.0).round() as u8
+                    let percentage = (tasks_info.subtasks_completed as f64 / tasks_info.subtasks_total as f64 * 100.0).round() as u8;
+                    // Ensure 100% subtask completion shows exactly 100%
+                    if tasks_info.subtasks_completed >= tasks_info.subtasks_total {
+                        100
+                    } else {
+                        percentage
+                    }
                 } else {
-                    0
+                    100 // No subtasks means 100% subtask completion
                 };
                 
                 // Main tasks progress bar
@@ -1407,8 +1421,8 @@ impl TelegramBot {
                 for task in tasks_array {
                     match task.get("status").and_then(|s| s.as_str()) {
                         Some("pending") => pending += 1,
-                        Some("in-progress") => in_progress += 1,
-                        Some("done") => completed += 1,
+                        Some("in-progress") | Some("in_progress") => in_progress += 1,
+                        Some("done") | Some("completed") => completed += 1,
                         Some("blocked") => blocked += 1,
                         _ => {}
                     }
@@ -1455,8 +1469,8 @@ impl TelegramBot {
         for task in tasks {
             match task.get("status").and_then(|s| s.as_str()) {
                 Some("pending") => pending += 1,
-                Some("in_progress") => in_progress += 1,
-                Some("completed") => completed += 1,
+                Some("in-progress") | Some("in_progress") => in_progress += 1,
+                Some("completed") | Some("done") => completed += 1,
                 Some("blocked") => blocked += 1,
                 _ => {}
             }
@@ -1604,7 +1618,9 @@ impl TelegramBot {
     async fn get_live_taskmaster_status(&self) -> Result<TaskMasterInfo> {
         // PRIORITY FIX: Try file reading first to ensure we get current data
         debug!("🔍 Attempting to read TaskMaster data directly from file first");
-        if let Ok(file_result) = self.get_taskmaster_status_from_file().await {
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        let taskmaster_path = current_dir.join(".taskmaster/tasks/tasks.json");
+        if let Ok(Some(file_result)) = self.read_taskmaster_tasks(&taskmaster_path).await {
             debug!("✅ Successfully read current TaskMaster data from file");
             return Ok(file_result);
         }
@@ -1699,13 +1715,21 @@ impl TelegramBot {
     
     /// Get project health indicator based on completion and blocked tasks
     fn get_project_health_indicator(completion: u8, blocked: u32) -> String {
+        // Handle blocked tasks first as they affect health regardless of completion
+        if blocked > 2 {
+            return "🔴 Blocked Issues".to_string();
+        }
+        
+        // Then evaluate based on completion percentage and remaining blocked tasks
         match (completion, blocked) {
-            (90..=100, 0) => "🟢 Excellent".to_string(),
+            (100, 0) => "🟢 Excellent".to_string(),
+            (90..=99, 0) => "🟢 Excellent".to_string(),
             (75..=89, 0) => "🔵 Good".to_string(),
+            (75..=100, 1..=2) => "🟡 Fair".to_string(), // High completion with few blocked
             (50..=74, 0..=1) => "🟡 Fair".to_string(),
-            (25..=49, _) => "🟠 Needs Attention".to_string(),
-            (_, blocked) if blocked > 2 => "🔴 Blocked Issues".to_string(),
-            _ => "🔴 Critical".to_string(),
+            (25..=49, 0..=1) => "🟠 Needs Attention".to_string(),
+            (0..=24, _) => "🔴 Critical".to_string(), // Very low completion
+            _ => "🟠 Needs Attention".to_string(), // Catch-all for mid-completion with blocked tasks
         }
     }
     
