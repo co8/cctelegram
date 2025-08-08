@@ -1,0 +1,55 @@
+# Task ID: 41
+# Title: Fix E2E Test Infrastructure Issues
+# Status: done
+# Dependencies: 30, 40
+# Priority: high
+# Description: Resolve Playwright configuration ESM/CommonJS conflicts, missing utility dependencies, and test execution failures to restore comprehensive end-to-end testing capability for CCTelegram bridge workflows.
+# Details:
+1. **Module System Standardization:** Analyze and resolve the root cause of ESM vs. CommonJS conflicts within the test infrastructure. Standardize the test suite to use ES Modules by updating `package.json` with `"type": "module"`, refactoring test files from `require()` to `import/export` syntax, and updating the test-specific `tsconfig.json` to use modern module resolution settings like `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`. 
+2. **Dependency and Configuration Audit:** Perform a complete audit of `devDependencies`. Resolve any missing peer dependencies for `@playwright/test` and its ecosystem. Update the `playwright.config.ts` to be fully ESM compatible. Implement the `webServer` option to automatically launch and manage the lifecycle of the MCP server and CCTelegram bridge during test runs, ensuring a clean environment for each execution. Configure it with the correct startup command, a health check URL to poll, and an appropriate timeout.
+3. **Test Refactoring and Resilience:** Systematically review and fix failing tests. Replace brittle selectors (e.g., complex CSS/XPath) with user-facing, resilient locators like `page.getByRole()`, `page.getByText()`, and `page.getByTestId()`. Ensure all custom test helper utilities are refactored for ESM compatibility and are properly imported. 
+4. **Enhanced Debugging and CI Setup:** Enable and configure Playwright's `trace` option in `playwright.config.ts` to `on-first-retry`. This will automatically generate detailed execution traces for flaky or failing tests, capturing DOM snapshots, console logs, and network requests to simplify debugging. Ensure environment variables required for testing are managed securely using a `.env.test` file loaded via a global setup script.
+
+# Test Strategy:
+1. **Configuration and Dependency Verification:** Run `npx playwright install --with-deps` and confirm it completes without errors. Execute a single, isolated test file to validate that the Playwright runner initializes correctly and the ESM/CJS conflicts are fully resolved. 
+2. **Full Suite Execution:** Run the entire E2E test suite via `npx playwright test`. The primary success criterion is a 100% pass rate across all tests covering the CCTelegram bridge workflows. Verify that the `webServer` correctly starts the necessary services before tests and terminates them afterward by inspecting process lists and logs. 
+3. **CI Pipeline Validation:** Trigger the E2E test job in the CI/CD pipeline. Confirm that the job completes successfully, reporting a passing status. Verify that test artifacts, such as reports and traces for any retried tests, are correctly generated and archived. 
+4. **Trace File Validation:** Intentionally introduce a failure in a test and run it. Verify that a `trace.zip` file is generated for the failed attempt. Use the command `npx playwright show-trace <path-to-trace.zip>` to open the trace file and confirm it provides a complete, actionable debugging view of the failure.
+
+# Subtasks:
+## 1. Standardize Test Environment to ES Modules [done]
+### Dependencies: None
+### Description: Convert the entire E2E test infrastructure from CommonJS to ES Modules to resolve foundational module system conflicts. This involves updating project configuration and refactoring all test-related files to use modern import/export syntax.
+### Details:
+Set `"type": "module"` in the root `package.json`. Update the test-specific `tsconfig.json` to use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`. Refactor all existing test files (`*.spec.ts`) and helper utility files from using `require()` and `module.exports` to `import` and `export` syntax.
+
+## 2. Audit and Resolve Test Dependencies [done]
+### Dependencies: 41.1
+### Description: Perform a comprehensive audit of all `devDependencies` to identify and resolve missing or mismatched dependencies, particularly those related to the Playwright ecosystem, ensuring a stable foundation for the test runner.
+### Details:
+Run `npm audit` to check for vulnerabilities and inconsistencies. Execute `npx playwright install --with-deps` to ensure all necessary browser binaries and OS-level dependencies are installed correctly. Manually review `package.json` to resolve any peer dependency warnings from `@playwright/test` and its plugins.
+
+## 3. Update Playwright Configuration for ESM and Server Management [done]
+### Dependencies: 41.1, 41.2
+### Description: Refactor the `playwright.config.ts` file to be fully ESM compatible and configure the `webServer` option to automatically manage the lifecycle of the MCP server and CCTelegram bridge during test runs.
+### Details:
+Convert `playwright.config.ts` to use `import/export` syntax. Implement the `webServer` configuration block. Define the startup `command` for launching the servers, a `url` for the health check endpoint, a `timeout` for the server to become ready, and set `reuseExistingServer: !process.env.CI`.
+
+## 4. Implement Secure Environment Configuration and Enhanced Debugging [done]
+### Dependencies: 41.3
+### Description: Set up a secure and isolated environment for tests using a `.env.test` file and enable Playwright's tracing capabilities to simplify debugging of failed or flaky tests.
+### Details:
+Create a `global-setup.ts` file that uses a library like `dotenv` to load environment variables from a `.env.test` file. Configure this script in `playwright.config.ts` using the `globalSetup` option. In the same config file, set the `trace` option to `'on-first-retry'` to automatically capture detailed traces.
+
+## 5. Refactor Failing Tests with Resilient Locators [done]
+### Dependencies: 41.3, 41.4
+### Description: Systematically review and refactor all failing E2E tests for the CCTelegram bridge workflow, replacing brittle selectors with modern, resilient locators and ensuring all custom helper utilities are ESM compatible.
+### Details:
+Go through each failing test. Replace complex CSS/XPath selectors with Playwright's user-facing locators, such as `page.getByRole()`, `page.getByText()`, and `page.getByTestId()`. Ensure any custom test helper functions are correctly imported using ESM syntax and function as expected.
+
+## 6. Execute and Validate Full E2E Test Suite [done]
+### Dependencies: 41.5
+### Description: Perform a full run of the entire E2E test suite to validate that all infrastructure issues are resolved and the CCTelegram bridge workflows are comprehensively tested and passing.
+### Details:
+Execute the command to run all Playwright tests (e.g., `npx playwright test`). Monitor the execution and analyze the final report. Ensure all tests pass, and the `webServer` correctly manages the application lifecycle throughout the entire run without any infrastructure-related errors.
+

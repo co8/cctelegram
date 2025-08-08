@@ -1,0 +1,67 @@
+{
+  "name": "cctelegram-debugging-agents",
+  "version": "1.0.0",
+  "description": "Specialized debugging agents for CCTelegram TaskMaster integration issue resolution",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "setup": "npm install && npm run build",
+    "build": "tsc",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "agents:debug": "playwright test integration-tests/agents-integration.spec.ts",
+    "agents:debug:verbose": "DEBUG=* playwright test integration-tests/agents-integration.spec.ts --headed",
+    "agents:debug:headless": "playwright test integration-tests/agents-integration.spec.ts --headless",
+    "agents:report": "playwright show-report",
+    "agent:dataflow": "node --loader ts-node/esm scripts/run-single-agent.ts data-flow-analyzer",
+    "agent:mcp": "node --loader ts-node/esm scripts/run-single-agent.ts mcp-integration-specialist", 
+    "agent:orchestrator": "node --loader ts-node/esm scripts/run-single-agent.ts orchestration",
+    "clean": "rm -rf test-results/* .playwright-cache/* node_modules/.cache/*",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "validate": "npm run lint && npm run build && npm run test:dry-run",
+    "test:dry-run": "playwright test --dry-run"
+  },
+  "keywords": [
+    "cctelegram",
+    "taskmaster", 
+    "debugging",
+    "agents",
+    "playwright",
+    "testing",
+    "integration"
+  ],
+  "author": "CCTelegram Development Team",
+  "license": "MIT",
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "axios": "^1.6.0",
+    "typescript": "^5.2.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.50.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-playwright": "^0.16.0",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cctelegram.git",
+    "directory": "tests/playwright/agents"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/cctelegram/issues"
+  },
+  "homepage": "https://github.com/your-org/cctelegram#readme"
+}

@@ -1,0 +1,43 @@
+# Task ID: 24
+# Title: Clean up dead code and compilation warnings in Rust bridge
+# Status: done
+# Dependencies: 22
+# Priority: medium
+# Description: Remove 30+ Rust compiler warnings and extensive dead code in events/types.rs (1400+ lines unused), plus unused struct fields and methods across multiple modules to improve code maintainability and compilation performance.
+# Details:
+Begin by running `cargo check --all-targets --all-features` and `cargo clippy --all-targets --all-features` to catalog all warnings and dead code issues. Use `cargo +nightly udeps` to identify unused dependencies. Focus on events/types.rs file which contains 1400+ lines of unused code - analyze git history to understand original purpose and safely remove obsolete event definitions, type aliases, and struct implementations. Remove unused struct fields across modules by checking field usage with `rg` or `grep` patterns. Eliminate dead methods by searching for call sites and ensuring no dynamic dispatch or reflection usage. Use `#[allow(dead_code)]` sparingly only for intentionally unused code like future API compatibility. Update Cargo.toml to remove unused dependencies identified by udeps. Configure clippy.toml with appropriate lints: `unused_self`, `dead_code`, `unused_imports`, `unused_variables`. Implement `#[warn(unused)]` and `#[deny(unused_must_use)]` attributes where appropriate. Use `cargo machete` to find unused dependencies and `cargo-unused-features` for feature cleanup. Consider breaking large modules into smaller, focused modules to improve maintainability.
+
+# Test Strategy:
+Execute `cargo check` and `cargo clippy` to verify zero warnings and errors after cleanup. Run `cargo test --all-features` to ensure no functionality was accidentally removed. Use `cargo +nightly udeps` to confirm all dependencies are actually used. Perform compilation time benchmarking before and after cleanup using `cargo clean && time cargo build --release` to measure performance improvements. Run integration tests to validate that removed code wasn't used by external interfaces. Execute `cargo doc --no-deps` to ensure documentation builds without warnings. Use `cargo-bloat` to verify binary size reduction after dead code removal. Implement automated CI check with `cargo clippy -- -D warnings` to prevent future warning accumulation.
+
+# Subtasks:
+## 1. Catalog compilation warnings and dead code analysis [done]
+### Dependencies: None
+### Description: Run comprehensive Rust compilation analysis to identify all warnings, dead code, and unused dependencies across the entire codebase
+### Details:
+Execute `cargo check --all-targets --all-features` and `cargo clippy --all-targets --all-features` to generate complete warning reports. Run `cargo +nightly udeps` to identify unused dependencies. Use `cargo machete` to find additional unused dependencies and `cargo-unused-features` for feature analysis. Document all findings in structured format categorizing by severity and module location.
+
+## 2. Analyze and clean events/types.rs dead code [done]
+### Dependencies: 24.1
+### Description: Investigate the 1400+ lines of unused code in events/types.rs and safely remove obsolete event definitions, type aliases, and struct implementations
+### Details:
+Analyze git history of events/types.rs using `git log --follow --patch` to understand original purpose of unused code. Use `rg` patterns to search for usage across entire codebase. Identify safe-to-remove obsolete event definitions, type aliases, and struct implementations. Remove dead code while preserving any code needed for future API compatibility with appropriate `#[allow(dead_code)]` annotations.
+
+## 3. Remove unused struct fields and methods across modules [done]
+### Dependencies: 24.1
+### Description: Systematically identify and remove unused struct fields and methods throughout the codebase while ensuring no dynamic dispatch or reflection usage
+### Details:
+Use `rg` and `grep` patterns to search for field and method usage across all modules. Check for dynamic dispatch, reflection, or serialization usage that might require seemingly unused fields. Remove unused struct fields and methods, being careful with traits and implementations. Update related documentation and comments that reference removed items.
+
+## 4. Configure enhanced clippy linting and compiler warnings [done]
+### Dependencies: 24.2, 24.3
+### Description: Set up comprehensive linting configuration with clippy.toml and appropriate compiler attributes to prevent future dead code accumulation
+### Details:
+Create clippy.toml configuration with lints for `unused_self`, `dead_code`, `unused_imports`, `unused_variables`. Implement `#[warn(unused)]` and `#[deny(unused_must_use)]` attributes at appropriate module levels. Configure CI to fail on clippy warnings. Add pre-commit hooks to catch issues early in development workflow.
+
+## 5. Clean up unused dependencies and verify final state [done]
+### Dependencies: 24.1, 24.4
+### Description: Remove unused dependencies from Cargo.toml and perform final verification of cleanup with performance benchmarking
+### Details:
+Update Cargo.toml to remove unused dependencies identified by udeps and machete. Run final compilation checks and performance benchmarking to measure compilation time improvements. Verify zero warnings remain with `cargo check` and `cargo clippy`. Update documentation to reflect changes and establish maintenance procedures for preventing future dead code accumulation.
+

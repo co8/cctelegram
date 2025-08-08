@@ -1,0 +1,43 @@
+# Task ID: 30
+# Title: Phase 2: MCP Server Resolution - Fix MCP server startup and connectivity issues
+# Status: done
+# Dependencies: 26, 29
+# Priority: medium
+# Description: Resolve MCP server startup failures, connectivity issues, and TaskMaster integration problems by fixing configuration errors, environment variables, dependency setup, and communication protocols with CCTelegram bridge.
+# Details:
+Implement comprehensive MCP server diagnostics and resolution: 1) MCP Server Startup Fix - Debug and resolve server initialization failures using structured error logging, validate package.json dependencies and peer dependencies for MCP SDK (@modelcontextprotocol/sdk), fix TypeScript module resolution issues in tsconfig.json, implement proper async server startup with graceful error handling and retry logic, and create health check endpoints for server status monitoring. 2) Connectivity Resolution - Debug WebSocket connection issues using connection pooling and reconnection strategies, implement proper CORS configuration for cross-origin requests, fix authentication token validation and refresh mechanisms, create connection timeout handling with exponential backoff, and implement heartbeat/ping mechanisms for connection maintenance. 3) TaskMaster MCP Integration - Verify and fix .mcp.json configuration syntax and server registration, validate TaskMaster AI package installation and version compatibility, implement proper environment variable mapping (ANTHROPIC_API_KEY, PERPLEXITY_API_KEY), fix command routing and tool registration for TaskMaster commands, and create integration tests for TaskMaster MCP communication. 4) Environment Setup - Audit and fix all required environment variables using dotenv validation, implement proper API key management with encryption at rest, create environment-specific configuration files (development, production), validate network connectivity and firewall rules, and implement proper logging for MCP server operations using Winston or similar structured logging.
+
+# Test Strategy:
+Create MCP server diagnostic test suite using Jest to validate server startup, connection establishment, and command routing functionality. Implement health check tests using supertest to verify server endpoints respond correctly with proper status codes and error messages. Test TaskMaster MCP integration using mock MCP client connections to validate all command registrations and parameter handling. Create environment variable validation tests to ensure all required API keys and configuration values are properly loaded and accessible. Implement end-to-end connectivity tests between CCTelegram bridge and MCP server using WebSocket testing frameworks to verify real-time communication channels. Run integration tests in Docker containers to simulate production deployment conditions and validate cross-service communication patterns.
+
+# Subtasks:
+## 1. MCP Server Startup Diagnostics and Fixes [done]
+### Dependencies: None
+### Description: Debug and resolve MCP server initialization failures by implementing structured error logging, validating package.json dependencies for @modelcontextprotocol/sdk, fixing TypeScript module resolution in tsconfig.json, and implementing proper async startup with graceful error handling.
+### Details:
+Analyze MCP server startup logs to identify root causes of initialization failures. Validate all MCP SDK dependencies and peer dependencies in package.json are correctly installed and compatible. Fix TypeScript configuration issues in tsconfig.json for proper module resolution. Implement structured error logging using Winston or similar for detailed startup diagnostics. Create async server initialization with proper error boundaries, retry logic with exponential backoff, and graceful shutdown handling.
+
+## 2. MCP Server Health Check and Monitoring Implementation [done]
+### Dependencies: 30.1
+### Description: Create comprehensive health check endpoints for MCP server status monitoring, implement connection pooling and heartbeat mechanisms for maintaining server connectivity.
+### Details:
+Implement HTTP health check endpoints (/health, /ready, /live) that validate server status, dependency connections, and resource availability. Create WebSocket heartbeat/ping mechanisms to maintain active connections and detect disconnections early. Implement connection pooling with proper timeout handling and automatic reconnection strategies. Add metrics collection for server performance monitoring including response times, connection counts, and error rates.
+
+## 3. WebSocket Connectivity and CORS Resolution [done]
+### Dependencies: 30.1
+### Description: Debug and fix WebSocket connection issues, implement proper CORS configuration for cross-origin requests, and resolve authentication token validation problems.
+### Details:
+Analyze WebSocket connection failures and implement proper connection handling with reconnection strategies. Configure CORS middleware to allow cross-origin requests from authorized domains with proper preflight handling. Fix authentication token validation mechanisms including token refresh logic and expired token handling. Implement connection timeout handling with exponential backoff and maximum retry limits. Add proper error responses for authentication failures with detailed error codes.
+
+## 4. TaskMaster MCP Integration and Configuration Fix [done]
+### Dependencies: 30.2
+### Description: Fix .mcp.json configuration syntax, validate TaskMaster AI package installation, implement proper environment variable mapping, and fix command routing for TaskMaster operations.
+### Details:
+Audit and fix .mcp.json configuration file for proper syntax and server registration. Verify TaskMaster AI package is installed with correct version compatibility. Map required environment variables (ANTHROPIC_API_KEY, PERPLEXITY_API_KEY) with proper validation and fallback handling. Fix MCP command routing to ensure TaskMaster commands are properly registered and accessible. Implement tool registration for all TaskMaster MCP functions with proper error handling.
+
+## 5. Environment Setup and Configuration Validation [done]
+### Dependencies: 30.3, 30.4
+### Description: Audit all required environment variables, implement secure API key management, create environment-specific configurations, and validate network connectivity for MCP operations.
+### Details:
+Perform comprehensive audit of all required environment variables using dotenv validation with schema checking. Implement secure API key management with encryption at rest and proper access controls. Create environment-specific configuration files for development and production with appropriate security settings. Validate network connectivity and firewall rules for MCP server operations. Implement structured logging for all MCP server operations with log rotation and retention policies.
+

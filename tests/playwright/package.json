@@ -1,0 +1,53 @@
+{
+  "name": "cctelegram-bridge-debug-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive Playwright-based testing framework for debugging CCTelegram bridge issues",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:bridge-debug": "playwright test cctelegram-bridge-debug.spec.ts --headed --reporter=list",
+    "test:report": "playwright show-report",
+    "install-browsers": "playwright install",
+    "start-mocks": "node scripts/start-mock-services.js",
+    "build": "tsc",
+    "clean": "rm -rf test-results && rm -rf node_modules/.cache",
+    "setup": "npm install && npm run install-browsers",
+    "debug-bridge": "npm run test:bridge-debug -- --timeout=0"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "telegram",
+    "bridge",
+    "debugging",
+    "mcp",
+    "taskmaster"
+  ],
+  "author": "CCTelegram Bridge Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "fs-extra": "^11.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cctelegram.git",
+    "directory": "tests/playwright"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/cctelegram/issues"
+  },
+  "homepage": "https://github.com/your-org/cctelegram#readme"
+}

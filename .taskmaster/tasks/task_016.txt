@@ -1,0 +1,11 @@
+# Task ID: 16
+# Title: MCP Tools Integration Testing and Validation Framework
+# Status: done
+# Dependencies: 14
+# Priority: high
+# Description: Create comprehensive testing framework for all 16 MCP tools with mock integration and validation
+# Details:
+Implement MCP protocol testing using @modelcontextprotocol/sdk latest version with full schema validation. Create mock MCP client for testing server responses without external dependencies. Implement comprehensive test coverage for all 16 tools: send_telegram_event, send_telegram_message, send_task_completion, etc. Use zod for runtime schema validation and type safety. Create integration tests with actual Telegram Bot API using test bot tokens. Implement WebSocket testing for real-time communication scenarios. Use Sinon.js for sophisticated mocking and stubbing of external services.
+
+# Test Strategy:
+MCP tool validation matrix testing each tool individually and in combination. Mock integration testing with simulated client requests and response validation. Schema validation testing using JSON Schema and OpenAPI specifications. End-to-end integration testing with actual Telegram Bot API in isolated test environment.

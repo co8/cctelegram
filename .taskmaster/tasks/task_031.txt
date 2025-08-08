@@ -1,0 +1,43 @@
+# Task ID: 31
+# Title: Phase 3: Command Consolidation - Refactor /tasks Command and MCP Server Integration
+# Status: done
+# Dependencies: 30, 26, 21
+# Priority: medium
+# Description: Refactor the /tasks command to work seamlessly with both MCP server and direct file access, implement graceful fallback mechanisms when MCP server is unavailable, and add clear status indicators for MCP server connectivity state. The redundant /current_task command has been successfully removed and the MCP server connectivity issues have been resolved.
+# Details:
+Build upon completed work removing /current_task command and fixing MCP server connectivity issues. Continue implementation of unified command interface that prioritizes MCP server communication with automatic fallback to direct file system access. The MCP server health check system using ping/pong protocol has been implemented with connection state tracking (connected, disconnected, error). Complete the refactoring of /tasks command to use strategy pattern with MCPStrategy and FileSystemStrategy implementations, both implementing common TaskInterface. Implement connection pooling and retry logic with exponential backoff for MCP reconnection attempts. Add real-time status indicators in command responses showing MCP server state using colored badges or status icons. Create configuration-driven fallback system with user preferences for fallback behavior (automatic, manual, disabled). Implement caching layer using Redis or in-memory cache to reduce MCP server load and improve fallback performance. Add comprehensive error handling with specific error codes for different failure scenarios (connection timeout, authentication failure, server unavailable). Create command aliasing system to maintain backward compatibility during transition period. Implement telemetry collection for fallback usage patterns and performance metrics using structured logging with correlation IDs.
+
+# Test Strategy:
+Build upon existing fixes to create comprehensive test suite using Jest with mocked MCP server scenarios including connection success, timeout, authentication failure, and server unavailability. Implement integration tests using Docker containers to simulate MCP server failure and recovery scenarios, now that the fake error injection from benchmark tests has been removed. Test fallback mechanism performance with load testing using k6 to ensure response times meet SLA requirements (<100ms for cached responses, <500ms for file system fallback). Create end-to-end tests using Playwright to validate user experience during MCP server state transitions. Validate that the /current_task command removal doesn't break existing workflows and /tasks command properly handles all previous functionality. Implement chaos engineering tests using chaos-monkey to randomly disconnect MCP server and validate graceful degradation. Test status indicator accuracy with real-time connection state monitoring and validate visual indicators match actual server state.
+
+# Subtasks:
+## 2. Refactor /tasks Command with Strategy Pattern Implementation [done]
+### Dependencies: 31.1
+### Description: Refactor the /tasks command to use strategy pattern with MCPStrategy and FileSystemStrategy implementations, both implementing a common TaskInterface for unified command processing.
+### Details:
+Create TaskInterface with common methods (getTasks, getTask, updateTask, deleteTask), implement MCPStrategy for MCP server communication, implement FileSystemStrategy for direct file system access, create StrategyFactory to select appropriate strategy based on MCP server availability, and integrate strategy selection logic into /tasks command handler.
+
+## 3. Implement Connection Management and Graceful Fallback System [done]
+### Dependencies: 31.1, 31.2
+### Description: Create connection pooling and retry logic with exponential backoff for MCP reconnection attempts, plus configuration-driven fallback system with user preferences for fallback behavior.
+### Details:
+Implement connection pool with configurable size limits, exponential backoff retry logic with jitter, circuit breaker pattern for connection failures, configuration system for fallback preferences (automatic, manual, disabled), graceful degradation when MCP server becomes unavailable, and automatic reconnection attempts with connection recovery notifications.
+
+## 4. Implement Caching Layer and Comprehensive Error Handling [done]
+### Dependencies: 31.2, 31.3
+### Description: Create caching layer using Redis or in-memory cache to reduce MCP server load and improve fallback performance, plus comprehensive error handling with specific error codes and telemetry collection.
+### Details:
+Implement Redis or in-memory caching for frequently accessed task data, create cache invalidation strategies for data consistency, implement comprehensive error handling with specific error codes for different failure scenarios (connection timeout, authentication failure, server unavailable), create structured logging with correlation IDs, implement telemetry collection for fallback usage patterns and performance metrics, and create error recovery workflows for different error types.
+
+## 5. Validate Command Consolidation and Update Documentation [done]
+### Dependencies: 31.2
+### Description: Verify that the /current_task command removal is complete and properly integrated, update all documentation and help text to reflect the changes, and ensure no breaking changes for existing workflows.
+### Details:
+Verify /current_task command has been completely removed from src/telegram/bot.rs, ensure /tasks command handles all previous /current_task functionality correctly, update command documentation and help text, validate that existing user workflows are not broken, create migration guide for users who may have scripts or automation using the old command, and test backward compatibility during transition period.
+
+## 1. Implement MCP Server Health Check System with Ping/Pong Protocol [done]
+### Dependencies: None
+### Description: Create a comprehensive health check system for MCP server connectivity using ping/pong protocol with connection state tracking (connected, disconnected, error) and real-time status monitoring.
+### Details:
+Implement ping/pong protocol with timeout handling, connection state management using state machine pattern, periodic health checks with configurable intervals, connection state events (onConnect, onDisconnect, onError), and real-time status tracking with colored badges or status icons for command responses.
+

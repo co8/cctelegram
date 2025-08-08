@@ -1,0 +1,51 @@
+{
+  "name": "cctelegram-emulation-tests",
+  "version": "1.0.0",
+  "description": "Comprehensive automated Telegram emulation and response verification system for CCTelegram bridge",
+  "type": "module",
+  "main": "run-comprehensive-tests.js",
+  "scripts": {
+    "test": "tsx run-comprehensive-tests.ts",
+    "test:basic": "tsx run-comprehensive-tests.ts --config 'Basic Functionality Test'",
+    "test:staleness": "tsx run-comprehensive-tests.ts --config 'Data Staleness Detection' --verbose",
+    "test:performance": "tsx run-comprehensive-tests.ts --config 'Performance Stress Test'",
+    "test:all": "tsx run-comprehensive-tests.ts --verbose",
+    "test:parallel": "tsx run-comprehensive-tests.ts --parallel",
+    "test:no-cleanup": "tsx run-comprehensive-tests.ts --no-cleanup --verbose",
+    "list-configs": "tsx run-comprehensive-tests.ts --list-configs",
+    "build": "tsc --noEmit",
+    "dev": "tsx --watch run-comprehensive-tests.ts --no-cleanup --verbose"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "api",
+    "emulation",
+    "testing",
+    "automation",
+    "verification",
+    "cctelegram",
+    "bridge"
+  ],
+  "author": "CCTelegram Bridge Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "tsx": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.19.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "*.ts",
+    "*.js",
+    "README.md",
+    "logs/"
+  ]
+}

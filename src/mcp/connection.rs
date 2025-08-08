@@ -379,64 +379,51 @@ impl McpConnectionManager {
 
     /// Transform TaskMaster MCP response to bridge format
     async fn transform_taskmaster_response(&self, data: serde_json::Value) -> Result<serde_json::Value, McpError> {
-        // Extract TaskMaster data from the get_task_status response
-        if let Some(taskmaster_tasks) = data.get("taskmaster_tasks") {
-            if let Some(available) = taskmaster_tasks.get("available").and_then(|a| a.as_bool()) {
-                if available {
-                    // Extract counts from combined_summary
-                    let pending = data.get("combined_summary")
-                        .and_then(|s| s.get("total_pending"))
-                        .and_then(|p| p.as_u64())
-                        .unwrap_or(0);
-                    
-                    let in_progress = data.get("combined_summary")
-                        .and_then(|s| s.get("total_in_progress"))
-                        .and_then(|p| p.as_u64())
-                        .unwrap_or(0);
-                    
-                    let completed = data.get("combined_summary")
-                        .and_then(|s| s.get("total_completed"))
-                        .and_then(|p| p.as_u64())
-                        .unwrap_or(0);
-                    
-                    let blocked = data.get("combined_summary")
-                        .and_then(|s| s.get("total_blocked"))
-                        .and_then(|p| p.as_u64())
-                        .unwrap_or(0);
-                    
-                    let total = data.get("combined_summary")
-                        .and_then(|s| s.get("grand_total"))
-                        .and_then(|t| t.as_u64())
-                        .unwrap_or(0);
-                    
-                    let main_tasks_count = taskmaster_tasks.get("main_tasks_count")
-                        .and_then(|m| m.as_u64())
-                        .unwrap_or(0);
-                    
-                    let subtasks_count = taskmaster_tasks.get("subtasks_count")
-                        .and_then(|s| s.as_u64())
-                        .unwrap_or(0);
-                    
-                    let project_name = taskmaster_tasks.get("project_name")
-                        .and_then(|p| p.as_str())
-                        .unwrap_or("CCTelegram Project");
+        // Extract TaskMaster data from the direct TaskMaster AI MCP response format
+        if let Some(task_data) = data.get("data") {
+            if let Some(stats) = task_data.get("stats") {
+                // Extract main task counts
+                let main_completed = stats.get("completed").and_then(|c| c.as_u64()).unwrap_or(0);
+                let main_pending = stats.get("pending").and_then(|p| p.as_u64()).unwrap_or(0);
+                let main_in_progress = stats.get("inProgress").and_then(|p| p.as_u64()).unwrap_or(0);
+                let main_blocked = stats.get("blocked").and_then(|b| b.as_u64()).unwrap_or(0);
+                let main_total = stats.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+                
+                // Extract subtask counts
+                let empty_object = serde_json::Value::Object(serde_json::Map::new());
+                let subtask_stats = stats.get("subtasks").unwrap_or(&empty_object);
+                let subtasks_completed = subtask_stats.get("completed").and_then(|c| c.as_u64()).unwrap_or(0);
+                let subtasks_total = subtask_stats.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+                
+                // Calculate combined totals
+                let total_completed = main_completed + subtasks_completed;
+                let total_pending = main_pending + subtask_stats.get("pending").and_then(|p| p.as_u64()).unwrap_or(0);
+                let total_in_progress = main_in_progress + subtask_stats.get("inProgress").and_then(|p| p.as_u64()).unwrap_or(0);
+                let total_blocked = main_blocked + subtask_stats.get("blocked").and_then(|b| b.as_u64()).unwrap_or(0);
+                let grand_total = main_total + subtasks_total;
 
-                    return Ok(serde_json::json!({
-                        "source": "live_mcp",
-                        "project_name": project_name,
+                return Ok(serde_json::json!({
+                    "data": {
                         "stats": {
-                            "pending": pending,
-                            "in_progress": in_progress,
-                            "completed": completed,
-                            "blocked": blocked,
-                            "total": total,
-                            "main_tasks": main_tasks_count,
-                            "subtasks": subtasks_count
-                        },
-                        "last_updated": chrono::Utc::now().to_rfc3339(),
-                        "is_fallback": false
-                    }));
-                }
+                            "pending": total_pending,
+                            "inProgress": total_in_progress,
+                            "completed": total_completed,
+                            "blocked": total_blocked,
+                            "total": main_total,
+                            "subtasks": {
+                                "pending": subtask_stats.get("pending").and_then(|p| p.as_u64()).unwrap_or(0),
+                                "inProgress": subtask_stats.get("inProgress").and_then(|p| p.as_u64()).unwrap_or(0),
+                                "completed": subtasks_completed,
+                                "blocked": subtask_stats.get("blocked").and_then(|b| b.as_u64()).unwrap_or(0),
+                                "total": subtasks_total
+                            }
+                        }
+                    },
+                    "source": "live_mcp",
+                    "project_name": "CCTelegram Project",
+                    "last_updated": chrono::Utc::now().to_rfc3339(),
+                    "is_fallback": false
+                }));
             }
         }
 
