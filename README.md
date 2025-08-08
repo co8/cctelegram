@@ -4,7 +4,7 @@
 
 [![Bridge Version](https://img.shields.io/badge/Bridge-v0.9.0-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.9.0) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.9.0-2da199?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
 
-[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-cd4e97?style=flat-square&logo=shield&logoColor=white)](docs/reference/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/reference/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/reference/EVENT_SYSTEM.md) [![Tests](https://img.shields.io/badge/Tests-154%20Passing-00b976?style=flat-square&logo=jest&logoColor=white)](test/) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/reference/FEATURES.md#performance-monitoring)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-cd4e97?style=flat-square&logo=shield&logoColor=white)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/API_REFERENCE.md#event-types-44-supported) [![Tests](https://img.shields.io/badge/Tests-154%20Passing-00b976?style=flat-square&logo=jest&logoColor=white)](test/) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/API_REFERENCE.md#performance-characteristics)
 
 ## TL;DR
 
@@ -87,7 +87,7 @@ _Both components work together automatically - no manual management needed._
 ## 🎯 Key Features
 
 - **🛡️ Zero Message Loss Architecture** - **NEW**: Enterprise-grade reliability with comprehensive validation and deduplication
-- **🔔 [44+ Event Types](docs/reference/EVENT_SYSTEM.md)** - Complete development lifecycle monitoring
+- **🔔 [44+ Event Types](docs/API_REFERENCE.md#event-types-44-supported)** - Complete development lifecycle monitoring
 - **🔌 MCP Server Integration** - Zero-config [Claude Code](https://github.com/anthropics/claude-code) integration
 - **📱 Real-time [Telegram](https://telegram.org/) Notifications** - Instant alerts with rich formatting
 - **✅ Interactive Approvals** - Approve deployments, code reviews via [Telegram](https://telegram.org/)
@@ -97,7 +97,7 @@ _Both components work together automatically - no manual management needed._
 - **📊 Performance Monitoring** - Built-in metrics, health checks, Prometheus integration
 - **🔍 Comprehensive Audit Logging** - **NEW**: Secure event tracking, data sanitization
 
-→ **[See all features & capabilities](docs/reference/FEATURES.md)**
+→ **[See all features & capabilities](docs/API_REFERENCE.md)** - Complete feature reference
 
 ---
 
@@ -171,10 +171,7 @@ _Both components work together automatically - no manual management needed._
 **Quality Gates:**
 
 - **100% Core Test Success** - All critical path functionality verified
-- **Cross-Browser Compatibility** - Chrome, Firefox, Safari tested
-- **Mobile Responsiveness** - Responsive design verified across viewports
 - **Performance Standards** - Load times <3s, API responses <200ms
-- **Visual Consistency** - UI regression detection with pixel-perfect comparison
 - **Error Handling** - Graceful degradation and recovery verified
 
 ---
@@ -183,18 +180,37 @@ _Both components work together automatically - no manual management needed._
 
 ```
 cctelegram/
-├── docs/                     # 📚 All Documentation
-│   ├── setup/                 # 🚀 Installation & Setup
-│   ├── reference/             # 📖 Technical References
-│   ├── security/              # 🛡️ Security Audits
-│   └── development/           # 🔧 Contributing & Dev
-├── test/                     # 🧪 Testing Framework
-│   └── unit/                  # Unit & Integration Tests
-├── scripts/                  # ⚙️ Utility Scripts
+├── docs/                      # 📚 Complete Documentation Suite
+│   ├── API_REFERENCE.md       # 🔌 Tools & Events Reference
+│   ├── INSTALLATION.md        # ⚡ Setup Guide
+│   ├── TROUBLESHOOTING.md     # 🔧 Problem Solving
+│   ├── SECURITY.md            # 🛡️ Security & Compliance
+│   ├── CONTRIBUTING.md        # 🤝 Developer Guide
+│   └── assets/                # 📸 Screenshots & Images
 ├── src/                       # 🦀 Rust Bridge Source
+│   ├── config/                # ⚙️ Configuration Management
+│   ├── events/                # 📡 Event Processing & Queuing
+│   ├── storage/               # 💾 Persistence & Compression
+│   ├── telegram/              # 📱 Telegram Bot Integration
+│   ├── mcp/                   # 🔌 MCP Protocol Support
+│   ├── tier_orchestrator/     # 🎛️ Advanced Orchestration
+│   └── utils/                 # 🛠️ Utilities & Health Checks
 ├── mcp-server/                # 🔌 MCP Server (TypeScript)
-├── examples/                  # 💡 Usage Examples
-└── target/                    # 🏗️ Build Artifacts
+│   ├── src/                   # 💼 Server Implementation
+│   ├── tests/                 # 🧪 Comprehensive Test Suite
+│   ├── docs/                  # 📖 Server Documentation
+│   └── scripts/               # 🚀 Build & Deploy Tools
+├── test/                      # 🧪 Rust Testing Framework
+│   ├── tests/                 # 🔬 Integration Tests
+│   └── unit/                  # ⚡ Unit Tests
+├── tests/                     # 🎭 Advanced Testing Systems
+│   ├── playwright/            # 🎯 E2E Browser Tests
+│   └── emulation/             # 📡 Bot API Emulation
+├── examples/                  # 💡 Usage Examples & Demos
+├── scripts/                   # ⚙️ Automation Scripts
+├── monitoring/                # 📊 Prometheus & Grafana
+├── target/                    # 🏗️ Rust Build Artifacts
+└── .taskmaster/               # 📋 Task Master Integration
 ```
 
 ---
@@ -234,7 +250,7 @@ graph LR
 - **[⚡ Installation](docs/INSTALLATION.md)** - Complete setup guide with 95% success rate
 - **[🔌 API Reference](docs/API_REFERENCE.md)** - Comprehensive tool and event catalog
 - **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Practical problem-solving guide
-- **[🤝 Contributing](docs/CONTRIBUTING.md)** - Complete developer lifecycle guide  
+- **[🤝 Contributing](docs/CONTRIBUTING.md)** - Complete developer lifecycle guide
 - **[🛡️ Security](docs/SECURITY.md)** - Production security and compliance
 
 ---
@@ -302,27 +318,6 @@ cd cctelegram
 cargo build --release
 ./target/release/cctelegram-bridge
 ```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/co8/cctelegram/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/co8/cctelegram/discussions)
 
 ---
 

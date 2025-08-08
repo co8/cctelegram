@@ -1400,8 +1400,9 @@ impl TelegramBot {
                 // Project health indicator
                 status_parts.push("".to_string()); // Spacing
                 status_parts.push(format!("*🎯 Project Health:* {}", Self::get_project_health_indicator(completion_percentage, tasks_info.blocked)));
-                status_parts.push(format!("*🕐 Updated:* {}", Self::get_current_timestamp()));
-                status_parts.push("*💫 Data Source:* Live MCP Server".to_string());
+                //status_parts.push(format!("*🕐 Updated:* {}", Self::get_current_timestamp()));
+                status_parts.push(format!("🕐 {}", Self::get_current_timestamp()));
+                status_parts.push("*💫 Live MCP Server*".to_string());
             }
             Err(_) => {
                 // Fallback to file-based reading
@@ -1896,7 +1897,7 @@ impl TelegramBot {
         let mut help_parts = vec![];
         
         help_parts.push("🤖 *CCTelegram Bridge*".to_string());
-        help_parts.push("".to_string());
+        //help_parts.push("".to_string());
         
         // Check MCP integration status
         let mcp_status = match &self.mcp_integration {
