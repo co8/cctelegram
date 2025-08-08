@@ -483,9 +483,9 @@ Generated on: /Users/enrique/Documents/cctelegram
 
 ### 37. Missing Anchor
 - **File**: `docs/mcp-server/api/README.md:133`
-- **Link Text**: "switch_to_native_mode"
-- **Full Link**: `usage-guide.md#switch_to_native_mode`
-- **Missing Anchor**: `#switch_to_native_mode`
+- **Link Text**: "switch_to_local_mode"
+- **Full Link**: `usage-guide.md#switch_to_local_mode`
+- **Missing Anchor**: `#switch_to_local_mode`
 - **Target File**: `docs/mcp-server/api/usage-guide.md`
 
 ### 38. Missing Anchor

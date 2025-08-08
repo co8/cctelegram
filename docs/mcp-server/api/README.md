@@ -122,7 +122,7 @@ mcp__cctelegram__get_bridge_status()
 **Comprehensive system health and status information**
 - **Real-time Metrics** including memory, CPU, and performance
 - **Connection Status** for Telegram API and file system
-- **Operational Mode** (Native, Nomad, Mute) with configuration
+- **Operational Mode** (Local, Nomad, Mute) with configuration
 
 #### **[switch_to_nomad_mode](usage-guide.md#switch_to_nomad_mode)**
 **Enable full remote work capabilities**
@@ -130,7 +130,7 @@ mcp__cctelegram__get_bridge_status()
 - **Enhanced Notifications** with detailed development context
 - **Interactive Commands** through Telegram interface
 
-#### **[switch_to_native_mode](usage-guide.md#switch_to_native_mode)**
+#### **[switch_to_local_mode](usage-guide.md#switch_to_local_mode)**
 **Local development mode with minimal notifications**
 - **Performance Optimized** for local development focus
 - **Essential Alerts Only** to reduce notification fatigue

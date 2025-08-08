@@ -18,9 +18,9 @@ const settingsTemplate = {
       description: "Switch CCTelegram to nomad mode (full remote Telegram interaction)", 
       action: "mcp__cctelegram__switch_to_nomad_mode"
     },
-    "/cct:native": {
-      description: "Switch CCTelegram to native mode (minimal Telegram responses)",
-      action: "mcp__cctelegram__switch_to_native_mode"
+    "/cct:local": {
+      description: "Switch CCTelegram to local mode (minimal Telegram responses)",
+      action: "mcp__cctelegram__switch_to_local_mode"
     },
     "/cct:mute": {
       description: "Switch CCTelegram to mute mode (disable all Telegram messaging)",
@@ -128,7 +128,7 @@ function main() {
   
   console.log('📋 Available user-level commands after restarting Claude Code:');
   console.log('• /cct:mute   - Switch to mute mode (disable all messaging)');
-  console.log('• /cct:native - Switch to native mode (minimal responses)');
+  console.log('• /cct:local  - Switch to local mode (minimal responses)');
   console.log('• /cct:nomad  - Switch to nomad mode (full Telegram interaction)\n');
   
   console.log('💡 Remember to restart Claude Code to see the updated commands in the command palette.');

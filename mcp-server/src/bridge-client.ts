@@ -2190,9 +2190,9 @@ export class CCTelegramBridgeClient {
   }
 
   /**
-   * Switch bridge to native mode (local mode)
+   * Switch bridge to local mode
    */
-  async switchToNativeMode(): Promise<{ success: boolean; message: string; mode: string }> {
+  async switchToLocalMode(): Promise<{ success: boolean; message: string; mode: string }> {
     try {
       const event: CCTelegramEvent = {
         type: 'info_notification',
@@ -2200,36 +2200,36 @@ export class CCTelegramBridgeClient {
         timestamp: new Date().toISOString(),
         task_id: uuidv4(),
         title: 'Mode Switch Request',
-        description: '/cct:native',
+        description: '/cct:local',
         data: { 
-          command: '/cct:native',
-          requested_mode: 'native'
+          command: '/cct:local',
+          requested_mode: 'local'
         }
       };
 
       const result = await this.sendEvent(event);
       
       if (result.success) {
-        secureLog('info', 'Native mode switch requested via bridge', {
+        secureLog('info', 'Local mode switch requested via bridge', {
           event_id: result.event_id
         });
         
         return {
           success: true,
-          message: '🏠 Switched to native mode! CCTelegram will now use minimal Telegram responses for local development.',
-          mode: 'native'
+          message: '🏠 Switched to local mode! CCTelegram will now use minimal Telegram responses for local development.',
+          mode: 'local'
         };
       } else {
-        throw new Error('Failed to send native mode switch command to bridge');
+        throw new Error('Failed to send local mode switch command to bridge');
       }
     } catch (error) {
-      secureLog('error', 'Failed to switch to native mode', {
+      secureLog('error', 'Failed to switch to local mode', {
         error_message: error instanceof Error ? error.message : 'Unknown error'
       });
       
       return {
         success: false,
-        message: `Failed to switch to native mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        message: `Failed to switch to local mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
         mode: 'unknown'
       };
     }

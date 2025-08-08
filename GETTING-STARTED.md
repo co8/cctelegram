@@ -34,7 +34,7 @@ graph LR
 **Core Features**:
 - ✅ **44+ Event Types** - Task completion, errors, approvals, performance alerts
 - ✅ **Bidirectional Communication** - Send commands from Telegram back to Claude
-- ✅ **3 Operation Modes** - Native (local dev), Nomad (remote work), Mute (focus time)
+- ✅ **3 Operation Modes** - Local (local dev), Nomad (remote work), Mute (focus time)
 - ✅ **Enterprise Security** - 8.5/10 security score with automated vulnerability scanning
 
 ## 🛠️ Configuration (2 minutes)
@@ -77,7 +77,7 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 ### Remote Work Mode
 ```
 /cct:nomad     → Full bidirectional communication
-/cct:native    → Local dev mode (minimal notifications)  
+/cct:local     → Local dev mode (minimal notifications)  
 /cct:mute      → Focus time (notifications disabled)
 ```
 

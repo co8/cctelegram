@@ -1,6 +1,6 @@
-# CCTelegram Native Mode  
+# CCTelegram Local Mode  
 
-Switch CCTelegram bridge to native mode for local development with minimal Telegram responses.
+Switch CCTelegram bridge to local mode for local development with minimal Telegram responses.
 
 ## What it does
 
@@ -11,8 +11,8 @@ Switch CCTelegram bridge to native mode for local development with minimal Teleg
 
 ## Steps
 
-1. Call the MCP function to switch to native mode: `mcp__cctelegram__switch_to_native_mode`
+1. Call the MCP function to switch to local mode: `mcp__cctelegram__switch_to_local_mode`
 2. Display the success message and current mode status
-3. Confirm the bridge is now in native mode for local development
+3. Confirm the bridge is now in local mode for local development
 
 Perfect for when you're working locally and want to minimize Telegram notifications while keeping core functionality active.

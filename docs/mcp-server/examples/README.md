@@ -36,7 +36,7 @@ mcp__cctelegram__send_telegram_event({
 // Morning development session startup
 async function startDevelopmentSession() {
   // Switch to appropriate mode based on location
-  await mcp__cctelegram__switch_to_nomad_mode()  // or native_mode for local
+  await mcp__cctelegram__switch_to_nomad_mode()  // or local_mode for local
   
   // Get system status
   const status = await mcp__cctelegram__get_bridge_status()
@@ -343,7 +343,7 @@ await mcp__cctelegram__send_telegram_event({ type: "system_health", title: "💚
 async function adaptiveModeManagement(workContext) {
   switch(workContext.location) {
     case 'office':
-      await mcp__cctelegram__switch_to_native_mode()
+      await mcp__cctelegram__switch_to_local_mode()
       break
     case 'remote':
       await mcp__cctelegram__switch_to_nomad_mode() 

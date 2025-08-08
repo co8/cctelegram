@@ -59,7 +59,7 @@ mindmap
       clear_old_responses
     Mode Control
       switch_to_nomad_mode
-      switch_to_native_mode
+      switch_to_local_mode
       switch_to_mute_mode
 ```
 
@@ -368,11 +368,11 @@ process_pending_responses({ since_minutes: 10 })
 
 CCTelegram has **three operational modes** for different work contexts:
 
-### 🏠 Native Mode (Default)
+### 🏠 Local Mode (Default)
 **Perfect for:** Local development, focused work
 
 ```javascript
-switch_to_native_mode()
+switch_to_local_mode()
 ```
 
 **Behavior:**
@@ -629,7 +629,7 @@ send_telegram_event({
 ```javascript
 // Switch modes based on context
 switch_to_nomad_mode()     // When working remotely
-switch_to_native_mode()    // When focusing locally  
+switch_to_local_mode()    // When focusing locally  
 switch_to_mute_mode()      // During meetings/presentations
 
 // Always verify mode changes

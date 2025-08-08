@@ -429,8 +429,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: 'switch_to_native_mode', 
-        description: 'Switch CCTelegram bridge to native mode for local development with minimal Telegram responses',
+        name: 'switch_to_local_mode', 
+        description: 'Switch CCTelegram bridge to local mode for local development with minimal Telegram responses',
         inputSchema: {
           type: 'object',
           properties: {}
@@ -1020,9 +1020,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         });
       }
 
-      case 'switch_to_native_mode': {
+      case 'switch_to_local_mode': {
         return await withSecurity(async () => {
-          const result = await client.switchToNativeMode();
+          const result = await client.switchToLocalMode();
           
           return {
             content: [

@@ -18,21 +18,21 @@ use crate::utils::errors::{BridgeError};
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum BridgeMode {
-    Native,  // Default mode - at computer, use telegram for notifications only
+    Local,   // Default mode - at computer, use telegram for notifications only
     Nomad,   // Remote mode - use telegram for bidirectional communication
     Muted,   // Muted mode - disable all Telegram messaging
 }
 
 impl Default for BridgeMode {
     fn default() -> Self {
-        BridgeMode::Native
+        BridgeMode::Local
     }
 }
 
 impl std::fmt::Display for BridgeMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BridgeMode::Native => write!(f, "native"),
+            BridgeMode::Local => write!(f, "local"),
             BridgeMode::Nomad => write!(f, "nomad"),
             BridgeMode::Muted => write!(f, "muted"),
         }
@@ -181,8 +181,8 @@ impl TelegramBot {
         }
 
         let message = match mode {
-            BridgeMode::Native => {
-                "🏠 *Mode: Native*\n\n\
+            BridgeMode::Local => {
+                "🏠 *Mode: Local*\n\n\
                 You're back at your computer! Claude and CCTelegram will now use minimal Telegram responses.\n\n\
                 • Notifications: ✅ Sent to Telegram\n\
                 • Commands: 🚫 Use Claude Code directly\n\
@@ -195,7 +195,7 @@ impl TelegramBot {
                 • Notifications: ✅ Sent to Telegram\n\
                 • Commands: ✅ Available via Telegram\n\
                 • Responses: 💬 Full interactive mode\n\n\
-                💡 Use `/cct:native` when you return to your computer.".to_string()
+                💡 Use `/cct:local` when you return to your computer.".to_string()
             }
             BridgeMode::Muted => {
                 "🔇 *Mode: Muted*\n\n\
@@ -203,7 +203,7 @@ impl TelegramBot {
                 • Notifications: 🚫 Disabled\n\
                 • Commands: 🚫 Use Claude Code directly\n\
                 • Responses: 🚫 All messaging stopped\n\n\
-                💡 Use `/cct:native` or `/cct:nomad` to re-enable messaging.".to_string()
+                💡 Use `/cct:local` or `/cct:nomad` to re-enable messaging.".to_string()
             }
         };
         
@@ -546,26 +546,26 @@ impl TelegramBot {
                         }
                     }
                 }
-                "/cct:native" => {
-                    info!("Processing native mode switch from MCP event");
-                    match self.set_bridge_mode(BridgeMode::Native).await {
+                "/cct:local" => {
+                    info!("Processing local mode switch from MCP event");
+                    match self.set_bridge_mode(BridgeMode::Local).await {
                         Ok(response_message) => {
                             let chat_id = teloxide::types::ChatId(user_id);
                             if let Err(e) = self.send_message_with_parse_mode_and_retry(
                                 chat_id, &response_message, ParseMode::MarkdownV2
                             ).await {
-                                error!("Failed to send native mode switch response: {}", e);
+                                error!("Failed to send local mode switch response: {}", e);
                             }
                             return Ok(());
                         }
                         Err(e) => {
-                            error!("Failed to set native mode from MCP: {}", e);
+                            error!("Failed to set local mode from MCP: {}", e);
                             let chat_id = teloxide::types::ChatId(user_id);
-                            let error_message = format!("❌ Failed to switch to native mode: {}", e);
+                            let error_message = format!("❌ Failed to switch to local mode: {}", e);
                             if let Err(e) = self.send_message_with_parse_mode_and_retry(
                                 chat_id, &error_message, ParseMode::Html
                             ).await {
-                                error!("Failed to send native mode error message: {}", e);
+                                error!("Failed to send local mode error message: {}", e);
                             }
                             return Err(e);
                         }
@@ -762,18 +762,18 @@ impl TelegramBot {
                                 }
                             }
                         }
-                        "/cct:native" | "/cct:native@CCTelegramBot" => {
-                            match self.set_bridge_mode(BridgeMode::Native).await {
+                        "/cct:local" | "/cct:local@CCTelegramBot" => {
+                            match self.set_bridge_mode(BridgeMode::Local).await {
                                 Ok(message) => {
                                     bot.send_message(msg.chat.id, message)
                                         .parse_mode(ParseMode::MarkdownV2)
                                         .await?;
                                 }
                                 Err(e) => {
-                                    error!("Failed to set native mode: {}", e);
+                                    error!("Failed to set local mode: {}", e);
                                     bot.send_message(
                                         msg.chat.id, 
-                                        format!("❌ Failed to switch to native mode: {}", e)
+                                        format!("❌ Failed to switch to local mode: {}", e)
                                     ).await?;
                                 }
                             }
@@ -804,8 +804,8 @@ impl TelegramBot {
                             // Handle regular messages based on current bridge mode
                             let bridge_mode = self.get_bridge_mode();
                             match bridge_mode {
-                                BridgeMode::Native => {
-                                    // Native mode: minimal response with emoji reaction
+                                BridgeMode::Local => {
+                                    // Local mode: minimal response with emoji reaction
                                     if let Err(e) = bot.set_message_reaction(msg.chat.id, msg.id)
                                         .reaction(vec![ReactionType::Emoji { emoji: "⚡".to_string() }])
                                         .await {
@@ -825,7 +825,7 @@ impl TelegramBot {
                                         • `/tasks` \\- View tasks\n\
                                         • `/todo` \\- View todos\n\
                                         • `/help` \\- Show all commands\n\
-                                        • `/cct:native` \\- Switch back to native mode",
+                                        • `/cct:local` \\- Switch back to local mode",
                                         Self::escape_markdown_v2(text)
                                     );
                                     bot.send_message(msg.chat.id, response)
@@ -1911,14 +1911,14 @@ impl TelegramBot {
         // Add current bridge mode and mode switching commands
         let current_mode = self.get_bridge_mode();
         let mode_icon = match current_mode {
-            BridgeMode::Native => "🏠",
+            BridgeMode::Local => "🏠",
             BridgeMode::Nomad => "📱",
             BridgeMode::Muted => "🔇",
         };
         
         help_parts.push(format!("🔄 *Bridge Mode:* {} {}", mode_icon, current_mode));
         help_parts.push("• `/cct:nomad` \\- Switch to remote mode \\(full Telegram interaction\\)".to_string());
-        help_parts.push("• `/cct:native` \\- Switch to native mode \\(minimal responses\\)".to_string());
+        help_parts.push("• `/cct:local` \\- Switch to local mode \\(minimal responses\\)".to_string());
         help_parts.push("• `/cct:mute` \\- Switch to muted mode \\(disable all messaging\\)".to_string());
         help_parts.push("".to_string());
         
