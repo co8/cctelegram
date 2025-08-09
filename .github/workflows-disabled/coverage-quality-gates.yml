@@ -286,7 +286,7 @@ jobs:
       with:
         name: performance-reports
         path: |
-          mcp-server/tests/performance/baselines/
+          tests/mcp-server/performance/baselines/
           mcp-server/reports/performance/
         retention-days: 30
 

@@ -48,8 +48,8 @@ class TierTestValidator {
     const requiredFiles = [
       'docker-compose.integration-test.yml',
       'mcp-server/Dockerfile.tier-mocks',
-      'mcp-server/tests/integration/tier-cascading-system.integration.test.ts',
-      'mcp-server/tests/utils/tier-test-helpers.ts',
+      'tests/mcp-server/integration/tier-cascading-system.integration.test.ts',
+      'tests/mcp-server/utils/tier-test-helpers.ts',
       'mcp-server/scripts/run-tier-integration-tests.js',
       'mcp-server/scripts/validate-tier-tests.js'
     ];
@@ -59,8 +59,8 @@ class TierTestValidator {
     }
 
     const requiredDirs = [
-      'mcp-server/tests/integration',
-      'mcp-server/tests/utils',
+      'tests/mcp-server/integration',
+      'tests/mcp-server/utils',
       'mcp-server/scripts'
     ];
 
@@ -110,7 +110,7 @@ class TierTestValidator {
     console.log('\n🧪 Validating test files...');
     
     // Check main integration test file
-    const integrationTestFile = path.join(this.mcpServerRoot, 'tests/integration/tier-cascading-system.integration.test.ts');
+    const integrationTestFile = path.join(this.projectRoot, 'tests/mcp-server/integration/tier-cascading-system.integration.test.ts');
     try {
       const content = await fs.readFile(integrationTestFile, 'utf-8');
       
@@ -145,7 +145,7 @@ class TierTestValidator {
     }
 
     // Check test utilities
-    const testUtilsFile = path.join(this.mcpServerRoot, 'tests/utils/tier-test-helpers.ts');
+    const testUtilsFile = path.join(this.projectRoot, 'tests/mcp-server/utils/tier-test-helpers.ts');
     try {
       const content = await fs.readFile(testUtilsFile, 'utf-8');
       

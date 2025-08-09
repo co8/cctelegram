@@ -28,7 +28,7 @@ services:
     volumes:
       - integration-test-data:/test
       - integration-coverage:/app/coverage
-      - ./mcp-server/tests:/app/tests:ro
+      - ../tests/mcp-server:/app/tests:ro
       - ./mcp-server/src:/app/src:ro
     
     command: ["npm", "run", "test:integration", "--", "--testPathPattern=tier-cascading-system"]
@@ -151,7 +151,7 @@ services:
     
     volumes:
       - postgres-test-data:/var/lib/postgresql/data
-      - ./mcp-server/tests/fixtures/test-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ../tests/mcp-server/fixtures/test-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U test_user -d integration_test"]

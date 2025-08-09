@@ -101,7 +101,7 @@ services:
     
     volumes:
       - ./mcp-server/src:/app/src:ro
-      - ./mcp-server/tests:/app/tests:ro
+      - ./tests/mcp-server:/app/tests:ro
       - mcp-dev-data:/app/data
       
     networks:
