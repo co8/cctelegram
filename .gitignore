@@ -5,6 +5,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev-debug.log
+bridge*.log
+mcp-server.log
 
 # Dependency directories
 node_modules/
@@ -35,6 +37,20 @@ performance_monitor.log
 ~/.cc_telegram/
 config.toml
 target/.rustc_info.json
+
+# Test artifacts
+*.db
+*.db-shm 
+*.db-wal
+test-results/
+reports/coverage/
+security-audit*.json
+
+# Generated files
+build-output/
+typescript-error*.md
+typescript-errors.txt
+*.backup
 
 # Task files
 # tasks.json
