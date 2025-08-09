@@ -1,6 +1,6 @@
 ![CCTelegram GitHub Header](docs/assets/cctelegram-github-header-optimized.jpg)
 
-# CCTelegram Bridge + MCP Server
+# CCTelegram : Bridge + MCP Server
 
 [![Bridge Version](https://img.shields.io/badge/Bridge-v0.9.0-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.9.0) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.9.0-2da199?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
 
@@ -30,7 +30,7 @@ CCTelegram consists of **two complementary components** that work together seaml
 ### 2. Install Complete System
 
 ```bash
-# Download both MCP Server and Bridge
+# Download both MCP Server and built Bridge
 git clone https://github.com/co8/cctelegram.git
 cd cctelegram/mcp-server
 
@@ -41,7 +41,7 @@ cd cctelegram/mcp-server
 export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 
-# Bridge v0.9.0 starts automatically in background
+# Bridge starts automatically in background
 ```
 
 ### 3. Test with [Claude Code](https://github.com/anthropics/claude-code)
@@ -163,9 +163,9 @@ _Both components work together automatically - no manual management needed._
 🦀 Rust Unit Tests        122 ✅  # Core business logic
 🌐 E2E Integration Tests   32 ✅  # Full system workflows
 📱 Cross-Platform Tests    15 ✅  # Multi-browser support
-🔄 Performance Tests       8 ✅   # Load & stress testing
-🎨 Visual Regression        6 ✅   # UI consistency checks
-⚡ API Validation Tests     5 ✅   # Endpoint functionality
+🔄 Performance Tests        8 ✅  # Load & stress testing
+🎨 Visual Regression        6 ✅  # UI consistency checks
+⚡ API Validation Tests      5 ✅  # Endpoint functionality
 ```
 
 **Quality Gates:**
@@ -199,7 +199,8 @@ cctelegram/
 │   ├── src/                   # 💼 Server Implementation
 │   ├── tests/                 # 🧪 Comprehensive Test Suite
 │   ├── docs/                  # 📖 Server Documentation
-│   └── scripts/               # 🚀 Build & Deploy Tools
+│   ├── scripts/               # 🚀 Build & Deploy Tools
+│   └── install.sh             # ⚡ One-click installer
 ├── test/                      # 🧪 Rust Testing Framework
 │   ├── tests/                 # 🔬 Integration Tests
 │   └── unit/                  # ⚡ Unit Tests
