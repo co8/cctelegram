@@ -56,7 +56,38 @@ export TELEGRAM_ALLOWED_USERS="your_user_id_here"
 **How it works**: MCP Server processes the command in Claude Code → Bridge detects the event file → Sends to Telegram  
 _Both components work together automatically - no manual management needed._
 
----
+## Architecture Diagram
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Claude Code   │    │   MCP Server    │    │   Bridge App    │    │  Telegram Bot   │
+│                 │    │  (TypeScript)   │    │   (Rust Daemon) │    │                 │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │MCP Tools    │◄┼────┼►│MCP Protocol │◄┼────┼►│File Watcher │ │    │ │Bot Client   │ │
+│ │@cctelegram  │ │    │ │Handler      │ │    │ │             │ │    │ │             │ │
+│ └─────────────┘ │    │ └─────┬───────┘ │    │ └─────┬───────┘ │    │ └─────▲───────┘ │
+└─────────────────┘    │ ┌─────▼───────┐ │    │ ┌─────▼───────┐ │    └───────┼─────────┘
+                       │ │Event File   │ │    │ │Event        │ │            │
+                       │ │Generator    │ │    │ │Processor    │ │    ┌───────▼───────┐
+                       │ └─────────────┘ │    │ └─────┬───────┘ │    │  Telegram API │
+                       └─────────────────┘    │ ┌─────▼───────┐ │    └───────┬───────┘
+                                              │ │Telegram Bot │ │            │
+           ~/.cc_telegram/                    │ │Client       │ │    ┌───────▼───────┐
+      ┌─────────────────────┐                │ └─────────────┘ │    │   User Device │
+      │events/              │◄───────────────┤                 │    │               │
+      │├─ task_123.json     │                │ ┌─────────────┐ │    │ ┌───────────┐ │
+      │├─ approval_456.json │                │ │Response     │ │    │ │Telegram   │ │
+      │└─ progress_789.json │                │ │Handler      │ │    │ │App        │ │
+      │                     │                │ └─────▲───────┘ │    │ └───────────┘ │
+      │responses/           │◄───────────────┤       │         │    └───────────────┘
+      │├─ approval_456.json │                │       │         │
+      │└─ command_890.json  │                └───────┼─────────┘
+      └─────────────────────┘                        │
+                                              ┌──────▼──────┐
+                                              │  Response   │
+                                              │   Files     │
+                                              └─────────────┘
+```
 
 ## 📱 Live Notifications
 
@@ -165,7 +196,7 @@ _Both components work together automatically - no manual management needed._
 📱 Cross-Platform Tests    15 ✅  # Multi-browser support
 🔄 Performance Tests        8 ✅  # Load & stress testing
 🎨 Visual Regression        6 ✅  # UI consistency checks
-⚡ API Validation Tests      5 ✅  # Endpoint functionality
+⚡ API Validation Tests     5 ✅  # Endpoint functionality
 ```
 
 **Quality Gates:**
@@ -244,7 +275,7 @@ cctelegram/
 | :-: | :-: | :-: |
 | **[📖 Overview →](docs/README.md)**<br/>Project overview & quick start | **[🔌 API Reference →](docs/API_REFERENCE.md)**<br/>All 20+ tools & 44+ events | **[🤝 Contributing →](docs/CONTRIBUTING.md)**<br/>Developer guide & workflows |
 | **[⚡ Installation →](docs/INSTALLATION.md)**<br/>Complete setup in <10 minutes | **[🔧 Troubleshooting →](docs/TROUBLESHOOTING.md)**<br/>Problem-solving & diagnostics | **[🏗️ Architecture →](docs/architecture.md)**<br/>Technical design & system overview |
-| **[🛡️ Security →](docs/SECURITY.md)**<br/>Security policy & compliance | | |
+| **[🛡️ Security →](docs/SECURITY.md)**<br/>Security policy & compliance |  |  |
 
 </div>
 

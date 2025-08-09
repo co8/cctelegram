@@ -1,41 +1,39 @@
-# Claude Code Telegram Bridge - Technical Architecture
+# CCTelegram - Complete System Architecture
 
 ## System Overview
 
-The Claude Code Telegram Bridge is a Rust-based daemon that creates a communication bridge between development tools (Claude Code, VSCode) and Telegram, enabling remote monitoring and interaction with development workflows.
+CCTelegram is a comprehensive notification ecosystem that bridges Claude Code with Telegram through two complementary components: an MCP Server (TypeScript) for direct Claude Code integration, and a Bridge (Rust) for high-performance Telegram communication.
 
-## Architecture Diagram
+## Complete System Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Claude Code   │    │   VSCode Ext    │    │   Bridge App    │
-│                 │    │                 │    │   (Rust Daemon) │
-│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
-│ │Event Hooks  │◄┼────┼►│Event Monitor│◄┼────┼►│File Watcher │ │
-│ │             │ │    │ │             │ │    │ │             │ │
-│ └─────────────┘ │    │ └─────────────┘ │    │ └─────────────┘ │
-└─────────────────┘    └─────────────────┘    │       │         │
-                                              │ ┌─────▼─────┐   │
-         ~/.cc_telegram/                      │ │Event      │   │
-    ┌─────────────────────┐                  │ │Processor  │   │
-    │events/              │◄─────────────────┤ │           │   │
-    │├─ task_123.json     │                  │ └─────┬─────┘   │
-    │├─ approval_456.json │                  │       │         │
-    │└─ progress_789.json │                  │ ┌─────▼─────┐   │
-    │                     │                  │ │Telegram   │   │
-    │responses/           │◄─────────────────┤ │Bot Client │   │
-    │├─ approval_456.json │                  │ │           │   │
-    │└─ command_890.json  │                  │ └─────┬─────┘   │
-    └─────────────────────┘                  └───────┼─────────┘
-                                                     │
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Claude Code   │    │   MCP Server    │    │   Bridge App    │    │  Telegram Bot   │
+│                 │    │  (TypeScript)   │    │   (Rust Daemon) │    │                 │
+│ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │    │ ┌─────────────┐ │
+│ │MCP Tools    │◄┼────┼►│MCP Protocol │◄┼────┼►│File Watcher │ │    │ │Bot Client   │ │
+│ │@cctelegram  │ │    │ │Handler      │ │    │ │             │ │    │ │             │ │
+│ └─────────────┘ │    │ └─────┬───────┘ │    │ └─────┬───────┘ │    │ └─────▲───────┘ │
+└─────────────────┘    │ ┌─────▼───────┐ │    │ ┌─────▼───────┐ │    └───────┼─────────┘
+                       │ │Event File   │ │    │ │Event        │ │            │
+                       │ │Generator    │ │    │ │Processor    │ │    ┌───────▼───────┐
+                       │ └─────────────┘ │    │ └─────┬───────┘ │    │  Telegram API │
+                       └─────────────────┘    │ ┌─────▼───────┐ │    └───────┬───────┘
+                                              │ │Telegram Bot │ │            │
+           ~/.cc_telegram/                    │ │Client       │ │    ┌───────▼───────┐
+      ┌─────────────────────┐                │ └─────────────┘ │    │   User Device │
+      │events/              │◄───────────────┤                 │    │               │
+      │├─ task_123.json     │                │ ┌─────────────┐ │    │ ┌───────────┐ │
+      │├─ approval_456.json │                │ │Response     │ │    │ │Telegram   │ │
+      │└─ progress_789.json │                │ │Handler      │ │    │ │App        │ │
+      │                     │                │ └─────▲───────┘ │    │ └───────────┘ │
+      │responses/           │◄───────────────┤       │         │    └───────────────┘
+      │├─ approval_456.json │                │       │         │
+      │└─ command_890.json  │                └───────┼─────────┘
+      └─────────────────────┘                        │
                                               ┌──────▼──────┐
-                                              │  Telegram   │
-                                              │   Bot API   │
-                                              └──────┬──────┘
-                                                     │
-                                              ┌──────▼──────┐
-                                              │   Mobile    │
-                                              │    User     │
+                                              │  Response   │
+                                              │   Files     │
                                               └─────────────┘
 ```
 
