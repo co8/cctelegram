@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'mcp-server/docs/**'
+      - 'docs/**'
       - '.github/workflows/docs-quality-gates.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'mcp-server/docs/**'
+      - 'docs/**'
       - '.github/workflows/docs-quality-gates.yml'
 
 env:
@@ -41,14 +41,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: mcp-server/docs/package-lock.json
+          cache-dependency-path: docs/mcp-server/package-lock.json
 
       - name: Install documentation dependencies
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: npm ci
 
       - name: Build documentation
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           npm run docs:build
         env:
@@ -56,7 +56,7 @@ jobs:
 
       - name: Run link checker
         id: links
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           echo "🔗 Checking links..."
           npm run links:check:ci || true
@@ -73,7 +73,7 @@ jobs:
 
       - name: Run spell checker
         id: spelling
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           echo "🔤 Checking spelling..."
           npm run spell:check:ci || true
@@ -89,7 +89,7 @@ jobs:
 
       - name: Generate documentation metrics
         id: metrics
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           echo "📊 Generating quality metrics..."
           npm run metrics:generate
@@ -112,7 +112,7 @@ jobs:
 
       - name: Documentation quality gate
         id: quality-gate
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           BROKEN_LINKS="${{ steps.links.outputs.broken-links }}"
           SPELL_ERRORS="${{ steps.spelling.outputs.total-errors }}"
@@ -228,20 +228,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: mcp-server/docs/package-lock.json
+          cache-dependency-path: docs/mcp-server/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           npm ci
           npx playwright install chromium
 
       - name: Build documentation
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: npm run docs:build
 
       - name: Start documentation server
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           npm run docs:preview &
           sleep 5
@@ -250,7 +250,7 @@ jobs:
           timeout 30 bash -c 'until curl -f http://localhost:4173/docs/ > /dev/null 2>&1; do sleep 1; done'
 
       - name: Run accessibility tests
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           cat > accessibility-test.js << 'EOF'
           const { chromium } = require('playwright');
@@ -354,20 +354,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: mcp-server/docs/package-lock.json
+          cache-dependency-path: docs/mcp-server/package-lock.json
 
       - name: Install dependencies and Lighthouse
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           npm ci
           npm install -g @lhci/cli
 
       - name: Build documentation
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: npm run docs:build
 
       - name: Create Lighthouse CI config
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           cat > lighthouserc.js << 'EOF'
           module.exports = {
@@ -397,7 +397,7 @@ jobs:
           EOF
 
       - name: Run Lighthouse CI
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: lhci autorun
 
       - name: Upload Lighthouse reports
@@ -432,14 +432,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: mcp-server/docs/package-lock.json
+          cache-dependency-path: docs/mcp-server/package-lock.json
 
       - name: Install dependencies
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: npm ci
 
       - name: Create versioned documentation
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: |
           # Get current version
           CURRENT_VERSION=$(node -p "require('../package.json').version")
@@ -449,7 +449,7 @@ jobs:
           npm run docs:version -- --version=v$CURRENT_VERSION
 
       - name: Generate quality dashboard
-        working-directory: ./mcp-server/docs
+        working-directory: ./docs/mcp-server
         run: npm run metrics:dashboard
 
       - name: Deploy to GitHub Pages

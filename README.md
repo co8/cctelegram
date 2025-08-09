@@ -2,9 +2,9 @@
 
 # CCTelegram : Bridge + MCP Server
 
-[![Bridge Version](https://img.shields.io/badge/Bridge-v0.9.0-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.9.0) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.9.0-2da199?style=for-the-badge&logo=typescript&logoColor=white)](mcp-server/README.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
+[![Bridge Version](https://img.shields.io/badge/Bridge-v0.9.0-FF6B6B?style=for-the-badge&logo=rust&logoColor=white)](https://github.com/co8/cctelegram/releases/tag/v0.9.0) [![MCP Server](https://img.shields.io/badge/MCP%20Server-v1.9.0-2da199?style=for-the-badge&logo=typescript&logoColor=white)](docs/components/mcp-server.md) [![Claude Code](https://img.shields.io/badge/Claude%20Code-Compatible-FF8C42?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxjaXJjbGUgY3g9IjUwIiBjeT0iNTAiIHI9IjQ1IiBmaWxsPSIjRkY4QzQyIi8+Cjx0ZXh0IHg9IjUwIiB5PSI1OCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjQwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkE8L3RleHQ+Cjwvc3ZnPg==&logoColor=white)](https://claude.ai/code)
 
-[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-cd4e97?style=flat-square&logo=shield&logoColor=white)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/API_REFERENCE.md#event-types-44-supported) [![Tests](https://img.shields.io/badge/Tests-154%20Passing-00b976?style=flat-square&logo=jest&logoColor=white)](test/) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/API_REFERENCE.md#performance-characteristics)
+[![Rust](https://img.shields.io/badge/Rust-1.70+-CE422B?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![License](https://img.shields.io/badge/License-MIT-97CA00?style=flat-square&logo=opensourceinitiative&logoColor=white)](https://opensource.org/licenses/MIT) [![Build](https://img.shields.io/badge/Build-Passing-00D26A?style=flat-square&logo=github&logoColor=white)](https://github.com/co8/cctelegram) [![Security](https://img.shields.io/badge/Security-8.5%2F10%20LOW%20RISK-cd4e97?style=flat-square&logo=shield&logoColor=white)](docs/SECURITY.md) [![OWASP](https://img.shields.io/badge/OWASP-10%2F10%20Compliant-7209B7?style=flat-square&logo=owasp&logoColor=white)](docs/SECURITY.md) [![Telegram](https://img.shields.io/badge/Telegram-Bot%20API-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots/api) [![Events](https://img.shields.io/badge/Events-44%2B%20Types-E63946?style=flat-square&logo=apache&logoColor=white)](docs/API_REFERENCE.md#event-types-44-supported) [![Tests](https://img.shields.io/badge/Tests-154%20Passing-00b976?style=flat-square&logo=jest&logoColor=white)](tests/) [![Monitoring](https://img.shields.io/badge/Monitoring-Prometheus-E6522C?style=flat-square&logo=prometheus&logoColor=white)](docs/API_REFERENCE.md#performance-characteristics)
 
 ## TL;DR
 
@@ -180,13 +180,27 @@ _Both components work together automatically - no manual management needed._
 
 ```
 cctelegram/
-├── docs/                      # 📚 Complete Documentation Suite
+├── docs/                      # 📚 Unified Documentation Hub
 │   ├── API_REFERENCE.md       # 🔌 Tools & Events Reference
 │   ├── INSTALLATION.md        # ⚡ Setup Guide
 │   ├── TROUBLESHOOTING.md     # 🔧 Problem Solving
 │   ├── SECURITY.md            # 🛡️ Security & Compliance
 │   ├── CONTRIBUTING.md        # 🤝 Developer Guide
-│   └── assets/                # 📸 Screenshots & Images
+│   ├── assets/                # 📸 Screenshots & Images
+│   ├── components/            # 🧩 Component Documentation
+│   │   ├── mcp-server.md      # MCP Server Guide
+│   │   ├── benchmarking.md    # Performance Testing
+│   │   └── observability.md   # Monitoring & Metrics
+│   ├── testing/               # 🧪 Testing Documentation
+│   │   ├── emulation.md       # Bot API Emulation
+│   │   ├── playwright.md      # E2E Testing
+│   │   ├── chaos-engineering.md # Chaos Testing
+│   │   └── contract-testing.md  # Contract Testing
+│   └── mcp-server/            # 📖 MCP Server Technical Docs
+│       ├── api/               # API Documentation
+│       ├── deployment/        # Deployment Guides
+│       ├── guide/             # User Guides
+│       └── examples/          # Code Examples
 ├── src/                       # 🦀 Rust Bridge Source
 │   ├── config/                # ⚙️ Configuration Management
 │   ├── events/                # 📡 Event Processing & Queuing
@@ -197,16 +211,20 @@ cctelegram/
 │   └── utils/                 # 🛠️ Utilities & Health Checks
 ├── mcp-server/                # 🔌 MCP Server (TypeScript)
 │   ├── src/                   # 💼 Server Implementation
-│   ├── tests/                 # 🧪 Comprehensive Test Suite
-│   ├── docs/                  # 📖 Server Documentation
 │   ├── scripts/               # 🚀 Build & Deploy Tools
 │   └── install.sh             # ⚡ One-click installer
-├── test/                      # 🧪 Rust Testing Framework
-│   ├── tests/                 # 🔬 Integration Tests
-│   └── unit/                  # ⚡ Unit Tests
-├── tests/                     # 🎭 Advanced Testing Systems
+├── tests/                     # 🎭 Unified Testing Hub
+│   ├── mcp-server/            # MCP Server Test Suite
+│   │   ├── unit/              # Unit Tests
+│   │   ├── integration/       # Integration Tests
+│   │   ├── e2e/               # End-to-End Tests
+│   │   ├── performance/       # Performance Tests
+│   │   ├── chaos/             # Chaos Engineering
+│   │   └── contract/          # Contract Testing
 │   ├── playwright/            # 🎯 E2E Browser Tests
-│   └── emulation/             # 📡 Bot API Emulation
+│   ├── emulation/             # 📡 Bot API Emulation
+│   ├── *.rs                   # Rust Integration Tests
+│   └── *.sh                   # Test Scripts
 ├── examples/                  # 💡 Usage Examples & Demos
 ├── scripts/                   # ⚙️ Automation Scripts
 ├── monitoring/                # 📊 Prometheus & Grafana
@@ -218,18 +236,19 @@ cctelegram/
 
 ## 📚 Documentation
 
-**Complete documentation in 6 focused files:**
+**Complete documentation in 7 focused files:**
 
 <div align="center">
 
 | **Get Started** | **Power Users** | **Contributors & Operators** |
 | :-: | :-: | :-: |
-| **[📖 Overview →](docs/README.md)**<br/>Project overview & quick start | **[🔌 API Reference →](docs/API_REFERENCE.md)**<br/>All 20+ tools & 44+ events | **[🤝 Contributing →](docs/CONTRIBUTING.md)**<br/>Developer guide & architecture |
-| **[⚡ Installation →](docs/INSTALLATION.md)**<br/>Complete setup in <10 minutes | **[🔧 Troubleshooting →](docs/TROUBLESHOOTING.md)**<br/>Problem-solving & diagnostics | **[🛡️ Security →](docs/SECURITY.md)**<br/>Security policy & compliance |
+| **[📖 Overview →](docs/README.md)**<br/>Project overview & quick start | **[🔌 API Reference →](docs/API_REFERENCE.md)**<br/>All 20+ tools & 44+ events | **[🤝 Contributing →](docs/CONTRIBUTING.md)**<br/>Developer guide & workflows |
+| **[⚡ Installation →](docs/INSTALLATION.md)**<br/>Complete setup in <10 minutes | **[🔧 Troubleshooting →](docs/TROUBLESHOOTING.md)**<br/>Problem-solving & diagnostics | **[🏗️ Architecture →](docs/architecture.md)**<br/>Technical design & system overview |
+| **[🛡️ Security →](docs/SECURITY.md)**<br/>Security policy & compliance | | |
 
 </div>
 
-**Total documentation: 1,970 lines across 6 files** (streamlined from 10,000+ lines across 97+ files)
+**Total documentation: 2,400+ lines across 7 core files plus comprehensive component & testing docs** (streamlined from 10,000+ lines across 97+ files)
 
 ### 🎨 **Visual System Overview**
 
