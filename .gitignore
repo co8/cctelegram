@@ -55,3 +55,7 @@ typescript-errors.txt
 # Task files
 # tasks.json
 # tasks/ 
+
+# CC Telegram
+.cc_telegram/events
+.cc_telegram/responses
